@@ -33,16 +33,15 @@ def create_app(config_class=Config):
         else:
             end = datetime(now.year, now.month + 1, 1)
 
-        records = (
-            Record.query.options(joinedload(Record.creator))
-            .filter(
-                Record.created_by == current_user.id,
-                Record.created_at >= start,
-                Record.created_at < end,
-            )
-            .order_by(Record.date_of_discharge.desc(), Record.created_at.desc())
-            .all()
+        # Admins see all records for the month, others see only their own
+        q = Record.query.options(joinedload(Record.creator)).filter(
+            Record.created_at >= start,
+            Record.created_at < end,
         )
+        if getattr(current_user, 'role', None) != 'admin':
+            q = q.filter(Record.created_by == current_user.id)
+
+        records = q.order_by(Record.date_of_discharge.desc(), Record.created_at.desc()).all()
 
         return render_template('dashboard.html', records=records)
 
@@ -165,7 +164,7 @@ def create_app(config_class=Config):
     def edit_record(record_id):
         # only editors and admins can edit records
         if getattr(current_user, 'role', None) not in ('editor', 'admin'):
-            flash('Only editors or admins can edit records')
+            flash('Only editors and admins can edit records')
             return redirect(url_for('index'))
 
         r = Record.query.get_or_404(record_id)
@@ -237,6 +236,18 @@ def create_app(config_class=Config):
 
         # GET -> render form with record data
         return render_template('edit_record.html', r=r)
+
+    @app.route('/records/<int:record_id>/delete', methods=['POST'])
+    @login_required
+    def delete_record(record_id):
+        if getattr(current_user, 'role', None) != 'admin':
+            flash('Access denied')
+            return redirect(url_for('index'))
+        r = Record.query.get_or_404(record_id)
+        db.session.delete(r)
+        db.session.commit()
+        flash('Record deleted')
+        return redirect(url_for('index'))
 
     # --- Admin: user management ---
     @app.route('/admin/users')
