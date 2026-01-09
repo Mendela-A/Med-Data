@@ -62,20 +62,25 @@ def create_app(config_class=Config):
         selected_physician = request.args.get('treating_physician', '').strip()
         history_q = request.args.get('history', '').strip()
 
+        conditions = []
         if selected_status:
-            q = q.filter(Record.discharge_status == selected_status)
+            conditions.append(Record.discharge_status == selected_status)
         if selected_physician:
-            q = q.filter(Record.treating_physician == selected_physician)
+            conditions.append(Record.treating_physician == selected_physician)
         if history_q:
-            q = q.filter(Record.history.contains(history_q))
+            conditions.append(Record.history.contains(history_q))
+        if conditions:
+            q = q.filter(*conditions)
 
         # values for dropdowns (distinct non-null values)
         statuses = [s[0] for s in db.session.query(Record.discharge_status).distinct().filter(Record.discharge_status != None).order_by(Record.discharge_status).all()]
         physicians = [p[0] for p in db.session.query(Record.treating_physician).distinct().filter(Record.treating_physician != None).order_by(Record.treating_physician).all()]
 
+        # count and results
+        count = q.count()
         records = q.order_by(Record.date_of_discharge.desc(), Record.created_at.desc()).all()
 
-        return render_template('dashboard.html', records=records, statuses=statuses, physicians=physicians, selected_status=selected_status, selected_physician=selected_physician, history_q=history_q)
+        return render_template('dashboard.html', records=records, statuses=statuses, physicians=physicians, selected_status=selected_status, selected_physician=selected_physician, history_q=history_q, count=count)
 
     @app.route('/register', methods=['GET', 'POST'])
     def register():
@@ -183,9 +188,16 @@ def create_app(config_class=Config):
             db.session.add(r)
             db.session.commit()
             flash('Record added')
-            return redirect(url_for('index'))
+            # preserve filters if sent with form
+            params = {}
+            for k in ('discharge_status', 'treating_physician', 'history'):
+                v = request.form.get(k, '').strip()
+                if v:
+                    params[k] = v
+            return redirect(url_for('index', **params))
 
-        return render_template('add_record.html')
+        # GET: pass through any filters so add form can include hidden fields
+        return render_template('add_record.html', selected_status=request.args.get('discharge_status', ''), selected_physician=request.args.get('treating_physician', ''), history_q=request.args.get('history', ''))
 
     @app.route('/records/<int:record_id>/edit', methods=['GET', 'POST'])
     @role_required('editor')
@@ -210,6 +222,29 @@ def create_app(config_class=Config):
             if not all([date_str, full_name, discharge_department, treating_physician, history, k_days, status]):
                 flash('All fields are required')
                 return redirect(url_for('edit_record', record_id=record_id))
+
+            # after all validations and commit, preserve filters in redirect
+            params = {}
+            for k in ('discharge_status', 'treating_physician', 'history'):
+                v = request.form.get(k, '').strip()
+                if v:
+                    params[k] = v
+
+            # apply changes
+            r.date_of_discharge = date_of_discharge
+            r.full_name = full_name
+            r.discharge_department = discharge_department
+            r.treating_physician = treating_physician
+            r.history = history
+            r.k_days = k_days_int
+            r.discharge_status = discharge_status or status
+            r.status = status
+            r.date_of_death = date_of_death
+            r.comment = comment
+
+            db.session.commit()
+            flash('Record updated')
+            return redirect(url_for('index', **params))
 
             from datetime import datetime
             try:
@@ -258,8 +293,8 @@ def create_app(config_class=Config):
             flash('Record updated')
             return redirect(url_for('index'))
 
-        # GET -> render form with record data
-        return render_template('edit_record.html', r=r)
+        # GET -> render form with record data (pass filters through if present)
+        return render_template('edit_record.html', r=r, selected_status=request.args.get('discharge_status', ''), selected_physician=request.args.get('treating_physician', ''), history_q=request.args.get('history', ''))
 
     @app.route('/records/<int:record_id>/delete', methods=['POST'])
     @role_required('admin')
@@ -268,7 +303,13 @@ def create_app(config_class=Config):
         db.session.delete(r)
         db.session.commit()
         flash('Record deleted')
-        return redirect(url_for('index'))
+        # preserve filters from form (if any)
+        params = {}
+        for k in ('discharge_status', 'treating_physician', 'history'):
+            v = request.form.get(k, '').strip()
+            if v:
+                params[k] = v
+        return redirect(url_for('index', **params))
 
     # --- Admin: user management ---
     @app.route('/admin/users')

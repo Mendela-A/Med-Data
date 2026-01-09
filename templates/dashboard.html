@@ -2,6 +2,7 @@
 {% block title %}Мої записи — поточний місяць{% endblock %}
 {% block content %}
   <h1>Мої записи (цей місяць)</h1>
+  <p>Знайдено: <strong>{{ count }}</strong></p>
 
   <form class="filter-form" method="get">
     <div class="form-row">
@@ -75,6 +76,9 @@
               {% endif %}
               {% if current_user.role == 'admin' %}
                 <form method="post" action="{{ url_for('delete_record', record_id=r.id) }}" style="display:inline; margin-left:8px;" onsubmit="return confirm('Ви справді хочете видалити запис #{{ r.id }}?');">
+                  <input type="hidden" name="discharge_status" value="{{ selected_status }}">
+                  <input type="hidden" name="treating_physician" value="{{ selected_physician }}">
+                  <input type="hidden" name="history" value="{{ history_q }}">
                   <button class="btn-delete" type="submit">Видалити</button>
                 </form>
               {% endif %}
