@@ -100,18 +100,19 @@ def create_app(config_class=Config):
             history = request.form.get('history', '').strip()
             k_days = request.form.get('k_days', '').strip()
             status = request.form.get('status', '').strip()
+            date_of_death_str = request.form.get('date_of_death', '').strip()
 
             # validate presence
             if not all([date_str, full_name, discharge_department, treating_physician, history, k_days, status]):
                 flash('All fields are required')
                 return redirect(url_for('add_record'))
 
-            # validate date format DD.MM.YYYY
+            # validate date format DD.MM.YYYY for discharge
             from datetime import datetime
             try:
                 date_of_discharge = datetime.strptime(date_str, '%d.%m.%Y').date()
             except ValueError:
-                flash('Date must be in DD.MM.YYYY format')
+                flash('Date of discharge must be in DD.MM.YYYY format')
                 return redirect(url_for('add_record'))
 
             # validate k_days integer
@@ -120,6 +121,25 @@ def create_app(config_class=Config):
             except ValueError:
                 flash('"К днів" must be an integer')
                 return redirect(url_for('add_record'))
+
+            # If status == 'Помер', date_of_death is required
+            date_of_death = None
+            if status == 'Помер':
+                if not date_of_death_str:
+                    flash('When status is "Помер", "Дата смерті" is required')
+                    return redirect(url_for('add_record'))
+
+            if date_of_death_str:
+                try:
+                    date_of_death = datetime.strptime(date_of_death_str, '%d.%m.%Y').date()
+                except ValueError:
+                    flash('Date of death must be in DD.MM.YYYY format')
+                    return redirect(url_for('add_record'))
+
+                # date_of_death cannot be earlier than date_of_discharge
+                if date_of_death < date_of_discharge:
+                    flash('Дата смерті не може бути раніше дати виписки')
+                    return redirect(url_for('add_record'))
 
             r = Record(
                 date_of_discharge=date_of_discharge,
@@ -130,6 +150,7 @@ def create_app(config_class=Config):
                 k_days=k_days_int,
                 discharge_status=status,
                 status=status,
+                date_of_death=date_of_death,
                 created_by=current_user.id
             )
             db.session.add(r)

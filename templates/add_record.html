@@ -29,10 +29,34 @@
     </div>
     <div class="form-row">
       <label>Статус виписки / статус</label>
-      <input name="status" required>
+      <input id="status" name="status" required>
+      <div class="required-note" id="death-note" style="display:none;">Якщо статус — "Помер", вкажіть дату смерті</div>
+    </div>
+    <div class="form-row">
+      <label>Дата смерті (DD.MM.YYYY)</label>
+      <input id="date_of_death" name="date_of_death" pattern="\d{2}\.\d{2}\.\d{4}" placeholder="DD.MM.YYYY">
     </div>
     <div class="form-actions">
       <button type="submit">Додати</button>
     </div>
+    <script>
+      (function(){
+        var status = document.getElementById('status');
+        var death = document.getElementById('date_of_death');
+        var note = document.getElementById('death-note');
+        function check(){
+          if(!status) return;
+          var v = status.value && status.value.trim();
+          if(v === 'Помер'){
+            death.required = true;
+            note.style.display = 'block';
+          } else {
+            death.required = false;
+            note.style.display = 'none';
+          }
+        }
+        if(status){ status.addEventListener('input', check); check(); }
+      })();
+    </script>
   </form>
 {% endblock %}
