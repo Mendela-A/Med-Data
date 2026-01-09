@@ -61,6 +61,16 @@ class Audit(db.Model):
         return f"<Audit {self.id} {self.action}>"
 
 
+class Department(db.Model):
+    __tablename__ = 'departments'
+    id = db.Column(db.Integer, primary_key=True)
+    name = db.Column(db.String(200), nullable=False, unique=True)
+    created_at = db.Column(db.DateTime, default=datetime.utcnow)
+
+    def __repr__(self):
+        return f"<Department {self.id} {self.name}>"
+
+
 def log_action(actor_id, action, target_type=None, target_id=None, details=None):
     """Create an audit log entry and commit it."""
     a = Audit(actor_id=actor_id, action=action, target_type=target_type, target_id=target_id, details=details)

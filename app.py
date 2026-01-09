@@ -2,7 +2,7 @@ import click
 from flask import Flask, render_template, redirect, url_for, request, flash, send_file
 from flask_migrate import Migrate
 from config import Config
-from models import db, User, Record, bcrypt, log_action
+from models import db, User, Record, bcrypt, log_action, Department
 from flask_login import LoginManager, login_user, logout_user, login_required, current_user
 from sqlalchemy.orm import joinedload
 
@@ -67,7 +67,9 @@ def create_app(config_class=Config):
             Record.created_at >= start,
             Record.created_at < end,
         )
-        if getattr(current_user, 'role', None) != 'admin':
+        # Operators see only their own records; editors and admins see all records
+        role = getattr(current_user, 'role', None)
+        if role == 'operator':
             q = q.filter(Record.created_by == current_user.id)
 
         # --- filtering from query params ---
@@ -262,12 +264,17 @@ def create_app(config_class=Config):
                 flash('Будь ласка, заповніть усі обов\'язкові поля')
                 return redirect(url_for('add_record'))
 
-            # validate date format DD.MM.YYYY for discharge
+            # validate date format: accept DD.MM.YYYY or YYYY-MM-DD (HTML date input)
             from datetime import datetime
-            try:
-                date_of_discharge = datetime.strptime(date_str, '%d.%m.%Y').date()
-            except ValueError:
-                flash('Date of discharge must be in DD.MM.YYYY format')
+            date_of_discharge = None
+            for fmt in ('%d.%m.%Y', '%Y-%m-%d'):
+                try:
+                    date_of_discharge = datetime.strptime(date_str, fmt).date()
+                    break
+                except ValueError:
+                    continue
+            if date_of_discharge is None:
+                flash('Date of discharge must be in DD.MM.YYYY or YYYY-MM-DD format')
                 return redirect(url_for('add_record'))
 
             # validate k_days integer
@@ -324,8 +331,9 @@ def create_app(config_class=Config):
                     params[k] = v
             return redirect(url_for('index', **params))
 
-        # GET: pass through any filters so add form can include hidden fields
-        return render_template('add_record.html', selected_status=request.args.get('discharge_status', ''), selected_physician=request.args.get('treating_physician', ''), history_q=request.args.get('history', ''))
+        # GET: pass through any filters so add form can include hidden fields and departments
+        departments = Department.query.order_by(Department.name).all()
+        return render_template('add_record.html', selected_status=request.args.get('discharge_status', ''), selected_physician=request.args.get('treating_physician', ''), history_q=request.args.get('history', ''), departments=departments, selected_department=request.args.get('discharge_department', ''))
 
     @app.route('/records/<int:record_id>/edit', methods=['GET', 'POST'])
     @role_required('editor')
@@ -352,10 +360,15 @@ def create_app(config_class=Config):
                 return redirect(url_for('edit_record', record_id=record_id))
 
             from datetime import datetime
-            try:
-                date_of_discharge = datetime.strptime(date_str, '%d.%m.%Y').date()
-            except ValueError:
-                flash('Date of discharge must be in DD.MM.YYYY format')
+            date_of_discharge = None
+            for fmt in ('%d.%m.%Y', '%Y-%m-%d'):
+                try:
+                    date_of_discharge = datetime.strptime(date_str, fmt).date()
+                    break
+                except ValueError:
+                    continue
+            if date_of_discharge is None:
+                flash('Date of discharge must be in DD.MM.YYYY or YYYY-MM-DD format')
                 return redirect(url_for('edit_record', record_id=record_id))
 
             try:
@@ -422,8 +435,9 @@ def create_app(config_class=Config):
             flash('Record updated')
             return redirect(url_for('index'))
 
-        # GET -> render form with record data (pass filters through if present)
-        return render_template('edit_record.html', r=r, selected_status=request.args.get('discharge_status', ''), selected_physician=request.args.get('treating_physician', ''), history_q=request.args.get('history', ''))
+        # GET -> render form with record data (pass filters through if present) and departments
+        departments = Department.query.order_by(Department.name).all()
+        return render_template('edit_record.html', r=r, selected_status=request.args.get('discharge_status', ''), selected_physician=request.args.get('treating_physician', ''), history_q=request.args.get('history', ''), departments=departments)
 
     @app.route('/records/<int:record_id>/delete', methods=['POST'])
     @role_required('admin')
@@ -495,6 +509,53 @@ def create_app(config_class=Config):
         app.logger.info(f'User deleted: {u.username} by {current_user.username}')
         flash(f'User {u.username} deleted')
         return redirect(url_for('admin_users'))
+
+    # Departments management
+    @app.route('/admin/departments')
+    @role_required('admin')
+    def admin_departments():
+        departments = Department.query.order_by(Department.name).all()
+        return render_template('admin_departments.html', departments=departments)
+
+    @app.route('/admin/departments/create', methods=['POST'])
+    @role_required('admin')
+    def admin_create_department():
+        name = request.form.get('name', '').strip()
+        if not name:
+            flash('Name is required')
+            return redirect(url_for('admin_departments'))
+        if Department.query.filter_by(name=name).first():
+            flash('Department already exists')
+            return redirect(url_for('admin_departments'))
+        d = Department(name=name)
+        db.session.add(d)
+        db.session.commit()
+        try:
+            log_action(current_user.id, 'department.create', 'department', d.id, f'name={name}')
+        except Exception:
+            app.logger.exception('Failed to write audit log for department.create')
+        app.logger.info(f'Department created: {name} by {current_user.username}')
+        flash(f'Department {name} created')
+        return redirect(url_for('admin_departments'))
+
+    @app.route('/admin/departments/<int:dept_id>/delete', methods=['POST'])
+    @role_required('admin')
+    def admin_delete_department(dept_id):
+        d = Department.query.get_or_404(dept_id)
+        # prevent deletion if department in use
+        in_use = Record.query.filter(Record.discharge_department == d.name).count()
+        if in_use:
+            flash('Cannot delete department which is in use by records')
+            return redirect(url_for('admin_departments'))
+        db.session.delete(d)
+        db.session.commit()
+        try:
+            log_action(current_user.id, 'department.delete', 'department', d.id, f'name={d.name}')
+        except Exception:
+            app.logger.exception('Failed to write audit log for department.delete')
+        app.logger.info(f'Department deleted: {d.name} by {current_user.username}')
+        flash(f'Department {d.name} deleted')
+        return redirect(url_for('admin_departments'))
 
     @app.cli.command('init-db')
     def init_db():

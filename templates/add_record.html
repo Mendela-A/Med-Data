@@ -14,8 +14,8 @@
     <input type="hidden" name="filter_history" value="{{ history_q }}">
 
     <div class="mb-3">
-      <label class="form-label">Дата виписки (DD.MM.YYYY)</label>
-      <input class="form-control" name="date_of_discharge" pattern="\d{2}\.\d{2}\.\d{4}" placeholder="DD.MM.YYYY" required>
+      <label class="form-label">Дата виписки</label>
+      <input class="form-control" name="date_of_discharge" type="date" placeholder="DD.MM.YYYY" required>
     </div>
     <div class="mb-3">
       <label class="form-label">ПІБ</label>
@@ -23,7 +23,12 @@
     </div>
     <div class="mb-3">
       <label class="form-label">Відділення</label>
-      <input class="form-control" name="discharge_department" required>
+      <select class="form-select" name="discharge_department" required>
+        <option value="">Оберіть відділення...</option>
+        {% for d in departments %}
+          <option value="{{ d.name }}" {% if d.name == selected_department %}selected{% endif %}>{{ d.name }}</option>
+        {% endfor %}
+      </select>
     </div>
     <div class="mb-3">
       <label class="form-label">Лікар</label>

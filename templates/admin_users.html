@@ -4,7 +4,12 @@
   <li class="breadcrumb-item active" aria-current="page">Користувачі</li>
 {% endblock %}
 {% block content %}
-  <h1 class="h4">Користувачі</h1>
+  <div class="d-flex align-items-center justify-content-between">
+    <h1 class="h4">Користувачі</h1>
+    <div>
+      <a class="btn btn-outline-primary btn-sm" href="{{ url_for('admin_departments') }}">Керування відділеннями</a>
+    </div>
+  </div>
 
   <h2 class="mt-4">Створити користувача</h2>
   <form method="post" action="{{ url_for('admin_create_user') }}" class="row gx-3 gy-2 align-items-end">

@@ -1,0 +1,42 @@
+{% extends "base.html" %}
+{% block title %}Керування відділеннями{% endblock %}
+{% block breadcrumbs %}
+  <li class="breadcrumb-item"><a href="{{ url_for('admin_users') }}">Адмін</a></li>
+  <li class="breadcrumb-item active" aria-current="page">Відділення</li>
+{% endblock %}
+{% block content %}
+  <h1 class="h4">Відділення</h1>
+
+  <h2 class="mt-4">Додати відділення</h2>
+  <form method="post" action="{{ url_for('admin_create_department') }}" class="row gx-3 gy-2 align-items-end">
+    <div class="col-sm-6">
+      <label class="form-label">Назва</label>
+      <input class="form-control" name="name" required>
+    </div>
+    <div class="col-auto">
+      <button class="btn btn-success" type="submit">Додати</button>
+    </div>
+  </form>
+
+  <h2 class="mt-5">Список відділень</h2>
+  <div class="table-responsive">
+    <table class="table table-striped">
+      <thead>
+        <tr><th>ID</th><th>Назва</th><th>Дія</th></tr>
+      </thead>
+      <tbody>
+        {% for d in departments %}
+          <tr>
+            <td>{{ d.id }}</td>
+            <td>{{ d.name }}</td>
+            <td>
+              <form method="post" action="{{ url_for('admin_delete_department', dept_id=d.id) }}" style="display:inline;" onsubmit="return confirm('Видалити відділення {{ d.name }}?');">
+                <button class="btn btn-danger btn-sm" type="submit">Видалити</button>
+              </form>
+            </td>
+          </tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </div>
+{% endblock %}
