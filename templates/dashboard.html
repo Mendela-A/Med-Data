@@ -38,6 +38,9 @@
 
   {% if current_user.role in ['editor', 'admin'] %}
     <form class="export-form" method="post" action="{{ url_for('export') }}">
+      <input type="hidden" name="discharge_status" value="{{ selected_status }}">
+      <input type="hidden" name="treating_physician" value="{{ selected_physician }}">
+      <input type="hidden" name="history" value="{{ history_q }}">
       <div class="form-row">
         <label>Експорт — від</label>
         <input name="from_date" type="date" required>

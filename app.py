@@ -109,14 +109,27 @@ def create_app(config_class=Config):
             Record.date_of_discharge >= from_d,
             Record.date_of_discharge <= to_d,
         )
+        # apply active filters if provided (discharge_status, treating_physician, history)
+        discharge_status = request.form.get('discharge_status', '').strip()
+        treating_physician = request.form.get('treating_physician', '').strip()
+        history_q = request.form.get('history', '').strip()
+        if discharge_status:
+            q = q.filter(Record.discharge_status == discharge_status)
+        if treating_physician:
+            q = q.filter(Record.treating_physician == treating_physician)
+        if history_q:
+            q = q.filter(Record.history.contains(history_q))
+
         if getattr(current_user, 'role', None) != 'admin':
             q = q.filter(Record.created_by == current_user.id)
 
         records = q.order_by(Record.date_of_discharge.desc(), Record.created_at.desc()).all()
 
-        # create excel with openpyxl
+        # create excel with openpyxl, format headers bold, and auto-size columns
         try:
             from openpyxl import Workbook
+            from openpyxl.styles import Font
+            from openpyxl.utils import get_column_letter
         except Exception:
             flash('Export requires openpyxl package. Please install it.')
             return redirect(url_for('index'))
@@ -124,8 +137,12 @@ def create_app(config_class=Config):
         wb = Workbook()
         ws = wb.active
         ws.title = 'Vipiski'
+
+        # headers: include all columns from the Record model
         headers = ['ID','Дата виписки','ПІБ','Відділення','Лікар','Історія','К днів','Статус виписки','Статус','Дата смерті','Коментар','Створив','Створено']
         ws.append(headers)
+
+        # append rows
         for r in records:
             ws.append([
                 r.id,
@@ -134,7 +151,7 @@ def create_app(config_class=Config):
                 r.discharge_department or '',
                 r.treating_physician or '',
                 r.history or '',
-                r.k_days or '',
+                r.k_days if r.k_days is not None else '',
                 r.discharge_status or '',
                 r.status or '',
                 r.date_of_death.strftime('%d.%m.%Y') if r.date_of_death else '',
@@ -142,6 +159,24 @@ def create_app(config_class=Config):
                 r.creator.username if r.creator else r.created_by,
                 r.created_at.strftime('%d.%m.%Y %H:%M') if r.created_at else '',
             ])
+
+        # style headers bold
+        bold = Font(bold=True)
+        for cell in ws[1]:
+            cell.font = bold
+
+        # auto width columns
+        for i, column_cells in enumerate(ws.columns, 1):
+            max_length = 0
+            for cell in column_cells:
+                try:
+                    value = str(cell.value) if cell.value is not None else ''
+                except Exception:
+                    value = ''
+                if len(value) > max_length:
+                    max_length = len(value)
+            adjusted_width = min(max_length + 2, 50)
+            ws.column_dimensions[get_column_letter(i)].width = adjusted_width
 
         bio = BytesIO()
         wb.save(bio)
