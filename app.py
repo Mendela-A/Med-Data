@@ -4,6 +4,7 @@ from flask_migrate import Migrate
 from config import Config
 from models import db, User, Record, bcrypt
 from flask_login import LoginManager, login_user, logout_user, login_required, current_user
+from sqlalchemy.orm import joinedload
 
 login_manager = LoginManager()
 login_manager.login_view = 'login'
@@ -32,11 +33,16 @@ def create_app(config_class=Config):
         else:
             end = datetime(now.year, now.month + 1, 1)
 
-        records = Record.query.filter(
-            Record.created_by == current_user.id,
-            Record.created_at >= start,
-            Record.created_at < end
-        ).order_by(Record.created_at.desc()).all()
+        records = (
+            Record.query.options(joinedload(Record.creator))
+            .filter(
+                Record.created_by == current_user.id,
+                Record.created_at >= start,
+                Record.created_at < end,
+            )
+            .order_by(Record.date_of_discharge.desc(), Record.created_at.desc())
+            .all()
+        )
 
         return render_template('dashboard.html', records=records)
 

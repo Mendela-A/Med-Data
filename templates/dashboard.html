@@ -17,6 +17,7 @@
           <th>Статус</th>
           <th>Дата смерті</th>
           <th>Коментар</th>
+          <th>Створив</th>
           <th>Створено</th>
         </tr>
       </thead>
@@ -24,16 +25,17 @@
         {% for r in records %}
           <tr>
             <td>{{ r.id }}</td>
-            <td>{{ r.date_of_discharge or '' }}</td>
+            <td>{{ r.date_of_discharge.strftime('%d.%m.%Y') if r.date_of_discharge else '' }}</td>
             <td>{{ r.full_name }}</td>
             <td>{{ r.discharge_department or '' }}</td>
             <td>{{ r.treating_physician or '' }}</td>
             <td>{{ r.k_days or '' }}</td>
             <td>{{ r.discharge_status or '' }}</td>
             <td>{{ r.status or '' }}</td>
-            <td>{{ r.date_of_death or '' }}</td>
+            <td>{{ r.date_of_death.strftime('%d.%m.%Y') if r.date_of_death else '' }}</td>
             <td>{{ r.comment or '' }}</td>
-            <td>{{ r.created_at.strftime('%Y-%m-%d %H:%M') if r.created_at else '' }}</td>
+            <td>{{ r.creator.username if r.creator else r.created_by }}</td>
+            <td>{{ r.created_at.strftime('%d.%m.%Y %H:%M') if r.created_at else '' }}</td>
           </tr>
         {% endfor %}
       </tbody>
