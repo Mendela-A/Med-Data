@@ -160,6 +160,84 @@ def create_app(config_class=Config):
 
         return render_template('add_record.html')
 
+    @app.route('/records/<int:record_id>/edit', methods=['GET', 'POST'])
+    @login_required
+    def edit_record(record_id):
+        # only editors and admins can edit records
+        if getattr(current_user, 'role', None) not in ('editor', 'admin'):
+            flash('Only editors or admins can edit records')
+            return redirect(url_for('index'))
+
+        r = Record.query.get_or_404(record_id)
+
+        if request.method == 'POST':
+            # gather form fields
+            date_str = request.form.get('date_of_discharge', '').strip()
+            full_name = request.form.get('full_name', '').strip()
+            discharge_department = request.form.get('discharge_department', '').strip()
+            treating_physician = request.form.get('treating_physician', '').strip()
+            history = request.form.get('history', '').strip()
+            k_days = request.form.get('k_days', '').strip()
+            status = request.form.get('status', '').strip()
+            discharge_status = request.form.get('discharge_status', '').strip()
+            date_of_death_str = request.form.get('date_of_death', '').strip()
+            comment = request.form.get('comment', '').strip()
+
+            # validate presence of main fields
+            if not all([date_str, full_name, discharge_department, treating_physician, history, k_days, status]):
+                flash('All fields are required')
+                return redirect(url_for('edit_record', record_id=record_id))
+
+            from datetime import datetime
+            try:
+                date_of_discharge = datetime.strptime(date_str, '%d.%m.%Y').date()
+            except ValueError:
+                flash('Date of discharge must be in DD.MM.YYYY format')
+                return redirect(url_for('edit_record', record_id=record_id))
+
+            try:
+                k_days_int = int(k_days)
+            except ValueError:
+                flash('"К днів" must be an integer')
+                return redirect(url_for('edit_record', record_id=record_id))
+
+            # date_of_death handling
+            date_of_death = None
+            if status == 'Помер':
+                if not date_of_death_str:
+                    flash('When status is "Помер", "Дата смерті" is required')
+                    return redirect(url_for('edit_record', record_id=record_id))
+
+            if date_of_death_str:
+                try:
+                    date_of_death = datetime.strptime(date_of_death_str, '%d.%m.%Y').date()
+                except ValueError:
+                    flash('Date of death must be in DD.MM.YYYY format')
+                    return redirect(url_for('edit_record', record_id=record_id))
+
+                if date_of_death < date_of_discharge:
+                    flash('Дата смерті не може бути раніше дати виписки')
+                    return redirect(url_for('edit_record', record_id=record_id))
+
+            # apply changes
+            r.date_of_discharge = date_of_discharge
+            r.full_name = full_name
+            r.discharge_department = discharge_department
+            r.treating_physician = treating_physician
+            r.history = history
+            r.k_days = k_days_int
+            r.discharge_status = discharge_status or status
+            r.status = status
+            r.date_of_death = date_of_death
+            r.comment = comment
+
+            db.session.commit()
+            flash('Record updated')
+            return redirect(url_for('index'))
+
+        # GET -> render form with record data
+        return render_template('edit_record.html', r=r)
+
     @app.cli.command('init-db')
     def init_db():
         """Create database tables."""
