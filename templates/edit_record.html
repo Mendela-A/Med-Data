@@ -1,57 +1,61 @@
 {% extends "base.html" %}
 {% block title %}Редагувати запис #{{ r.id }}{% endblock %}
+{% block breadcrumbs %}
+  <li class="breadcrumb-item"><a href="{{ url_for('index') }}">Записи</a></li>
+  <li class="breadcrumb-item active" aria-current="page">Редагувати #{{ r.id }}</li>
+{% endblock %}
 {% block content %}
-  <h1>Редагувати запис #{{ r.id }}</h1>
-  <form method="post">
+  <h1 class="h4">Редагувати запис #{{ r.id }}</h1>
+  <form method="post" class="mt-3">
     <!-- preserve filters so we can return to the filtered list -->
     <input type="hidden" name="discharge_status" value="{{ selected_status }}">
     <input type="hidden" name="treating_physician" value="{{ selected_physician }}">
     <input type="hidden" name="history" value="{{ history_q }}">
 
-    <div class="form-row">
-      <label>Дата виписки (DD.MM.YYYY)</label>
-      <input name="date_of_discharge" value="{{ r.date_of_discharge.strftime('%d.%m.%Y') if r.date_of_discharge else '' }}" pattern="\d{2}\.\d{2}\.\d{4}" placeholder="DD.MM.YYYY" required>
+    <div class="mb-3">
+      <label class="form-label">Дата виписки (DD.MM.YYYY)</label>
+      <input class="form-control" name="date_of_discharge" value="{{ r.date_of_discharge.strftime('%d.%m.%Y') if r.date_of_discharge else '' }}" pattern="\d{2}\.\d{2}\.\d{4}" placeholder="DD.MM.YYYY" required>
     </div>
-    <div class="form-row">
-      <label>ПІБ</label>
-      <input name="full_name" value="{{ r.full_name }}" required>
+    <div class="mb-3">
+      <label class="form-label">ПІБ</label>
+      <input class="form-control" name="full_name" value="{{ r.full_name }}" required>
     </div>
-    <div class="form-row">
-      <label>Відділення</label>
-      <input name="discharge_department" value="{{ r.discharge_department or '' }}" required>
+    <div class="mb-3">
+      <label class="form-label">Відділення</label>
+      <input class="form-control" name="discharge_department" value="{{ r.discharge_department or '' }}" required>
     </div>
-    <div class="form-row">
-      <label>Лікар</label>
-      <input name="treating_physician" value="{{ r.treating_physician or '' }}" required>
+    <div class="mb-3">
+      <label class="form-label">Лікар</label>
+      <input class="form-control" name="treating_physician" value="{{ r.treating_physician or '' }}" required>
     </div>
-    <div class="form-row">
-      <label>Історія</label>
-      <textarea name="history" rows="4" required>{{ r.history or '' }}</textarea>
+    <div class="mb-3">
+      <label class="form-label">Історія</label>
+      <textarea class="form-control" name="history" rows="4" required>{{ r.history or '' }}</textarea>
     </div>
-    <div class="form-row">
-      <label>К днів</label>
-      <input name="k_days" type="number" min="0" value="{{ r.k_days or 0 }}" required>
+    <div class="mb-3">
+      <label class="form-label">К днів</label>
+      <input class="form-control" name="k_days" type="number" min="0" value="{{ r.k_days or 0 }}" required>
     </div>
-    <div class="form-row">
-      <label>Статус виписки</label>
-      <input name="discharge_status" value="{{ r.discharge_status or '' }}" required>
+    <div class="mb-3">
+      <label class="form-label">Статус виписки</label>
+      <input class="form-control" name="discharge_status" value="{{ r.discharge_status or '' }}" required>
     </div>
-    <div class="form-row">
-      <label>Статус</label>
-      <input id="status" name="status" value="{{ r.status or '' }}" required>
+    <div class="mb-3">
+      <label class="form-label">Статус</label>
+      <input id="status" class="form-control" name="status" value="{{ r.status or '' }}" required>
       <div class="required-note" id="death-note" style="display:none;">Якщо статус — "Помер", вкажіть дату смерті</div>
     </div>
-    <div class="form-row">
-      <label>Дата смерті (DD.MM.YYYY)</label>
-      <input id="date_of_death" name="date_of_death" pattern="\d{2}\.\d{2}\.\d{4}" placeholder="DD.MM.YYYY" value="{{ r.date_of_death.strftime('%d.%m.%Y') if r.date_of_death else '' }}">
+    <div class="mb-3">
+      <label class="form-label">Дата смерті (DD.MM.YYYY)</label>
+      <input id="date_of_death" class="form-control" name="date_of_death" pattern="\d{2}\.\d{2}\.\d{4}" placeholder="DD.MM.YYYY" value="{{ r.date_of_death.strftime('%d.%m.%Y') if r.date_of_death else '' }}">
     </div>
-    <div class="form-row">
-      <label>Коментар</label>
-      <textarea name="comment" rows="3">{{ r.comment or '' }}</textarea>
+    <div class="mb-3">
+      <label class="form-label">Коментар</label>
+      <textarea class="form-control" name="comment" rows="3">{{ r.comment or '' }}</textarea>
     </div>
-    <div class="form-actions">
-      <button type="submit">Зберегти</button>
-      <a href="{{ url_for('index') }}">Скасувати</a>
+    <div class="mb-3">
+      <button class="btn btn-primary" type="submit">Зберегти</button>
+      <a class="btn btn-secondary ms-2" href="{{ url_for('index') }}">Скасувати</a>
     </div>
   </form>
 

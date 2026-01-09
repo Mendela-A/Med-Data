@@ -1,13 +1,16 @@
 {% extends "base.html" %}
 {% block title %}Мої записи — поточний місяць{% endblock %}
 {% block content %}
-  <h1>Мої записи (цей місяць)</h1>
-  <p>Знайдено: <strong>{{ count }}</strong></p>
+  {% block breadcrumbs %}
+    <li class="breadcrumb-item active" aria-current="page">Записи</li>
+  {% endblock %}
 
-  <form class="filter-form" method="get">
-    <div class="form-row">
-      <label>Статус виписки</label>
-      <select name="discharge_status">
+  <h1 class="h3">Мої записи (цей місяць) <span class="badge bg-primary ms-2">{{ count }}</span></h1>
+
+  <form class="filter-form row gx-3 gy-2 align-items-end" method="get">
+    <div class="col-sm-6 col-md-3">
+      <label class="form-label">Статус виписки</label>
+      <select class="form-select" name="discharge_status">
         <option value="">Всі</option>
         {% for s in statuses %}
           <option value="{{ s }}" {% if s == selected_status %}selected{% endif %}>{{ s }}</option>
@@ -15,9 +18,9 @@
       </select>
     </div>
 
-    <div class="form-row">
-      <label>Лікуючий лікар</label>
-      <select name="treating_physician">
+    <div class="col-sm-6 col-md-3">
+      <label class="form-label">Лікуючий лікар</label>
+      <select class="form-select" name="treating_physician">
         <option value="">Всі</option>
         {% for p in physicians %}
           <option value="{{ p }}" {% if p == selected_physician %}selected{% endif %}>{{ p }}</option>
@@ -25,38 +28,39 @@
       </select>
     </div>
 
-    <div class="form-row">
-      <label>Пошук по "Історія" (номер)</label>
-      <input name="history" placeholder="номер або частина" value="{{ history_q }}">
+    <div class="col-sm-6 col-md-4">
+      <label class="form-label">Пошук по "Історія" (номер)</label>
+      <input class="form-control" name="history" placeholder="номер або частина" value="{{ history_q }}">
     </div>
 
-    <div class="form-actions">
-      <button type="submit">Фільтрувати</button>
-      <a class="btn-reset" href="{{ url_for('index') }}">Скинути</a>
+    <div class="col-auto">
+      <button class="btn btn-primary" type="submit">Фільтрувати</button>
+      <a class="btn btn-secondary ms-2" href="{{ url_for('index') }}">Скинути</a>
     </div>
   </form>
 
   {% if current_user.role in ['editor', 'admin'] %}
-    <form class="export-form" method="post" action="{{ url_for('export') }}">
+    <form class="export-form row gx-3 gy-2 align-items-end" method="post" action="{{ url_for('export') }}">
       <input type="hidden" name="discharge_status" value="{{ selected_status }}">
       <input type="hidden" name="treating_physician" value="{{ selected_physician }}">
       <input type="hidden" name="history" value="{{ history_q }}">
-      <div class="form-row">
-        <label>Експорт — від</label>
-        <input name="from_date" type="date" required>
+      <div class="col-auto">
+        <label class="form-label">Експорт — від</label>
+        <input class="form-control" name="from_date" type="date" required>
       </div>
-      <div class="form-row">
-        <label>до</label>
-        <input name="to_date" type="date" required>
+      <div class="col-auto">
+        <label class="form-label">до</label>
+        <input class="form-control" name="to_date" type="date" required>
       </div>
-      <div class="form-actions">
-        <button class="btn-export" type="submit">Вигрузити Excel</button>
+      <div class="col-auto">
+        <button class="btn btn-success" type="submit">Вигрузити Excel</button>
       </div>
     </form>
   {% endif %}
 
   {% if records %}
-    <table class="records-table">
+    <div class="table-responsive">
+    <table class="table table-striped table-hover">
       <thead>
         <tr>
           <th>ID</th>
@@ -106,6 +110,7 @@
         {% endfor %}
       </tbody>
     </table>
+    </div>
   {% else %}
     <p>Записів за цей місяць немає.</p>
   {% endif %}

@@ -1,34 +1,37 @@
 {% extends "base.html" %}
 {% block title %}Керування користувачами{% endblock %}
+{% block breadcrumbs %}
+  <li class="breadcrumb-item active" aria-current="page">Користувачі</li>
+{% endblock %}
 {% block content %}
-  <h1>Користувачі</h1>
+  <h1 class="h4">Користувачі</h1>
 
-  <h2>Створити користувача</h2>
-  <form method="post" action="{{ url_for('admin_create_user') }}">
-    <div class="form-row">
-      <label>Ім'я користувача</label>
-      <input name="username" required>
+  <h2 class="mt-4">Створити користувача</h2>
+  <form method="post" action="{{ url_for('admin_create_user') }}" class="row gx-3 gy-2 align-items-end">
+    <div class="col-sm-4">
+      <label class="form-label">Ім'я користувача</label>
+      <input class="form-control" name="username" required>
     </div>
-    <div class="form-row">
-      <label>Пароль</label>
-      <input name="password" type="password" required>
+    <div class="col-sm-4">
+      <label class="form-label">Пароль</label>
+      <input class="form-control" name="password" type="password" required>
     </div>
-    <div class="form-row">
-      <label>Роль</label>
-      <select name="role">
+    <div class="col-sm-3">
+      <label class="form-label">Роль</label>
+      <select class="form-select" name="role">
         <option value="operator">operator</option>
         <option value="editor">editor</option>
         <option value="admin">admin</option>
       </select>
     </div>
-    <div class="form-actions">
-      <button class="btn-create" type="submit">Створити</button>
+    <div class="col-auto">
+      <button class="btn btn-success" type="submit">Створити</button>
     </div>
   </form>
 
-  <h2>Список користувачів</h2>
-  <table class="records-table">
-    <thead>
+  <h2 class="mt-5">Список користувачів</h2>
+  <div class="table-responsive">
+  <table class="table table-striped">    <thead>
       <tr>
         <th>ID</th>
         <th>Username</th>

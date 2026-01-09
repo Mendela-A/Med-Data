@@ -4,38 +4,63 @@
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <title>{% block title %}Flask App{% endblock %}</title>
+  <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
   <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
 </head>
 <body>
-  <nav class="nav">
-    <a href="{{ url_for('index') }}">Головна</a>
-    {% if current_user.is_authenticated %}
-      <span>Привіт, {{ current_user.username }}</span>
-      {% if current_user.role == 'operator' %}
-        <a href="{{ url_for('add_record') }}">Додати запис</a>
-      {% endif %}
-      {% if current_user.role == 'admin' %}
-        <a href="{{ url_for('admin_users') }}">Керування користувачами</a>
-      {% endif %}
-      <a href="{{ url_for('logout') }}">Вийти</a>
-    {% else %}
-      <a href="{{ url_for('login') }}">Увійти</a>
-      <a href="{{ url_for('register') }}">Реєстрація</a>
-    {% endif %}
+  <nav class="navbar navbar-expand-lg navbar-light bg-light mb-3">
+    <div class="container-fluid">
+      <a class="navbar-brand" href="{{ url_for('index') }}">Сервіс виписок</a>
+      <div class="collapse navbar-collapse">
+        <ul class="navbar-nav me-auto mb-2 mb-lg-0">
+          {% if current_user.is_authenticated %}
+            {% if current_user.role == 'operator' %}
+              <li class="nav-item"><a class="nav-link" href="{{ url_for('add_record') }}">Додати запис</a></li>
+            {% endif %}
+            {% if current_user.role == 'admin' %}
+              <li class="nav-item"><a class="nav-link" href="{{ url_for('admin_users') }}">Керування користувачами</a></li>
+            {% endif %}
+          {% endif %}
+        </ul>
+        <ul class="navbar-nav ms-auto">
+          {% if current_user.is_authenticated %}
+            <li class="nav-item nav-link">Привіт, {{ current_user.username }}</li>
+            <li class="nav-item"><a class="nav-link" href="{{ url_for('logout') }}">Вийти</a></li>
+          {% else %}
+            <li class="nav-item"><a class="nav-link" href="{{ url_for('login') }}">Увійти</a></li>
+            <li class="nav-item"><a class="nav-link" href="{{ url_for('register') }}">Реєстрація</a></li>
+          {% endif %}
+        </ul>
+      </div>
+    </div>
   </nav>
 
-  {% with messages = get_flashed_messages() %}
+  {% with messages = get_flashed_messages(with_categories=true) %}
     {% if messages %}
-      <ul class="flashes">
-        {% for m in messages %}
-          <li>{{ m }}</li>
+      <div class="container">
+        {% for category, message in messages %}
+          {% set bs = 'info' %}
+          {% if category == 'success' %}{% set bs = 'success' %}{% elif category == 'error' or category == 'danger' %}{% set bs = 'danger' %}{% elif category == 'warning' %}{% set bs = 'warning' %}{% endif %}
+          <div class="alert alert-{{ bs }} alert-dismissible fade show" role="alert">
+            {{ message }}
+            <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
+          </div>
         {% endfor %}
-      </ul>
+      </div>
     {% endif %}
   {% endwith %}
 
   <div class="container">
+    <nav aria-label="breadcrumb">
+      <ol class="breadcrumb">
+        <li class="breadcrumb-item"><a href="{{ url_for('index') }}">Головна</a></li>
+        {% block breadcrumbs %}{% endblock %}
+      </ol>
+    </nav>
+
     {% block content %}{% endblock %}
   </div>
+
+  <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
 </body>
 </html>

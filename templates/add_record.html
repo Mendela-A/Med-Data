@@ -1,48 +1,54 @@
 {% extends "base.html" %}
 {% block title %}Додати запис{% endblock %}
+{% block breadcrumbs %}
+  <li class="breadcrumb-item"><a href="{{ url_for('index') }}">Записи</a></li>
+  <li class="breadcrumb-item active" aria-current="page">Додати</li>
+{% endblock %}
+
 {% block content %}
-  <h1>Додати запис</h1>
-  <form method="post">
+  <h1 class="h4">Додати запис</h1>
+  <form method="post" class="mt-3">
     <!-- preserve filters so we can return to the filtered list -->
     <input type="hidden" name="discharge_status" value="{{ selected_status }}">
     <input type="hidden" name="treating_physician" value="{{ selected_physician }}">
     <input type="hidden" name="history" value="{{ history_q }}">
 
-    <div class="form-row">
-      <label>Дата виписки (DD.MM.YYYY)</label>
-      <input name="date_of_discharge" pattern="\d{2}\.\d{2}\.\d{4}" placeholder="DD.MM.YYYY" required>
+    <div class="mb-3">
+      <label class="form-label">Дата виписки (DD.MM.YYYY)</label>
+      <input class="form-control" name="date_of_discharge" pattern="\d{2}\.\d{2}\.\d{4}" placeholder="DD.MM.YYYY" required>
     </div>
-    <div class="form-row">
-      <label>ПІБ</label>
-      <input name="full_name" required>
+    <div class="mb-3">
+      <label class="form-label">ПІБ</label>
+      <input class="form-control" name="full_name" required>
     </div>
-    <div class="form-row">
-      <label>Відділення</label>
-      <input name="discharge_department" required>
+    <div class="mb-3">
+      <label class="form-label">Відділення</label>
+      <input class="form-control" name="discharge_department" required>
     </div>
-    <div class="form-row">
-      <label>Лікар</label>
-      <input name="treating_physician" required>
+    <div class="mb-3">
+      <label class="form-label">Лікар</label>
+      <input class="form-control" name="treating_physician" required>
     </div>
-    <div class="form-row">
-      <label>Історія</label>
-      <textarea name="history" rows="4" required></textarea>
+    <div class="mb-3">
+      <label class="form-label">Історія</label>
+      <textarea class="form-control" name="history" rows="4" required></textarea>
     </div>
-    <div class="form-row">
-      <label>К днів</label>
-      <input name="k_days" type="number" min="0" required>
+    <div class="mb-3">
+      <label class="form-label">К днів</label>
+      <input class="form-control" name="k_days" type="number" min="0" required>
     </div>
-    <div class="form-row">
-      <label>Статус виписки / статус</label>
-      <input id="status" name="status" required>
+    <div class="mb-3">
+      <label class="form-label">Статус виписки / статус</label>
+      <input id="status" class="form-control" name="status" required>
       <div class="required-note" id="death-note" style="display:none;">Якщо статус — "Помер", вкажіть дату смерті</div>
     </div>
-    <div class="form-row">
-      <label>Дата смерті (DD.MM.YYYY)</label>
-      <input id="date_of_death" name="date_of_death" pattern="\d{2}\.\d{2}\.\d{4}" placeholder="DD.MM.YYYY">
+    <div class="mb-3">
+      <label class="form-label">Дата смерті (DD.MM.YYYY)</label>
+      <input id="date_of_death" class="form-control" name="date_of_death" pattern="\d{2}\.\d{2}\.\d{4}" placeholder="DD.MM.YYYY">
     </div>
-    <div class="form-actions">
-      <button type="submit">Додати</button>
+    <div class="mb-3">
+      <button class="btn btn-primary" type="submit">Додати</button>
+      <a class="btn btn-secondary ms-2" href="{{ url_for('index') }}">Скасувати</a>
     </div>
     <script>
       (function(){
