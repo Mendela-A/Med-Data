@@ -135,10 +135,15 @@ def create_app(config_class=Config):
         if history_q:
             q = q.filter(Record.history.contains(history_q))
 
-        if getattr(current_user, 'role', None) != 'admin':
+        # operators can only export their own records; editors and admins can export all
+        if getattr(current_user, 'role', None) == 'operator':
             q = q.filter(Record.created_by == current_user.id)
 
         records = q.order_by(Record.date_of_discharge.desc(), Record.created_at.desc()).all()
+
+        if not records:
+            flash('No records found for selected date range and filters')
+            return redirect(url_for('index'))
 
         # create excel with openpyxl, format headers bold, and auto-size columns
         try:
