@@ -16,13 +16,18 @@ def create_app(config_class=Config):
     # setup file logging
     import logging
     from logging.handlers import RotatingFileHandler
-    import os
+    import os, sys
     if not os.path.exists('logs'):
         os.makedirs('logs')
-    file_handler = RotatingFileHandler('logs/app.log', maxBytes=10240, backupCount=3)
-    file_handler.setFormatter(logging.Formatter('%(asctime)s %(levelname)s: %(message)s [in %(pathname)s:%(lineno)d]'))
-    file_handler.setLevel(logging.INFO)
-    app.logger.addHandler(file_handler)
+    try:
+        file_handler = RotatingFileHandler('logs/app.log', maxBytes=10240, backupCount=3)
+        file_handler.setFormatter(logging.Formatter('%(asctime)s %(levelname)s: %(message)s [in %(pathname)s:%(lineno)d]'))
+        file_handler.setLevel(logging.INFO)
+        app.logger.addHandler(file_handler)
+    except Exception:
+        # fallback to stderr if file logging cannot be configured (e.g., permission/lock issues)
+        app.logger.addHandler(logging.StreamHandler(sys.stderr))
+        app.logger.warning('Could not configure file logging; logs will be sent to stderr')
     app.logger.setLevel(logging.INFO)
     app.logger.info('Application startup')
 
@@ -214,22 +219,9 @@ def create_app(config_class=Config):
 
     @app.route('/register', methods=['GET', 'POST'])
     def register():
-        if request.method == 'POST':
-            username = request.form.get('username')
-            password = request.form.get('password')
-            if not username or not password:
-                flash('Please provide username and password')
-                return redirect(url_for('register'))
-            if User.query.filter_by(username=username).first():
-                flash('Username already exists')
-                return redirect(url_for('register'))
-            u = User(username=username, role='operator')
-            u.set_password(password)
-            db.session.add(u)
-            db.session.commit()
-            login_user(u)
-            return redirect(url_for('index'))
-        return render_template('register.html')
+        # Public registration is disabled. Only administrators can create new users via the admin UI.
+        flash('Реєстрація вимкнена. Нових користувачів створює лише адміністратор.')
+        return redirect(url_for('login'))
 
     @app.route('/login', methods=['GET', 'POST'])
     def login():
@@ -297,16 +289,24 @@ def create_app(config_class=Config):
                     return redirect(url_for('add_record'))
 
             if date_of_death_str:
-                try:
-                    date_of_death = datetime.strptime(date_of_death_str, '%d.%m.%Y').date()
-                except ValueError:
-                    flash('Date of death must be in DD.MM.YYYY format')
+                date_of_death = None
+                for fmt in ('%d.%m.%Y', '%Y-%m-%d'):
+                    try:
+                        date_of_death = datetime.strptime(date_of_death_str, fmt).date()
+                        break
+                    except ValueError:
+                        continue
+                if date_of_death is None:
+                    flash('Date of death must be in DD.MM.YYYY or YYYY-MM-DD format')
                     return redirect(url_for('add_record'))
 
                 # date_of_death cannot be earlier than date_of_discharge
                 if date_of_death < date_of_discharge:
                     flash('Дата смерті не може бути раніше дати виписки')
                     return redirect(url_for('add_record'))
+
+            # Do not auto-fill discharge_status from status for operator adds; allow explicit discharge_status if provided
+            discharge_status = request.form.get('discharge_status', '').strip()
 
             r = Record(
                 date_of_discharge=date_of_discharge,
@@ -315,7 +315,7 @@ def create_app(config_class=Config):
                 treating_physician=treating_physician,
                 history=history,
                 k_days=k_days_int,
-                discharge_status=status,
+                discharge_status=discharge_status or None,
                 status=status,
                 date_of_death=date_of_death,
                 created_by=current_user.id
@@ -390,10 +390,15 @@ def create_app(config_class=Config):
                     return redirect(url_for('edit_record', record_id=record_id))
 
             if date_of_death_str:
-                try:
-                    date_of_death = datetime.strptime(date_of_death_str, '%d.%m.%Y').date()
-                except ValueError:
-                    flash('Date of death must be in DD.MM.YYYY format')
+                date_of_death = None
+                for fmt in ('%d.%m.%Y', '%Y-%m-%d'):
+                    try:
+                        date_of_death = datetime.strptime(date_of_death_str, fmt).date()
+                        break
+                    except ValueError:
+                        continue
+                if date_of_death is None:
+                    flash('Date of death must be in DD.MM.YYYY or YYYY-MM-DD format')
                     return redirect(url_for('edit_record', record_id=record_id))
 
                 if date_of_death < date_of_discharge:
@@ -407,7 +412,7 @@ def create_app(config_class=Config):
             r.treating_physician = treating_physician
             r.history = history
             r.k_days = k_days_int
-            r.discharge_status = discharge_status or status
+            r.discharge_status = discharge_status
             r.status = status
             r.date_of_death = date_of_death
             r.comment = comment
@@ -431,7 +436,7 @@ def create_app(config_class=Config):
             r.treating_physician = treating_physician
             r.history = history
             r.k_days = k_days_int
-            r.discharge_status = discharge_status or status
+            r.discharge_status = discharge_status
             r.status = status
             r.date_of_death = date_of_death
             r.comment = comment

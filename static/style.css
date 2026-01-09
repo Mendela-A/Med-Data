@@ -39,3 +39,30 @@ body { font-family: Arial, sans-serif; margin: 2rem; background: #f7f7f7; }
 .btn-export:hover { background:#0069d9 }
 .export-form { display:flex; gap:1rem; align-items:flex-end; margin-bottom:1rem; }
 .export-form .form-row { min-width:160px; }
+
+/* Medical theme */
+body { background: linear-gradient(180deg, #eaf6f6 0%, #f7fbfd 100%); color: #08343a; }
+.navbar-medical { background: linear-gradient(90deg,#0d9488,#0b7b74); }
+.navbar-medical .navbar-brand, .navbar-medical .nav-link { color: #fff !important; }
+.container { background: #ffffff; padding: 1.5rem; border-radius: 8px; box-shadow: 0 6px 18px rgba(10,20,20,0.06); }
+
+/* Centered login card */
+.login-card { max-width: 460px; margin: 5rem auto; padding: 1.75rem; border-radius: 10px; box-shadow: 0 10px 30px rgba(5,20,20,0.08); background: #ffffff; }
+.login-card h2 { margin-bottom: 1rem; }
+
+/* Compact form controls */
+.form-compact .form-control { padding: .35rem .5rem; font-size: .95rem; }
+.form-compact .form-label { font-size: .9rem; font-weight:600; }
+.input-xsmall { max-width: 90px; }
+.input-small { max-width: 140px; }
+.input-medium { max-width: 320px; }
+.input-name { max-width: 520px; }
+.input-history { max-width: 120px; }
+.date-input { max-width: 140px; }
+
+/* Utility tweaks */
+.btn-primary { background-color: #0d9488; border-color: #0d9488; }
+.btn-primary:hover { background-color: #0b7b74; border-color: #0b7b74; }
+
+/* Make tables a bit lighter */
+.table-striped > tbody > tr:nth-of-type(odd) { background-color: #fbffff; }

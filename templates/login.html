@@ -1,10 +1,20 @@
 {% extends "base.html" %}
 {% block title %}Увійти{% endblock %}
 {% block content %}
-  <h2>Увійти</h2>
-  <form method="post">
-    <label>Ім'я користувача: <input name="username"></label><br>
-    <label>Пароль: <input name="password" type="password"></label><br>
-    <button type="submit">Увійти</button>
-  </form>
+  <div class="login-card">
+    <h2 class="h4 text-center">Вхід до системи</h2>
+    <form method="post">
+      <div class="mb-3">
+        <label class="form-label">Ім'я користувача</label>
+        <input class="form-control" name="username" required>
+      </div>
+      <div class="mb-3">
+        <label class="form-label">Пароль</label>
+        <input class="form-control" name="password" type="password" required>
+      </div>
+      <div class="d-grid">
+        <button class="btn btn-primary" type="submit">Увійти</button>
+      </div>
+    </form>
+  </div>
 {% endblock %}
