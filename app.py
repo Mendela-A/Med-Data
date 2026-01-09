@@ -1,5 +1,5 @@
 import click
-from flask import Flask, render_template, redirect, url_for, request, flash
+from flask import Flask, render_template, redirect, url_for, request, flash, send_file
 from flask_migrate import Migrate
 from config import Config
 from models import db, User, Record, bcrypt
@@ -81,6 +81,74 @@ def create_app(config_class=Config):
         records = q.order_by(Record.date_of_discharge.desc(), Record.created_at.desc()).all()
 
         return render_template('dashboard.html', records=records, statuses=statuses, physicians=physicians, selected_status=selected_status, selected_physician=selected_physician, history_q=history_q, count=count)
+
+    @app.route('/export', methods=['POST'])
+    @role_required('editor')
+    def export():
+        # editors and admins can export records within a date range (by date_of_discharge)
+        from datetime import datetime
+        from io import BytesIO
+        try:
+            from_str = request.form.get('from_date', '').strip()
+            to_str = request.form.get('to_date', '').strip()
+            if not from_str or not to_str:
+                flash('Please provide both From and To dates for export')
+                return redirect(url_for('index'))
+            from_d = datetime.strptime(from_str, '%Y-%m-%d').date()
+            to_d = datetime.strptime(to_str, '%Y-%m-%d').date()
+        except ValueError:
+            flash('Invalid date format for export (use the date picker)')
+            return redirect(url_for('index'))
+
+        if from_d > to_d:
+            flash('From date cannot be after To date')
+            return redirect(url_for('index'))
+
+        q = Record.query.options(joinedload(Record.creator)).filter(
+            Record.date_of_discharge != None,
+            Record.date_of_discharge >= from_d,
+            Record.date_of_discharge <= to_d,
+        )
+        if getattr(current_user, 'role', None) != 'admin':
+            q = q.filter(Record.created_by == current_user.id)
+
+        records = q.order_by(Record.date_of_discharge.desc(), Record.created_at.desc()).all()
+
+        # create excel with openpyxl
+        try:
+            from openpyxl import Workbook
+        except Exception:
+            flash('Export requires openpyxl package. Please install it.')
+            return redirect(url_for('index'))
+
+        wb = Workbook()
+        ws = wb.active
+        ws.title = 'Vipiski'
+        headers = ['ID','Дата виписки','ПІБ','Відділення','Лікар','Історія','К днів','Статус виписки','Статус','Дата смерті','Коментар','Створив','Створено']
+        ws.append(headers)
+        for r in records:
+            ws.append([
+                r.id,
+                r.date_of_discharge.strftime('%d.%m.%Y') if r.date_of_discharge else '',
+                r.full_name,
+                r.discharge_department or '',
+                r.treating_physician or '',
+                r.history or '',
+                r.k_days or '',
+                r.discharge_status or '',
+                r.status or '',
+                r.date_of_death.strftime('%d.%m.%Y') if r.date_of_death else '',
+                r.comment or '',
+                r.creator.username if r.creator else r.created_by,
+                r.created_at.strftime('%d.%m.%Y %H:%M') if r.created_at else '',
+            ])
+
+        bio = BytesIO()
+        wb.save(bio)
+        bio.seek(0)
+
+        filename = f"vipiski_{datetime.now().strftime('%d-%m-%Y')}.xlsx"
+        return send_file(bio, as_attachment=True, download_name=filename, mimetype='application/vnd.openxmlformats-officedocument.spreadsheetml.sheet')
 
     @app.route('/register', methods=['GET', 'POST'])
     def register():

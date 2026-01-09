@@ -36,6 +36,22 @@
     </div>
   </form>
 
+  {% if current_user.role in ['editor', 'admin'] %}
+    <form class="export-form" method="post" action="{{ url_for('export') }}">
+      <div class="form-row">
+        <label>Експорт — від</label>
+        <input name="from_date" type="date" required>
+      </div>
+      <div class="form-row">
+        <label>до</label>
+        <input name="to_date" type="date" required>
+      </div>
+      <div class="form-actions">
+        <button class="btn-export" type="submit">Вигрузити Excel</button>
+      </div>
+    </form>
+  {% endif %}
+
   {% if records %}
     <table class="records-table">
       <thead>
