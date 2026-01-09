@@ -2,7 +2,7 @@ import click
 from flask import Flask, render_template, redirect, url_for, request, flash, send_file
 from flask_migrate import Migrate
 from config import Config
-from models import db, User, Record, bcrypt
+from models import db, User, Record, bcrypt, log_action
 from flask_login import LoginManager, login_user, logout_user, login_required, current_user
 from sqlalchemy.orm import joinedload
 
@@ -12,6 +12,19 @@ login_manager.login_view = 'login'
 def create_app(config_class=Config):
     app = Flask(__name__, template_folder='templates', static_folder='static')
     app.config.from_object(config_class)
+
+    # setup file logging
+    import logging
+    from logging.handlers import RotatingFileHandler
+    import os
+    if not os.path.exists('logs'):
+        os.makedirs('logs')
+    file_handler = RotatingFileHandler('logs/app.log', maxBytes=10240, backupCount=3)
+    file_handler.setFormatter(logging.Formatter('%(asctime)s %(levelname)s: %(message)s [in %(pathname)s:%(lineno)d]'))
+    file_handler.setLevel(logging.INFO)
+    app.logger.addHandler(file_handler)
+    app.logger.setLevel(logging.INFO)
+    app.logger.info('Application startup')
 
     db.init_app(app)
     bcrypt.init_app(app)
@@ -182,6 +195,13 @@ def create_app(config_class=Config):
         wb.save(bio)
         bio.seek(0)
 
+        # audit export
+        try:
+            log_action(current_user.id, 'export', 'export', None, f'from={from_d} to={to_d} discharge_status={discharge_status} treating_physician={treating_physician} history={history_q}')
+        except Exception:
+            app.logger.exception('Failed to write audit log for export')
+        app.logger.info(f'Export by {getattr(current_user, "username", "unknown")}: from {from_d} to {to_d} count={len(records)}')
+
         filename = f"vipiski_{datetime.now().strftime('%d-%m-%Y')}.xlsx"
         return send_file(bio, as_attachment=True, download_name=filename, mimetype='application/vnd.openxmlformats-officedocument.spreadsheetml.sheet')
 
@@ -237,9 +257,9 @@ def create_app(config_class=Config):
             status = request.form.get('status', '').strip()
             date_of_death_str = request.form.get('date_of_death', '').strip()
 
-            # validate presence
-            if not all([date_str, full_name, discharge_department, treating_physician, history, k_days, status]):
-                flash('All fields are required')
+            # validate presence (status is optional; only required when it is 'Помер')
+            if not all([date_str, full_name, discharge_department, treating_physician, history, k_days]):
+                flash('Будь ласка, заповніть усі обов\'язкові поля')
                 return redirect(url_for('add_record'))
 
             # validate date format DD.MM.YYYY for discharge
@@ -290,11 +310,16 @@ def create_app(config_class=Config):
             )
             db.session.add(r)
             db.session.commit()
+            try:
+                log_action(current_user.id, 'record.create', 'record', r.id, f'full_name={r.full_name}')
+            except Exception:
+                app.logger.exception('Failed to write audit log for record.create')
+            app.logger.info(f'Record created: {r.id} by {current_user.username}')
             flash('Record added')
-            # preserve filters if sent with form
+            # preserve filters if sent with form (check prefixed filter_* fields to avoid shadowing actual inputs)
             params = {}
             for k in ('discharge_status', 'treating_physician', 'history'):
-                v = request.form.get(k, '').strip()
+                v = request.form.get(f'filter_{k}', '').strip()
                 if v:
                     params[k] = v
             return redirect(url_for('index', **params))
@@ -321,9 +346,9 @@ def create_app(config_class=Config):
             date_of_death_str = request.form.get('date_of_death', '').strip()
             comment = request.form.get('comment', '').strip()
 
-            # validate presence of main fields
-            if not all([date_str, full_name, discharge_department, treating_physician, history, k_days, status]):
-                flash('All fields are required')
+            # validate presence of main fields (status is optional; only required when it is 'Помер')
+            if not all([date_str, full_name, discharge_department, treating_physician, history, k_days, discharge_status]):
+                flash('Будь ласка, заповніть усі обов\'язкові поля')
                 return redirect(url_for('edit_record', record_id=record_id))
 
             from datetime import datetime
@@ -370,10 +395,15 @@ def create_app(config_class=Config):
             r.comment = comment
 
             db.session.commit()
+            try:
+                log_action(current_user.id, 'record.update', 'record', r.id, f'full_name={r.full_name}')
+            except Exception:
+                app.logger.exception('Failed to write audit log for record.update')
+            app.logger.info(f'Record updated: {r.id} by {current_user.username}')
             flash('Record updated')
             params = {}
             for k in ('discharge_status', 'treating_physician', 'history'):
-                v = request.form.get(k, '').strip()
+                v = request.form.get(f'filter_{k}', '').strip()
                 if v:
                     params[k] = v
             return redirect(url_for('index', **params))
@@ -401,6 +431,11 @@ def create_app(config_class=Config):
         r = Record.query.get_or_404(record_id)
         db.session.delete(r)
         db.session.commit()
+        try:
+            log_action(current_user.id, 'record.delete', 'record', r.id, f'full_name={r.full_name}')
+        except Exception:
+            app.logger.exception('Failed to write audit log for record.delete')
+        app.logger.info(f'Record deleted: {r.id} by {current_user.username}')
         flash('Record deleted')
         # preserve filters from form (if any)
         params = {}
@@ -435,6 +470,12 @@ def create_app(config_class=Config):
         u.set_password(password)
         db.session.add(u)
         db.session.commit()
+        # audit & log
+        try:
+            log_action(current_user.id, 'user.create', 'user', u.id, f'role={role}')
+        except Exception:
+            app.logger.exception('Failed to write audit log for user.create')
+        app.logger.info(f'User created: {username} by {current_user.username}')
         flash(f'User {username} created')
         return redirect(url_for('admin_users'))
 
@@ -447,6 +488,11 @@ def create_app(config_class=Config):
         u = User.query.get_or_404(user_id)
         db.session.delete(u)
         db.session.commit()
+        try:
+            log_action(current_user.id, 'user.delete', 'user', u.id, f'username={u.username}')
+        except Exception:
+            app.logger.exception('Failed to write audit log for user.delete')
+        app.logger.info(f'User deleted: {u.username} by {current_user.username}')
         flash(f'User {u.username} deleted')
         return redirect(url_for('admin_users'))
 
@@ -468,7 +514,32 @@ def create_app(config_class=Config):
         u.set_password(password)
         db.session.add(u)
         db.session.commit()
+        # audit (CLI-created)
+        try:
+            log_action(None, 'user.create', 'user', u.id, 'created by CLI')
+        except Exception:
+            app.logger.exception('Failed to write audit log for create-admin')
+        app.logger.info(f'Admin user created by CLI: {username}')
         click.echo(f'Created admin user {username}')
+
+    @app.cli.command('init-db-with-admin')
+    @click.option('--username', default='admin', help='Admin username')
+    @click.option('--password', default='admin', help='Admin password')
+    def init_db_with_admin(username, password):
+        """Create database tables and an admin user if not present."""
+        db.create_all()
+        if not User.query.filter_by(username=username).first():
+            u = User(username=username, role='admin')
+            u.set_password(password)
+            db.session.add(u)
+            db.session.commit()
+            try:
+                log_action(None, 'user.create', 'user', u.id, 'created by init-db-with-admin')
+            except Exception:
+                app.logger.exception('Failed to write audit log for init-db-with-admin')
+            app.logger.info(f'Admin user created during init: {username}')
+            click.echo(f'Created admin user {username}')
+        click.echo('Initialized the database (with admin).')
 
     return app
 
