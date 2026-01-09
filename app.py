@@ -49,7 +49,7 @@ def create_app(config_class=Config):
         else:
             end = datetime(now.year, now.month + 1, 1)
 
-        # Admins see all records for the month, others see only their own
+        # base query for current month
         q = Record.query.options(joinedload(Record.creator)).filter(
             Record.created_at >= start,
             Record.created_at < end,
@@ -57,9 +57,25 @@ def create_app(config_class=Config):
         if getattr(current_user, 'role', None) != 'admin':
             q = q.filter(Record.created_by == current_user.id)
 
+        # --- filtering from query params ---
+        selected_status = request.args.get('discharge_status', '').strip()
+        selected_physician = request.args.get('treating_physician', '').strip()
+        history_q = request.args.get('history', '').strip()
+
+        if selected_status:
+            q = q.filter(Record.discharge_status == selected_status)
+        if selected_physician:
+            q = q.filter(Record.treating_physician == selected_physician)
+        if history_q:
+            q = q.filter(Record.history.contains(history_q))
+
+        # values for dropdowns (distinct non-null values)
+        statuses = [s[0] for s in db.session.query(Record.discharge_status).distinct().filter(Record.discharge_status != None).order_by(Record.discharge_status).all()]
+        physicians = [p[0] for p in db.session.query(Record.treating_physician).distinct().filter(Record.treating_physician != None).order_by(Record.treating_physician).all()]
+
         records = q.order_by(Record.date_of_discharge.desc(), Record.created_at.desc()).all()
 
-        return render_template('dashboard.html', records=records)
+        return render_template('dashboard.html', records=records, statuses=statuses, physicians=physicians, selected_status=selected_status, selected_physician=selected_physician, history_q=history_q)
 
     @app.route('/register', methods=['GET', 'POST'])
     def register():

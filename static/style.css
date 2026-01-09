@@ -29,3 +29,8 @@ body { font-family: Arial, sans-serif; margin: 2rem; background: #f7f7f7; }
 .form-actions { margin-top:1rem; }
 
 .required-note { color:#c00; font-size:0.9rem; margin-top:0.25rem; }
+
+.filter-form { display:flex; gap:1rem; flex-wrap:wrap; align-items:flex-end; margin-bottom:1rem; }
+.filter-form .form-row { min-width:180px; }
+.btn-reset { display:inline-block; margin-left:8px; padding:8px 10px; border-radius:4px; background:#6c757d; color:#fff; text-decoration:none; }
+.btn-reset:hover { background:#5a6268; }
