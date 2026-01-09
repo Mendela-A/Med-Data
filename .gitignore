@@ -1,0 +1,44 @@
+# Python
+__pycache__/
+*.pyc
+*.pyo
+*.pyd
+env/
+venv/
+instance/
+
+# Virtualenv
+venv/
+
+# Distribution
+build/
+dist/
+*.egg-info/
+
+# Logs
+logs/
+*.log
+
+# Local env files
+.env
+.env.*
+
+# Editor/IDE
+.vscode/
+.idea/
+.DS_Store
+
+# Database
+*.sqlite3
+# local sqlite DB folder (persisted locally, not committed)
+/data/
+app.db
+
+# Tests
+.pytest_cache/
+
+# Docker
+.dockerignore
+
+# Others
+*.bak

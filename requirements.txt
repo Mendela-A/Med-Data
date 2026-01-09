@@ -5,3 +5,4 @@ Werkzeug
 Flask-Login
 Flask-Bcrypt
 openpyxl
+gunicorn

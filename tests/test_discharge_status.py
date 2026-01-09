@@ -6,7 +6,12 @@ from models import User, Record, Department
 def app():
     app = create_app()
     app.config['TESTING'] = True
-    yield app
+    with app.app_context():
+        # ensure a clean DB for tests
+        db.create_all()
+        yield app
+        db.session.remove()
+        db.drop_all()
 
 @pytest.fixture
 def client(app):

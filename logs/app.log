@@ -49,3 +49,5 @@
 2026-01-09 17:30:31,239 INFO: Record updated: 11 by ed [in c:\Users\mendela.a\Documents\python_work_projects\test\app.py:425]
 2026-01-09 17:30:31,239 INFO: Record updated: 11 by ed [in c:\Users\mendela.a\Documents\python_work_projects\test\app.py:425]
 2026-01-09 17:30:31,239 INFO: Record updated: 11 by ed [in c:\Users\mendela.a\Documents\python_work_projects\test\app.py:425]
+2026-01-09 17:31:34,635 INFO: Record created: 12 by user [in c:\Users\mendela.a\Documents\python_work_projects\test\app.py:329]
+2026-01-09 17:32:12,683 INFO: Record updated: 12 by user1 [in c:\Users\mendela.a\Documents\python_work_projects\test\app.py:425]

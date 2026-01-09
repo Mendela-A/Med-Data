@@ -13,21 +13,26 @@ def create_app(config_class=Config):
     app = Flask(__name__, template_folder='templates', static_folder='static')
     app.config.from_object(config_class)
 
-    # setup file logging
+    # setup logging: prefer stdout (good for Docker); enable file logging with LOG_TO_FILE=1
     import logging
-    from logging.handlers import RotatingFileHandler
     import os, sys
-    if not os.path.exists('logs'):
-        os.makedirs('logs')
-    try:
-        file_handler = RotatingFileHandler('logs/app.log', maxBytes=10240, backupCount=3)
-        file_handler.setFormatter(logging.Formatter('%(asctime)s %(levelname)s: %(message)s [in %(pathname)s:%(lineno)d]'))
-        file_handler.setLevel(logging.INFO)
-        app.logger.addHandler(file_handler)
-    except Exception:
-        # fallback to stderr if file logging cannot be configured (e.g., permission/lock issues)
-        app.logger.addHandler(logging.StreamHandler(sys.stderr))
-        app.logger.warning('Could not configure file logging; logs will be sent to stderr')
+    log_to_file = os.environ.get('LOG_TO_FILE') == '1'
+    if log_to_file:
+        from logging.handlers import RotatingFileHandler
+        if not os.path.exists('logs'):
+            os.makedirs('logs')
+        try:
+            file_handler = RotatingFileHandler('logs/app.log', maxBytes=10240, backupCount=3)
+            file_handler.setFormatter(logging.Formatter('%(asctime)s %(levelname)s: %(message)s [in %(pathname)s:%(lineno)d]'))
+            file_handler.setLevel(logging.INFO)
+            app.logger.addHandler(file_handler)
+        except Exception:
+            # fallback to stderr if file logging cannot be configured
+            app.logger.addHandler(logging.StreamHandler(sys.stderr))
+            app.logger.warning('Could not configure file logging; logs will be sent to stderr')
+    else:
+        # In containers, it's best to log to stdout
+        app.logger.addHandler(logging.StreamHandler(sys.stdout))
     app.logger.setLevel(logging.INFO)
     app.logger.info('Application startup')
 
@@ -35,6 +40,17 @@ def create_app(config_class=Config):
     bcrypt.init_app(app)
     login_manager.init_app(app)
     Migrate(app, db)
+
+    # Ensure data directory exists when using a local sqlite file
+    db_uri = app.config.get('SQLALCHEMY_DATABASE_URI', '')
+    if db_uri.startswith('sqlite:///'):
+        db_path = db_uri.replace('sqlite:///', '')
+        db_dir = os.path.dirname(db_path)
+        if db_dir and not os.path.exists(db_dir):
+            try:
+                os.makedirs(db_dir, exist_ok=True)
+            except Exception:
+                app.logger.warning(f'Could not create directory for sqlite DB: {db_dir}')
 
     @login_manager.user_loader
     def load_user(user_id):
@@ -67,11 +83,16 @@ def create_app(config_class=Config):
         else:
             end = datetime(now.year, now.month + 1, 1)
 
-        # base query for current month
-        q = Record.query.options(joinedload(Record.creator)).filter(
-            Record.created_at >= start,
-            Record.created_at < end,
-        )
+        # support a toggle to show all months
+        show_all = request.args.get('all_months', '').lower() in ('1', 'true', 'yes')
+
+        # base query (by default for current month, unless show_all)
+        q = Record.query.options(joinedload(Record.creator))
+        if not show_all:
+            q = q.filter(
+                Record.created_at >= start,
+                Record.created_at < end,
+            )
         # Operators see only their own records; editors and admins see all records
         role = getattr(current_user, 'role', None)
         if role == 'operator':

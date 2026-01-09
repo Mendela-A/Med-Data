@@ -5,7 +5,11 @@
     <li class="breadcrumb-item active" aria-current="page">Записи</li>
   {% endblock %}
 
-  <h1 class="h3">Мої записи (цей місяць) <span class="badge bg-primary ms-2">{{ count }}</span></h1>
+  <h1 class="h3">{% if request.args.get('all_months') %}Мої записи (усі){% else %}Мої записи (цей місяць){% endif %} <span class="badge bg-primary ms-2">{{ count }}</span></h1>
+
+  {% if current_user.role == 'operator' %}
+    <div class="alert alert-info">Оператори бачать тільки записи, які вони створили. Для перегляду всіх місяців поставте прапорець "Показати всі місяці".</div>
+  {% endif %}
 
   <form class="filter-form row gx-3 gy-2 align-items-end" method="get">
     <div class="col-sm-6 col-md-3">
@@ -33,6 +37,12 @@
       <input class="form-control" name="history" placeholder="номер або частина" value="{{ history_q }}">
     </div>
 
+    <div class="col-auto">
+      <div class="form-check">
+        <input class="form-check-input" type="checkbox" value="1" id="all_months" name="all_months" {% if request.args.get('all_months') %}checked{% endif %}>
+        <label class="form-check-label" for="all_months">Показати всі місяці</label>
+      </div>
+    </div>
     <div class="col-auto">
       <button class="btn btn-primary" type="submit">Фільтрувати</button>
       <a class="btn btn-secondary ms-2" href="{{ url_for('index') }}">Скинути</a>
