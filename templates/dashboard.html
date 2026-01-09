@@ -1,0 +1,44 @@
+{% extends "base.html" %}
+{% block title %}Мої записи — поточний місяць{% endblock %}
+{% block content %}
+  <h1>Мої записи (цей місяць)</h1>
+
+  {% if records %}
+    <table class="records-table">
+      <thead>
+        <tr>
+          <th>ID</th>
+          <th>Дата виписки</th>
+          <th>ПІБ</th>
+          <th>Відділення</th>
+          <th>Лікар</th>
+          <th>К днів</th>
+          <th>Статус виписки</th>
+          <th>Статус</th>
+          <th>Дата смерті</th>
+          <th>Коментар</th>
+          <th>Створено</th>
+        </tr>
+      </thead>
+      <tbody>
+        {% for r in records %}
+          <tr>
+            <td>{{ r.id }}</td>
+            <td>{{ r.date_of_discharge or '' }}</td>
+            <td>{{ r.full_name }}</td>
+            <td>{{ r.discharge_department or '' }}</td>
+            <td>{{ r.treating_physician or '' }}</td>
+            <td>{{ r.k_days or '' }}</td>
+            <td>{{ r.discharge_status or '' }}</td>
+            <td>{{ r.status or '' }}</td>
+            <td>{{ r.date_of_death or '' }}</td>
+            <td>{{ r.comment or '' }}</td>
+            <td>{{ r.created_at.strftime('%Y-%m-%d %H:%M') if r.created_at else '' }}</td>
+          </tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  {% else %}
+    <p>Записів за цей місяць немає.</p>
+  {% endif %}
+{% endblock %}

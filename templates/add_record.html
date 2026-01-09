@@ -1,0 +1,38 @@
+{% extends "base.html" %}
+{% block title %}Додати запис{% endblock %}
+{% block content %}
+  <h1>Додати запис</h1>
+  <form method="post">
+    <div class="form-row">
+      <label>Дата виписки (DD.MM.YYYY)</label>
+      <input name="date_of_discharge" pattern="\d{2}\.\d{2}\.\d{4}" placeholder="DD.MM.YYYY" required>
+    </div>
+    <div class="form-row">
+      <label>ПІБ</label>
+      <input name="full_name" required>
+    </div>
+    <div class="form-row">
+      <label>Відділення</label>
+      <input name="discharge_department" required>
+    </div>
+    <div class="form-row">
+      <label>Лікар</label>
+      <input name="treating_physician" required>
+    </div>
+    <div class="form-row">
+      <label>Історія</label>
+      <textarea name="history" rows="4" required></textarea>
+    </div>
+    <div class="form-row">
+      <label>К днів</label>
+      <input name="k_days" type="number" min="0" required>
+    </div>
+    <div class="form-row">
+      <label>Статус виписки / статус</label>
+      <input name="status" required>
+    </div>
+    <div class="form-actions">
+      <button type="submit">Додати</button>
+    </div>
+  </form>
+{% endblock %}
