@@ -42,14 +42,18 @@ def test_operator_add_does_not_auto_set_discharge_status(app, client):
         rv = client.post('/login', data={'username': 'op', 'password': 'pass'}, follow_redirects=True)
         assert rv.status_code == 200
 
+        # add page no longer has a status input
+        rv = client.get('/records/add')
+        assert rv.status_code == 200
+        assert 'name="status"' not in rv.get_data(as_text=True)
+
         data = {
             'date_of_discharge': '2026-01-09',
             'full_name': 'Operator Auto Test',
             'discharge_department': 'DeptTest',
             'treating_physician': 'Dr',
             'history': 'HOP',
-            'k_days': '1',
-            'status': 'Some status'
+            'k_days': '1'
         }
         client.post('/records/add', data=data, follow_redirects=True)
         r = Record.query.filter_by(full_name='Operator Auto Test').first()
@@ -70,8 +74,7 @@ def test_editor_can_view_and_set_discharge_status(app, client):
             'discharge_department': 'DeptTest',
             'treating_physician': 'Dr',
             'history': 'HED',
-            'k_days': '2',
-            'status': 'Initial'
+            'k_days': '2'
         }
         client.post('/records/add', data=data, follow_redirects=True)
         r = Record.query.filter_by(full_name='Editor Edit Test').first()
@@ -83,6 +86,8 @@ def test_editor_can_view_and_set_discharge_status(app, client):
         rv = client.get(f'/records/{r.id}/edit')
         txt = rv.get_data(as_text=True)
         assert 'name="discharge_status"' in txt
+        # status input must be removed
+        assert 'name="status"' not in txt
 
         # POST updated discharge_status
         post_data = {
@@ -92,7 +97,6 @@ def test_editor_can_view_and_set_discharge_status(app, client):
             'treating_physician': r.treating_physician,
             'history': r.history,
             'k_days': str(r.k_days),
-            'status': r.status,
             'discharge_status': 'Виписано'
         }
         client.post(f'/records/{r.id}/edit', data=post_data, follow_redirects=True)

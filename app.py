@@ -185,7 +185,7 @@ def create_app(config_class=Config):
         ws.title = 'Vipiski'
 
         # headers: include all columns from the Record model
-        headers = ['ID','Дата виписки','ПІБ','Відділення','Лікар','Історія','К днів','Статус виписки','Статус','Дата смерті','Коментар','Створив','Створено']
+        headers = ['ID','Дата виписки','ПІБ','Відділення','Лікар','Історія','К днів','Статус виписки','Дата смерті','Коментар','Створив','Створено']
         ws.append(headers)
 
         # append rows
@@ -199,7 +199,6 @@ def create_app(config_class=Config):
                 r.history or '',
                 r.k_days if r.k_days is not None else '',
                 r.discharge_status or '',
-                r.status or '',
                 r.date_of_death.strftime('%d.%m.%Y') if r.date_of_death else '',
                 r.comment or '',
                 r.creator.username if r.creator else r.created_by,
@@ -274,10 +273,9 @@ def create_app(config_class=Config):
             treating_physician = request.form.get('treating_physician', '').strip()
             history = request.form.get('history', '').strip()
             k_days = request.form.get('k_days', '').strip()
-            status = request.form.get('status', '').strip()
             date_of_death_str = request.form.get('date_of_death', '').strip()
 
-            # validate presence (status is optional; only required when it is 'Помер')
+            # date_of_death (if provided) will indicate death; validate format if present
             if not all([date_str, full_name, discharge_department, treating_physician, history, k_days]):
                 flash('Будь ласка, заповніть усі обов\'язкові поля')
                 return redirect(url_for('add_record'))
@@ -302,13 +300,7 @@ def create_app(config_class=Config):
                 flash('"К днів" must be an integer')
                 return redirect(url_for('add_record'))
 
-            # If status == 'Помер', date_of_death is required
             date_of_death = None
-            if status == 'Помер':
-                if not date_of_death_str:
-                    flash('When status is "Помер", "Дата смерті" is required')
-                    return redirect(url_for('add_record'))
-
             if date_of_death_str:
                 date_of_death = None
                 for fmt in ('%d.%m.%Y', '%Y-%m-%d'):
@@ -337,7 +329,6 @@ def create_app(config_class=Config):
                 history=history,
                 k_days=k_days_int,
                 discharge_status=discharge_status or None,
-                status=status,
                 date_of_death=date_of_death,
                 created_by=current_user.id
             )
@@ -375,7 +366,6 @@ def create_app(config_class=Config):
             treating_physician = request.form.get('treating_physician', '').strip()
             history = request.form.get('history', '').strip()
             k_days = request.form.get('k_days', '').strip()
-            status = request.form.get('status', '').strip()
             discharge_status = request.form.get('discharge_status', '').strip()
             date_of_death_str = request.form.get('date_of_death', '').strip()
             comment = request.form.get('comment', '').strip()
@@ -405,10 +395,6 @@ def create_app(config_class=Config):
 
             # date_of_death handling
             date_of_death = None
-            if status == 'Помер':
-                if not date_of_death_str:
-                    flash('When status is "Помер", "Дата смерті" is required')
-                    return redirect(url_for('edit_record', record_id=record_id))
 
             if date_of_death_str:
                 date_of_death = None
@@ -434,7 +420,6 @@ def create_app(config_class=Config):
             r.history = history
             r.k_days = k_days_int
             r.discharge_status = discharge_status
-            r.status = status
             r.date_of_death = date_of_death
             r.comment = comment
 
@@ -451,20 +436,6 @@ def create_app(config_class=Config):
                 if v:
                     params[k] = v
             return redirect(url_for('index', **params))
-            r.date_of_discharge = date_of_discharge
-            r.full_name = full_name
-            r.discharge_department = discharge_department
-            r.treating_physician = treating_physician
-            r.history = history
-            r.k_days = k_days_int
-            r.discharge_status = discharge_status
-            r.status = status
-            r.date_of_death = date_of_death
-            r.comment = comment
-
-            db.session.commit()
-            flash('Record updated')
-            return redirect(url_for('index'))
 
         # GET -> render form with record data (pass filters through if present) and departments
         departments = Department.query.order_by(Department.name).all()

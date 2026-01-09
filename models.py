@@ -36,7 +36,6 @@ class Record(db.Model):
     history = db.Column(db.Text, nullable=True)  # "історія"
     k_days = db.Column(db.Integer, nullable=True)  # "к_днів"
     discharge_status = db.Column(db.String(200), nullable=True)  # "статус_виписки"
-    status = db.Column(db.String(200), nullable=True)
     date_of_death = db.Column(db.Date, nullable=True)  # "дата_смерті"
     comment = db.Column(db.Text, nullable=True)  # "коментар"
     created_by = db.Column(db.Integer, db.ForeignKey('users.id'), nullable=True)

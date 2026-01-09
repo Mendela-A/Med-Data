@@ -44,7 +44,7 @@ def test_operator_default_month_filter(app, client):
         client.post('/login', data={'username': 'op2', 'password': 'pass'}, follow_redirects=True)
         # create a record in the past (created_at older than 60 days)
         old_date = datetime.datetime.utcnow() - datetime.timedelta(days=60)
-        r = Record(date_of_discharge=old_date.date(), full_name='Old Record', discharge_department='DeptTest', treating_physician='Dr', history='OLD', k_days=1, status='OK', created_by=User.query.filter_by(username='op2').first().id, created_at=old_date)
+        r = Record(date_of_discharge=old_date.date(), full_name='Old Record', discharge_department='DeptTest', treating_physician='Dr', history='OLD', k_days=1, created_by=User.query.filter_by(username='op2').first().id, created_at=old_date)
         db.session.add(r)
         db.session.commit()
 

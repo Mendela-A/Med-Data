@@ -42,18 +42,12 @@
       <input class="form-control input-medium" name="treating_physician" value="{{ r.treating_physician or '' }}" required>
     </div>
     <div class="col-auto">
-      <label class="form-label">Статус</label>
-      <input id="status" class="form-control input-medium" name="status" value="{{ r.status or '' }}">
-      <div class="required-note" id="death-note" style="display:none;">Якщо статус — "Помер", вкажіть дату смерті</div>
-    </div>
-
-    <div class="col-auto">
       <label class="form-label">Статус виписки</label>
       <input class="form-control input-medium" name="discharge_status" value="{{ r.discharge_status or '' }}" required>
     </div>
 
-    <div class="col-auto" id="death-row" style="display:none;">
-      <label class="form-label">Дата смерті (DD.MM.YYYY)</label>
+    <div class="col-auto" id="death-row">
+      <label class="form-label">Дата смерті</label>
       <input id="date_of_death" class="form-control date-input" name="date_of_death" type="date" value="{{ r.date_of_death.strftime('%Y-%m-%d') if r.date_of_death else '' }}">
     </div>
     <div class="col-12">
@@ -65,24 +59,4 @@
       <a class="btn btn-secondary ms-2" href="{{ url_for('index') }}">Скасувати</a>
     </div>
   </form>
-
-  <script>
-    (function(){
-      var status = document.getElementById('status');
-      var death = document.getElementById('date_of_death');
-      var note = document.getElementById('death-note');
-      function check(){
-        if(!status) return;
-        var v = status.value && status.value.trim();
-        if(v === 'Помер'){
-          death.required = true;
-          note.style.display = 'block';
-        } else {
-          death.required = false;
-          note.style.display = 'none';
-        }
-      }
-      if(status){ status.addEventListener('input', check); check(); }
-    })();
-  </script>
 {% endblock %}
