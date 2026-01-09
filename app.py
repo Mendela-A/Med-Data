@@ -22,6 +22,22 @@ def create_app(config_class=Config):
     def load_user(user_id):
         return User.query.get(int(user_id))
 
+    from functools import wraps
+    def role_required(role):
+        """Decorator to require a specific role or admin."""
+        def decorator(f):
+            @wraps(f)
+            def decorated_function(*args, **kwargs):
+                if not current_user.is_authenticated:
+                    return redirect(url_for('login'))
+                # admin has all rights
+                if getattr(current_user, 'role', None) != role and getattr(current_user, 'role', None) != 'admin':
+                    flash('Access denied')
+                    return redirect(url_for('index'))
+                return f(*args, **kwargs)
+            return decorated_function
+        return decorator
+
     @app.route('/')
     @login_required
     def index():
@@ -84,12 +100,8 @@ def create_app(config_class=Config):
         return redirect(url_for('login'))
 
     @app.route('/records/add', methods=['GET', 'POST'])
-    @login_required
+    @role_required('operator')
     def add_record():
-        # only operators can add records
-        if getattr(current_user, 'role', None) != 'operator':
-            flash('Only operators can add records')
-            return redirect(url_for('index'))
 
         if request.method == 'POST':
             date_str = request.form.get('date_of_discharge', '').strip()
@@ -160,12 +172,8 @@ def create_app(config_class=Config):
         return render_template('add_record.html')
 
     @app.route('/records/<int:record_id>/edit', methods=['GET', 'POST'])
-    @login_required
+    @role_required('editor')
     def edit_record(record_id):
-        # only editors and admins can edit records
-        if getattr(current_user, 'role', None) not in ('editor', 'admin'):
-            flash('Only editors and admins can edit records')
-            return redirect(url_for('index'))
 
         r = Record.query.get_or_404(record_id)
 
@@ -238,11 +246,8 @@ def create_app(config_class=Config):
         return render_template('edit_record.html', r=r)
 
     @app.route('/records/<int:record_id>/delete', methods=['POST'])
-    @login_required
+    @role_required('admin')
     def delete_record(record_id):
-        if getattr(current_user, 'role', None) != 'admin':
-            flash('Access denied')
-            return redirect(url_for('index'))
         r = Record.query.get_or_404(record_id)
         db.session.delete(r)
         db.session.commit()
@@ -251,21 +256,14 @@ def create_app(config_class=Config):
 
     # --- Admin: user management ---
     @app.route('/admin/users')
-    @login_required
+    @role_required('admin')
     def admin_users():
-        if getattr(current_user, 'role', None) != 'admin':
-            flash('Access denied')
-            return redirect(url_for('index'))
         users = User.query.order_by(User.username).all()
         return render_template('admin_users.html', users=users)
 
     @app.route('/admin/users/create', methods=['POST'])
-    @login_required
+    @role_required('admin')
     def admin_create_user():
-        if getattr(current_user, 'role', None) != 'admin':
-            flash('Access denied')
-            return redirect(url_for('index'))
-
         username = request.form.get('username', '').strip()
         password = request.form.get('password', '').strip()
         role = request.form.get('role', '').strip() or 'operator'
@@ -285,11 +283,8 @@ def create_app(config_class=Config):
         return redirect(url_for('admin_users'))
 
     @app.route('/admin/users/<int:user_id>/delete', methods=['POST'])
-    @login_required
+    @role_required('admin')
     def admin_delete_user(user_id):
-        if getattr(current_user, 'role', None) != 'admin':
-            flash('Access denied')
-            return redirect(url_for('index'))
         if current_user.id == user_id:
             flash('You cannot delete yourself')
             return redirect(url_for('admin_users'))
