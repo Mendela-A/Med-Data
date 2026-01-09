@@ -238,6 +238,56 @@ def create_app(config_class=Config):
         # GET -> render form with record data
         return render_template('edit_record.html', r=r)
 
+    # --- Admin: user management ---
+    @app.route('/admin/users')
+    @login_required
+    def admin_users():
+        if getattr(current_user, 'role', None) != 'admin':
+            flash('Access denied')
+            return redirect(url_for('index'))
+        users = User.query.order_by(User.username).all()
+        return render_template('admin_users.html', users=users)
+
+    @app.route('/admin/users/create', methods=['POST'])
+    @login_required
+    def admin_create_user():
+        if getattr(current_user, 'role', None) != 'admin':
+            flash('Access denied')
+            return redirect(url_for('index'))
+
+        username = request.form.get('username', '').strip()
+        password = request.form.get('password', '').strip()
+        role = request.form.get('role', '').strip() or 'operator'
+
+        if not username or not password:
+            flash('Username and password are required')
+            return redirect(url_for('admin_users'))
+        if User.query.filter_by(username=username).first():
+            flash('Username already exists')
+            return redirect(url_for('admin_users'))
+
+        u = User(username=username, role=role)
+        u.set_password(password)
+        db.session.add(u)
+        db.session.commit()
+        flash(f'User {username} created')
+        return redirect(url_for('admin_users'))
+
+    @app.route('/admin/users/<int:user_id>/delete', methods=['POST'])
+    @login_required
+    def admin_delete_user(user_id):
+        if getattr(current_user, 'role', None) != 'admin':
+            flash('Access denied')
+            return redirect(url_for('index'))
+        if current_user.id == user_id:
+            flash('You cannot delete yourself')
+            return redirect(url_for('admin_users'))
+        u = User.query.get_or_404(user_id)
+        db.session.delete(u)
+        db.session.commit()
+        flash(f'User {u.username} deleted')
+        return redirect(url_for('admin_users'))
+
     @app.cli.command('init-db')
     def init_db():
         """Create database tables."""
