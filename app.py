@@ -223,29 +223,6 @@ def create_app(config_class=Config):
                 flash('All fields are required')
                 return redirect(url_for('edit_record', record_id=record_id))
 
-            # after all validations and commit, preserve filters in redirect
-            params = {}
-            for k in ('discharge_status', 'treating_physician', 'history'):
-                v = request.form.get(k, '').strip()
-                if v:
-                    params[k] = v
-
-            # apply changes
-            r.date_of_discharge = date_of_discharge
-            r.full_name = full_name
-            r.discharge_department = discharge_department
-            r.treating_physician = treating_physician
-            r.history = history
-            r.k_days = k_days_int
-            r.discharge_status = discharge_status or status
-            r.status = status
-            r.date_of_death = date_of_death
-            r.comment = comment
-
-            db.session.commit()
-            flash('Record updated')
-            return redirect(url_for('index', **params))
-
             from datetime import datetime
             try:
                 date_of_discharge = datetime.strptime(date_str, '%d.%m.%Y').date()
@@ -278,6 +255,25 @@ def create_app(config_class=Config):
                     return redirect(url_for('edit_record', record_id=record_id))
 
             # apply changes
+            r.date_of_discharge = date_of_discharge
+            r.full_name = full_name
+            r.discharge_department = discharge_department
+            r.treating_physician = treating_physician
+            r.history = history
+            r.k_days = k_days_int
+            r.discharge_status = discharge_status or status
+            r.status = status
+            r.date_of_death = date_of_death
+            r.comment = comment
+
+            db.session.commit()
+            flash('Record updated')
+            params = {}
+            for k in ('discharge_status', 'treating_physician', 'history'):
+                v = request.form.get(k, '').strip()
+                if v:
+                    params[k] = v
+            return redirect(url_for('index', **params))
             r.date_of_discharge = date_of_discharge
             r.full_name = full_name
             r.discharge_department = discharge_department

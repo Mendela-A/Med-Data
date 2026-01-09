@@ -3,6 +3,11 @@
 {% block content %}
   <h1>Редагувати запис #{{ r.id }}</h1>
   <form method="post">
+    <!-- preserve filters so we can return to the filtered list -->
+    <input type="hidden" name="discharge_status" value="{{ selected_status }}">
+    <input type="hidden" name="treating_physician" value="{{ selected_physician }}">
+    <input type="hidden" name="history" value="{{ history_q }}">
+
     <div class="form-row">
       <label>Дата виписки (DD.MM.YYYY)</label>
       <input name="date_of_discharge" value="{{ r.date_of_discharge.strftime('%d.%m.%Y') if r.date_of_discharge else '' }}" pattern="\d{2}\.\d{2}\.\d{4}" placeholder="DD.MM.YYYY" required>
