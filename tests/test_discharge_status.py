@@ -6,6 +6,8 @@ from models import User, Record, Department
 def app():
     app = create_app()
     app.config['TESTING'] = True
+    # Use an isolated in-memory database for tests to avoid touching local data/app.db
+    app.config['SQLALCHEMY_DATABASE_URI'] = 'sqlite:///:memory:'
     with app.app_context():
         # ensure a clean DB for tests
         db.create_all()

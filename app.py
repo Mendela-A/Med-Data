@@ -93,10 +93,11 @@ def create_app(config_class=Config):
                 Record.created_at >= start,
                 Record.created_at < end,
             )
-        # Operators see only their own records; editors and admins see all records
+        # Operators see records created by any operator; editors and admins see all records
         role = getattr(current_user, 'role', None)
         if role == 'operator':
-            q = q.filter(Record.created_by == current_user.id)
+            # show records whose creator has role 'operator' (including the current user)
+            q = q.filter(Record.creator.has(role='operator'))
 
         # --- filtering from query params ---
         selected_status = request.args.get('discharge_status', '').strip()

@@ -8,8 +8,8 @@ services:
       - FLASK_ENV=production
       - LOG_TO_FILE=0
       # Optionally set ADMIN_USER and ADMIN_PASSWORD for automatic admin creation on first run
-      #- ADMIN_USER=admin
-      #- ADMIN_PASSWORD=admin
+      - ADMIN_USER=admin
+      - ADMIN_PASSWORD=admin
     expose:
       - "8000"
     volumes:
@@ -28,6 +28,7 @@ services:
       - web
     ports:
       - "80:80"
+      - "443:443"
     volumes:
       - ./nginx/nginx.conf:/etc/nginx/conf.d/default.conf:ro
       - ./static:/app/static:ro

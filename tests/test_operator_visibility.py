@@ -6,6 +6,8 @@ from models import User, Record, Department
 def app():
     app = create_app()
     app.config['TESTING'] = True
+    # Use an isolated in-memory database for tests to avoid touching local data/app.db
+    app.config['SQLALCHEMY_DATABASE_URI'] = 'sqlite:///:memory:'
     with app.app_context():
         # ensure a clean DB for tests
         db.create_all()
@@ -56,3 +58,27 @@ def test_operator_default_month_filter(app, client):
         rv2 = client.get('/', query_string={'all_months':'1'})
         txt2 = rv2.get_data(as_text=True)
         assert 'Old Record' in txt2
+
+
+def test_operators_can_see_each_others_records(app, client):
+    with app.app_context():
+        ensure_user('op1', role='operator')
+        ensure_user('op2', role='operator')
+        ensure_department()
+        # create a record as op1
+        client.post('/login', data={'username': 'op1', 'password': 'pass'}, follow_redirects=True)
+        data = {
+            'date_of_discharge': '2026-01-09',
+            'full_name': 'Shared Record',
+            'discharge_department': 'DeptTest',
+            'treating_physician': 'Dr',
+            'history': 'HOP',
+            'k_days': '1'
+        }
+        client.post('/records/add', data=data, follow_redirects=True)
+        client.get('/logout')
+        # login as op2 and assert the record is visible
+        client.post('/login', data={'username': 'op2', 'password': 'pass'}, follow_redirects=True)
+        rv = client.get('/')
+        txt = rv.get_data(as_text=True)
+        assert 'Shared Record' in txt
