@@ -10,6 +10,8 @@ services:
       # Optionally set ADMIN_USER and ADMIN_PASSWORD for automatic admin creation on first run
       - ADMIN_USER=admin
       - ADMIN_PASSWORD=admin
+      - SECRET_KEY=${SECRET_KEY}
+
     expose:
       - "8000"
     volumes:
