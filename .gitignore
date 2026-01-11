@@ -42,3 +42,9 @@ app.db
 
 # Others
 *.bak
+
+#Certs
+static/certs/*.key
+static/certs/*.pem
+static/certs/*.pfx
+static/certs/*.p12
