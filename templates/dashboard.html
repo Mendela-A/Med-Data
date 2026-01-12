@@ -6,16 +6,23 @@
   {% endblock %}
 
   <div class="d-flex justify-content-between align-items-center mb-3">
-    <h1 class="h3 mb-0">
-      {% if show_all %}
-        Записи (усі періоди)
-      {% elif selected_year and selected_month %}
-        Записи ({{ ['Січень', 'Лютий', 'Березень', 'Квітень', 'Травень', 'Червень', 'Липень', 'Серпень', 'Вересень', 'Жовтень', 'Листопад', 'Грудень'][selected_month - 1] }} {{ selected_year }})
-      {% else %}
-        Записи (поточний місяць)
-      {% endif %}
-      <span class="badge bg-primary ms-2">{{ count }}</span>
-    </h1>
+    <div>
+      <h1 class="h3 mb-2">
+        {% if show_all %}
+          Записи (усі періоди)
+        {% elif selected_year and selected_month %}
+          Записи ({{ ['Січень', 'Лютий', 'Березень', 'Квітень', 'Травень', 'Червень', 'Липень', 'Серпень', 'Вересень', 'Жовтень', 'Листопад', 'Грудень'][selected_month - 1] }} {{ selected_year }})
+        {% else %}
+          Записи (поточний місяць)
+        {% endif %}
+      </h1>
+      <div class="d-flex gap-2 flex-wrap">
+        <span class="badge bg-primary">Всього: {{ count }}</span>
+        <span class="badge bg-success">Виписаних: {{ count_discharged }}</span>
+        <span class="badge bg-danger">Померло: {{ count_died }}</span>
+        <span class="badge bg-secondary">В обробці: {{ count_other }}</span>
+      </div>
+    </div>
   </div>
 
 

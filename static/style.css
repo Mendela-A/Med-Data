@@ -105,6 +105,13 @@ body { background: linear-gradient(180deg, #eaf6f6 0%, #f7fbfd 100%); color: #08
   font-size: 0.85em;
 }
 
+/* Stats badges in header */
+.h3 + .d-flex .badge {
+  font-size: 0.9em;
+  padding: 0.5em 0.9em;
+  font-weight: 600;
+}
+
 /* Status badges */
 .bg-success {
   background-color: #28a745 !important;

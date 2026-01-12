@@ -158,10 +158,15 @@ def create_app(config_class=Config):
         count = q.count()
         records = q.order_by(Record.date_of_discharge.desc(), Record.created_at.desc()).all()
 
+        # Count by discharge status
+        count_discharged = sum(1 for r in records if r.discharge_status == 'Виписаний')
+        count_died = sum(1 for r in records if r.date_of_death is not None)
+        count_other = count - count_discharged - count_died
+
         # Format month for HTML5 input (YYYY-MM)
         month_filter_value = f"{selected_year}-{selected_month:02d}" if selected_year and selected_month else ""
 
-        return render_template('dashboard.html', records=records, statuses=statuses, physicians=physicians, selected_status=selected_status, selected_physician=selected_physician, history_q=history_q, count=count, month_filter_value=month_filter_value, selected_year=selected_year, selected_month=selected_month, show_all=show_all, has_death_date=has_death_date)
+        return render_template('dashboard.html', records=records, statuses=statuses, physicians=physicians, selected_status=selected_status, selected_physician=selected_physician, history_q=history_q, count=count, month_filter_value=month_filter_value, selected_year=selected_year, selected_month=selected_month, show_all=show_all, has_death_date=has_death_date, count_discharged=count_discharged, count_died=count_died, count_other=count_other)
 
     @app.route('/export', methods=['POST'])
     @role_required('editor')
