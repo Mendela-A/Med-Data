@@ -131,3 +131,92 @@ td .badge {
   min-width: 80px;
   text-align: center;
 }
+
+/* Action cell and buttons optimization */
+.action-cell {
+  white-space: nowrap;
+  width: 1%;
+  padding: 0.5rem !important;
+}
+
+.action-buttons-container {
+  display: flex;
+  flex-direction: column;
+  gap: 0.25rem;
+  justify-content: flex-start;
+  align-items: flex-start;
+}
+
+/* Extra small button size */
+.btn-xs {
+  padding: 0.3rem 0.5rem;
+  font-size: 0.75rem;
+  line-height: 1.1;
+  border-radius: 0.2rem;
+  white-space: nowrap;
+  width: auto;
+  display: inline-block;
+}
+
+.btn-xs i {
+  font-size: 0.75rem;
+  margin-right: 0.2rem;
+}
+
+/* Optimize table for better readability */
+.table-responsive {
+  overflow-x: auto;
+  -webkit-overflow-scrolling: touch;
+}
+
+.table thead th {
+  white-space: nowrap;
+  font-size: 0.9rem;
+  padding: 0.75rem 0.5rem;
+}
+
+.table tbody td {
+  font-size: 0.875rem;
+  padding: 0.5rem 0.5rem;
+  vertical-align: middle;
+}
+
+/* Specific column width optimization */
+.table th:nth-child(1), /* ID */
+.table td:nth-child(1) {
+  width: 50px;
+  text-align: center;
+}
+
+.table th:nth-child(2), /* Дата виписки */
+.table td:nth-child(2) {
+  width: 90px;
+}
+
+.table th:nth-child(6), /* Історія */
+.table td:nth-child(6) {
+  width: 80px;
+}
+
+.table th:nth-child(7), /* К днів */
+.table td:nth-child(7) {
+  width: 60px;
+  text-align: center;
+}
+
+.table th:nth-child(8), /* Статус виписки */
+.table td:nth-child(8) {
+  width: 110px;
+  text-align: center;
+}
+
+.table th:nth-child(9), /* Дата смерті */
+.table td:nth-child(9) {
+  width: 90px;
+}
+
+.table th:nth-child(13), /* Дія */
+.table td:nth-child(13) {
+  min-width: 100px;
+  max-width: 120px;
+}

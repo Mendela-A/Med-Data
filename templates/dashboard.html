@@ -159,19 +159,25 @@
             <td>{{ r.comment or '' }}</td>
             <td>{{ r.creator.username if r.creator else r.created_by }}</td>
             <td>{{ r.created_at.strftime('%d.%m.%Y %H:%M') if r.created_at else '' }}</td>
-            <td>
-              {% if current_user.role in ['editor', 'admin'] %}
-                <a class="btn-edit" href="{{ url_for('edit_record', record_id=r.id, discharge_status=selected_status, treating_physician=selected_physician, history=history_q, has_death_date='1' if has_death_date else '') }}">Редагувати</a>
-              {% endif %}
-              {% if current_user.role == 'admin' %}
-                <form method="post" action="{{ url_for('delete_record', record_id=r.id) }}" style="display:inline; margin-left:8px;" onsubmit="return confirm('Ви справді хочете видалити запис #{{ r.id }}?');">
-                  <input type="hidden" name="discharge_status" value="{{ selected_status }}">
-                  <input type="hidden" name="treating_physician" value="{{ selected_physician }}">
-                  <input type="hidden" name="history" value="{{ history_q }}">
-                  <input type="hidden" name="has_death_date" value="{{ '1' if has_death_date else '' }}">
-                  <button class="btn-delete" type="submit">Видалити</button>
-                </form>
-              {% endif %}
+            <td class="action-cell">
+              <div class="action-buttons-container">
+                {% if current_user.role in ['editor', 'admin'] %}
+                  <a class="btn btn-xs btn-outline-primary" href="{{ url_for('edit_record', record_id=r.id, discharge_status=selected_status, treating_physician=selected_physician, history=history_q, has_death_date='1' if has_death_date else '') }}" title="Редагувати">
+                    <i class="bi bi-pencil"></i>Змінити
+                  </a>
+                {% endif %}
+                {% if current_user.role == 'admin' %}
+                  <form method="post" action="{{ url_for('delete_record', record_id=r.id) }}" class="d-inline" onsubmit="return confirm('Ви справді хочете видалити запис #{{ r.id }}?');">
+                    <input type="hidden" name="discharge_status" value="{{ selected_status }}">
+                    <input type="hidden" name="treating_physician" value="{{ selected_physician }}">
+                    <input type="hidden" name="history" value="{{ history_q }}">
+                    <input type="hidden" name="has_death_date" value="{{ '1' if has_death_date else '' }}">
+                    <button class="btn btn-xs btn-outline-danger" type="submit" title="Видалити">
+                      <i class="bi bi-trash"></i>Видалити
+                    </button>
+                  </form>
+                {% endif %}
+              </div>
             </td>
           </tr>
         {% endfor %}
