@@ -54,9 +54,19 @@
         </div>
 
         <div class="col-12">
-          <div class="form-check">
-            <input class="form-check-input" type="checkbox" value="1" id="all_months" name="all_months" {% if show_all %}checked{% endif %}>
-            <label class="form-check-label" for="all_months">Показати всі місяці</label>
+          <div class="row">
+            <div class="col-auto">
+              <div class="form-check">
+                <input class="form-check-input" type="checkbox" value="1" id="all_months" name="all_months" {% if show_all %}checked{% endif %}>
+                <label class="form-check-label" for="all_months">Показати всі місяці</label>
+              </div>
+            </div>
+            <div class="col-auto">
+              <div class="form-check">
+                <input class="form-check-input" type="checkbox" value="1" id="has_death_date" name="has_death_date" {% if has_death_date %}checked{% endif %}>
+                <label class="form-check-label" for="has_death_date">Тільки з датою смерті</label>
+              </div>
+            </div>
           </div>
         </div>
 
@@ -144,13 +154,14 @@
             <td>{{ r.created_at.strftime('%d.%m.%Y %H:%M') if r.created_at else '' }}</td>
             <td>
               {% if current_user.role in ['editor', 'admin'] %}
-                <a class="btn-edit" href="{{ url_for('edit_record', record_id=r.id, discharge_status=selected_status, treating_physician=selected_physician, history=history_q) }}">Редагувати</a>
+                <a class="btn-edit" href="{{ url_for('edit_record', record_id=r.id, discharge_status=selected_status, treating_physician=selected_physician, history=history_q, has_death_date='1' if has_death_date else '') }}">Редагувати</a>
               {% endif %}
               {% if current_user.role == 'admin' %}
                 <form method="post" action="{{ url_for('delete_record', record_id=r.id) }}" style="display:inline; margin-left:8px;" onsubmit="return confirm('Ви справді хочете видалити запис #{{ r.id }}?');">
                   <input type="hidden" name="discharge_status" value="{{ selected_status }}">
                   <input type="hidden" name="treating_physician" value="{{ selected_physician }}">
                   <input type="hidden" name="history" value="{{ history_q }}">
+                  <input type="hidden" name="has_death_date" value="{{ '1' if has_death_date else '' }}">
                   <button class="btn-delete" type="submit">Видалити</button>
                 </form>
               {% endif %}

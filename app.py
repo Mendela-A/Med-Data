@@ -136,6 +136,7 @@ def create_app(config_class=Config):
         selected_status = request.args.get('discharge_status', '').strip()
         selected_physician = request.args.get('treating_physician', '').strip()
         history_q = request.args.get('history', '').strip()
+        has_death_date = request.args.get('has_death_date', '').lower() in ('1', 'true', 'yes')
 
         conditions = []
         if selected_status:
@@ -144,6 +145,8 @@ def create_app(config_class=Config):
             conditions.append(Record.treating_physician == selected_physician)
         if history_q:
             conditions.append(Record.history.contains(history_q))
+        if has_death_date:
+            conditions.append(Record.date_of_death != None)
         if conditions:
             q = q.filter(*conditions)
 
@@ -158,7 +161,7 @@ def create_app(config_class=Config):
         # Format month for HTML5 input (YYYY-MM)
         month_filter_value = f"{selected_year}-{selected_month:02d}" if selected_year and selected_month else ""
 
-        return render_template('dashboard.html', records=records, statuses=statuses, physicians=physicians, selected_status=selected_status, selected_physician=selected_physician, history_q=history_q, count=count, month_filter_value=month_filter_value, selected_year=selected_year, selected_month=selected_month, show_all=show_all)
+        return render_template('dashboard.html', records=records, statuses=statuses, physicians=physicians, selected_status=selected_status, selected_physician=selected_physician, history_q=history_q, count=count, month_filter_value=month_filter_value, selected_year=selected_year, selected_month=selected_month, show_all=show_all, has_death_date=has_death_date)
 
     @app.route('/export', methods=['POST'])
     @role_required('editor')
@@ -380,6 +383,8 @@ def create_app(config_class=Config):
                 v = request.form.get(f'filter_{k}', '').strip()
                 if v:
                     params[k] = v
+            if request.form.get('filter_has_death_date', '').strip():
+                params['has_death_date'] = '1'
             return redirect(url_for('index', **params))
 
         # GET: pass through any filters so add form can include hidden fields and departments
@@ -469,6 +474,8 @@ def create_app(config_class=Config):
                 v = request.form.get(f'filter_{k}', '').strip()
                 if v:
                     params[k] = v
+            if request.form.get('filter_has_death_date', '').strip():
+                params['has_death_date'] = '1'
             return redirect(url_for('index', **params))
 
         # GET -> render form with record data (pass filters through if present) and departments
@@ -493,6 +500,8 @@ def create_app(config_class=Config):
             v = request.form.get(k, '').strip()
             if v:
                 params[k] = v
+        if request.form.get('has_death_date', '').strip():
+            params['has_death_date'] = '1'
         return redirect(url_for('index', **params))
 
     # --- Admin: user management ---
