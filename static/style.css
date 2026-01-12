@@ -102,4 +102,25 @@ body { background: linear-gradient(180deg, #eaf6f6 0%, #f7fbfd 100%); color: #08
 .badge {
   font-weight: 500;
   padding: 0.4em 0.75em;
+  font-size: 0.85em;
+}
+
+/* Status badges */
+.bg-success {
+  background-color: #28a745 !important;
+}
+
+.bg-danger {
+  background-color: #dc3545 !important;
+}
+
+.bg-secondary {
+  background-color: #6c757d !important;
+}
+
+/* Table cell with badge */
+td .badge {
+  display: inline-block;
+  min-width: 80px;
+  text-align: center;
 }

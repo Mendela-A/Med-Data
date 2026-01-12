@@ -127,7 +127,17 @@
             <td>{{ r.treating_physician or '' }}</td>
             <td>{{ r.history or '' }}</td>
             <td>{{ r.k_days or '' }}</td>
-            <td>{{ r.discharge_status or '' }}</td>
+            <td>
+              {% if r.discharge_status == 'Виписаний' %}
+                <span class="badge bg-success">{{ r.discharge_status }}</span>
+              {% elif r.discharge_status == 'Помер' %}
+                <span class="badge bg-danger">{{ r.discharge_status }}</span>
+              {% elif r.discharge_status %}
+                <span class="badge bg-secondary">{{ r.discharge_status }}</span>
+              {% else %}
+                —
+              {% endif %}
+            </td>
             <td>{{ r.date_of_death.strftime('%d.%m.%Y') if r.date_of_death else '' }}</td>
             <td>{{ r.comment or '' }}</td>
             <td>{{ r.creator.username if r.creator else r.created_by }}</td>
