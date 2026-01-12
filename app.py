@@ -522,6 +522,53 @@ def create_app(config_class=Config):
         flash(f'User {username} created')
         return redirect(url_for('admin_users'))
 
+    @app.route('/admin/users/<int:user_id>/edit', methods=['GET', 'POST'])
+    @role_required('admin')
+    def admin_edit_user(user_id):
+        u = User.query.get_or_404(user_id)
+
+        if request.method == 'POST':
+            username = request.form.get('username', '').strip()
+            password = request.form.get('password', '').strip()
+            role = request.form.get('role', '').strip()
+
+            if not username:
+                flash('Ім\'я користувача обов\'язкове')
+                return redirect(url_for('admin_edit_user', user_id=user_id))
+
+            # Check if username is taken by another user
+            existing = User.query.filter_by(username=username).first()
+            if existing and existing.id != user_id:
+                flash('Ім\'я користувача вже зайнято')
+                return redirect(url_for('admin_edit_user', user_id=user_id))
+
+            # Update username
+            old_username = u.username
+            u.username = username
+
+            # Update password if provided
+            if password:
+                u.set_password(password)
+
+            # Update role
+            if role in ['operator', 'editor', 'admin']:
+                u.role = role
+
+            db.session.commit()
+
+            try:
+                details = f'username={old_username}->{username}, role={role}'
+                if password:
+                    details += ', password_changed=True'
+                log_action(current_user.id, 'user.update', 'user', u.id, details)
+            except Exception:
+                app.logger.exception('Failed to write audit log for user.update')
+            app.logger.info(f'User updated: {u.username} by {current_user.username}')
+            flash(f'Користувача {u.username} оновлено')
+            return redirect(url_for('admin_users'))
+
+        return render_template('edit_user.html', user=u)
+
     @app.route('/admin/users/<int:user_id>/delete', methods=['POST'])
     @role_required('admin')
     def admin_delete_user(user_id):
