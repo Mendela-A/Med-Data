@@ -8,8 +8,8 @@ services:
       - FLASK_ENV=production
       - LOG_TO_FILE=0
       # Optionally set ADMIN_USER and ADMIN_PASSWORD for automatic admin creation on first run
-      - ADMIN_USER=admin
-      - ADMIN_PASSWORD=admin
+      #- ADMIN_USER=admin
+      #- ADMIN_PASSWORD=admin
       - SECRET_KEY=${SECRET_KEY}
 
     expose:

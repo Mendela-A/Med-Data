@@ -77,11 +77,34 @@ def create_app(config_class=Config):
     def index():
         from datetime import datetime
         now = datetime.utcnow()
-        start = datetime(now.year, now.month, 1)
-        if now.month == 12:
-            end = datetime(now.year + 1, 1, 1)
-        else:
-            end = datetime(now.year, now.month + 1, 1)
+        # allow explicit month/year selection via query params
+        month_str = request.args.get('month', '').strip()
+        year_str = request.args.get('year', '').strip()
+        try:
+            if month_str and year_str:
+                m = int(month_str)
+                y = int(year_str)
+                if 1 <= m <= 12:
+                    start = datetime(y, m, 1)
+                    if m == 12:
+                        end = datetime(y + 1, 1, 1)
+                    else:
+                        end = datetime(y, m + 1, 1)
+                else:
+                    raise ValueError()
+            else:
+                start = datetime(now.year, now.month, 1)
+                if now.month == 12:
+                    end = datetime(now.year + 1, 1, 1)
+                else:
+                    end = datetime(now.year, now.month + 1, 1)
+        except Exception:
+            # fallback to current month
+            start = datetime(now.year, now.month, 1)
+            if now.month == 12:
+                end = datetime(now.year + 1, 1, 1)
+            else:
+                end = datetime(now.year, now.month + 1, 1)
 
         # support a toggle to show all months
         show_all = request.args.get('all_months', '').lower() in ('1', 'true', 'yes')
@@ -89,9 +112,11 @@ def create_app(config_class=Config):
         # base query (by default for current month, unless show_all)
         q = Record.query.options(joinedload(Record.creator))
         if not show_all:
+            # show records discharged in the current month by date_of_discharge
             q = q.filter(
-                Record.created_at >= start,
-                Record.created_at < end,
+                Record.date_of_discharge != None,
+                Record.date_of_discharge >= start.date(),
+                Record.date_of_discharge < end.date(),
             )
         # Operators see records created by any operator; editors and admins see all records
         role = getattr(current_user, 'role', None)
@@ -277,8 +302,9 @@ def create_app(config_class=Config):
             date_of_death_str = request.form.get('date_of_death', '').strip()
 
             # date_of_death (if provided) will indicate death; validate format if present
-            if not all([date_str, full_name, discharge_department, treating_physician, history, k_days]):
-                flash('Будь ласка, заповніть усі обов\'язкові поля')
+            # discharge_department is optional (may not exist yet); require other main fields
+            if not all([date_str, full_name, treating_physician, history, k_days]):
+                flash('Будь ласка, заповніть усі обов\'язкові поля (виключаючи відділення)')
                 return redirect(url_for('add_record'))
 
             # validate date format: accept DD.MM.YYYY or YYYY-MM-DD (HTML date input)
@@ -325,7 +351,7 @@ def create_app(config_class=Config):
             r = Record(
                 date_of_discharge=date_of_discharge,
                 full_name=full_name,
-                discharge_department=discharge_department,
+                discharge_department=discharge_department or None,
                 treating_physician=treating_physician,
                 history=history,
                 k_days=k_days_int,

@@ -8,7 +8,7 @@
   <h1 class="h3">{% if request.args.get('all_months') %}Мої записи (усі){% else %}Мої записи (цей місяць){% endif %} <span class="badge bg-primary ms-2">{{ count }}</span></h1>
 
   {% if current_user.role == 'operator' %}
-    <div class="alert alert-info">Оператори бачать тільки записи, які вони створили. Для перегляду всіх місяців поставте прапорець "Показати всі місяці".</div>
+    <div class="alert alert-info">Оператори бачять записи, створені операторами (включно з вашими). Для перегляду всіх місяців поставте прапорець "Показати всі місяці".</div>
   {% endif %}
 
   <form class="filter-form row gx-3 gy-2 align-items-end" method="get">
@@ -78,6 +78,7 @@
           <th>ПІБ</th>
           <th>Відділення</th>
           <th>Лікар</th>
+          <th>Історія</th>
           <th>К днів</th>
           <th>Статус виписки</th>
           <th>Дата смерті</th>
@@ -95,6 +96,7 @@
             <td>{{ r.full_name }}</td>
             <td>{{ r.discharge_department or '' }}</td>
             <td>{{ r.treating_physician or '' }}</td>
+            <td>{{ r.history or '' }}</td>
             <td>{{ r.k_days or '' }}</td>
             <td>{{ r.discharge_status or '' }}</td>
             <td>{{ r.date_of_death.strftime('%d.%m.%Y') if r.date_of_death else '' }}</td>

@@ -35,8 +35,8 @@
 
     <div class="col-auto">
       <label class="form-label">Відділення</label>
-      <select class="form-select input-medium" name="discharge_department" required>
-        <option value="">Оберіть...</option>
+      <select class="form-select input-medium" name="discharge_department">
+        <option value="">(не вказано)</option>
         {% for d in departments %}
           <option value="{{ d.name }}" {% if d.name == selected_department %}selected{% endif %}>{{ d.name }}</option>
         {% endfor %}

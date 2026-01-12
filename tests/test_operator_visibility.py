@@ -82,3 +82,7 @@ def test_operators_can_see_each_others_records(app, client):
         rv = client.get('/')
         txt = rv.get_data(as_text=True)
         assert 'Shared Record' in txt
+        # history number should be visible in the dashboard
+        assert 'HOP' in txt
+        # column header for history should be present
+        assert 'Історія' in txt
