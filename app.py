@@ -131,11 +131,6 @@ def create_app(config_class=Config):
                 Record.date_of_discharge >= start.date(),
                 Record.date_of_discharge < end.date(),
             )
-        # Operators see records created by any operator; editors and admins see all records
-        role = getattr(current_user, 'role', None)
-        if role == 'operator':
-            # show records whose creator has role 'operator' (including the current user)
-            q = q.filter(Record.creator.has(role='operator'))
 
         # --- filtering from query params ---
         selected_status = request.args.get('discharge_status', '').strip()
@@ -202,10 +197,6 @@ def create_app(config_class=Config):
             q = q.filter(Record.treating_physician == treating_physician)
         if history_q:
             q = q.filter(Record.history.contains(history_q))
-
-        # operators can only export their own records; editors and admins can export all
-        if getattr(current_user, 'role', None) == 'operator':
-            q = q.filter(Record.created_by == current_user.id)
 
         records = q.order_by(Record.date_of_discharge.desc(), Record.created_at.desc()).all()
 
