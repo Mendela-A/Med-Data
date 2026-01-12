@@ -77,23 +77,37 @@ def create_app(config_class=Config):
     def index():
         from datetime import datetime
         now = datetime.utcnow()
-        # allow explicit month/year selection via query params
-        month_str = request.args.get('month', '').strip()
-        year_str = request.args.get('year', '').strip()
+
+        # support a toggle to show all months
+        show_all = request.args.get('all_months', '').lower() in ('1', 'true', 'yes')
+
+        # allow explicit month/year selection via query params or HTML5 month input (YYYY-MM format)
+        month_input = request.args.get('month_filter', '').strip()
+        selected_month = None
+        selected_year = None
+
         try:
-            if month_str and year_str:
-                m = int(month_str)
-                y = int(year_str)
-                if 1 <= m <= 12:
-                    start = datetime(y, m, 1)
-                    if m == 12:
-                        end = datetime(y + 1, 1, 1)
+            if month_input:
+                # Parse HTML5 month input format: YYYY-MM
+                parts = month_input.split('-')
+                if len(parts) == 2:
+                    selected_year = int(parts[0])
+                    selected_month = int(parts[1])
+                    if 1 <= selected_month <= 12:
+                        start = datetime(selected_year, selected_month, 1)
+                        if selected_month == 12:
+                            end = datetime(selected_year + 1, 1, 1)
+                        else:
+                            end = datetime(selected_year, selected_month + 1, 1)
                     else:
-                        end = datetime(y, m + 1, 1)
+                        raise ValueError()
                 else:
                     raise ValueError()
             else:
+                # Default to current month
                 start = datetime(now.year, now.month, 1)
+                selected_year = now.year
+                selected_month = now.month
                 if now.month == 12:
                     end = datetime(now.year + 1, 1, 1)
                 else:
@@ -101,13 +115,12 @@ def create_app(config_class=Config):
         except Exception:
             # fallback to current month
             start = datetime(now.year, now.month, 1)
+            selected_year = now.year
+            selected_month = now.month
             if now.month == 12:
                 end = datetime(now.year + 1, 1, 1)
             else:
                 end = datetime(now.year, now.month + 1, 1)
-
-        # support a toggle to show all months
-        show_all = request.args.get('all_months', '').lower() in ('1', 'true', 'yes')
 
         # base query (by default for current month, unless show_all)
         q = Record.query.options(joinedload(Record.creator))
@@ -147,7 +160,10 @@ def create_app(config_class=Config):
         count = q.count()
         records = q.order_by(Record.date_of_discharge.desc(), Record.created_at.desc()).all()
 
-        return render_template('dashboard.html', records=records, statuses=statuses, physicians=physicians, selected_status=selected_status, selected_physician=selected_physician, history_q=history_q, count=count)
+        # Format month for HTML5 input (YYYY-MM)
+        month_filter_value = f"{selected_year}-{selected_month:02d}" if selected_year and selected_month else ""
+
+        return render_template('dashboard.html', records=records, statuses=statuses, physicians=physicians, selected_status=selected_status, selected_physician=selected_physician, history_q=history_q, count=count, month_filter_value=month_filter_value, selected_year=selected_year, selected_month=selected_month, show_all=show_all)
 
     @app.route('/export', methods=['POST'])
     @role_required('editor')

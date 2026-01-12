@@ -5,14 +5,29 @@
     <li class="breadcrumb-item active" aria-current="page">Записи</li>
   {% endblock %}
 
-  <h1 class="h3">{% if request.args.get('all_months') %}Мої записи (усі){% else %}Мої записи (цей місяць){% endif %} <span class="badge bg-primary ms-2">{{ count }}</span></h1>
+  <h1 class="h3">
+    {% if show_all %}
+      Мої записи (усі періоди)
+    {% elif selected_year and selected_month %}
+      Мої записи ({{ ['Січень', 'Лютий', 'Березень', 'Квітень', 'Травень', 'Червень', 'Липень', 'Серпень', 'Вересень', 'Жовтень', 'Листопад', 'Грудень'][selected_month - 1] }} {{ selected_year }})
+    {% else %}
+      Мої записи (поточний місяць)
+    {% endif %}
+    <span class="badge bg-primary ms-2">{{ count }}</span>
+  </h1>
 
   {% if current_user.role == 'operator' %}
     <div class="alert alert-info">Оператори бачять записи, створені операторами (включно з вашими). Для перегляду всіх місяців поставте прапорець "Показати всі місяці".</div>
   {% endif %}
 
   <form class="filter-form row gx-3 gy-2 align-items-end" method="get">
-    <div class="col-sm-6 col-md-3">
+    <div class="col-sm-6 col-md-2">
+      <label class="form-label">Місяць та рік</label>
+      <input class="form-control" type="month" name="month_filter" value="{{ month_filter_value }}" id="month_filter">
+      <small class="form-text text-muted">Залиште порожнім для поточного місяця</small>
+    </div>
+
+    <div class="col-sm-6 col-md-2">
       <label class="form-label">Статус виписки</label>
       <select class="form-select" name="discharge_status">
         <option value="">Всі</option>
@@ -22,7 +37,7 @@
       </select>
     </div>
 
-    <div class="col-sm-6 col-md-3">
+    <div class="col-sm-6 col-md-2">
       <label class="form-label">Лікуючий лікар</label>
       <select class="form-select" name="treating_physician">
         <option value="">Всі</option>
@@ -32,14 +47,14 @@
       </select>
     </div>
 
-    <div class="col-sm-6 col-md-4">
+    <div class="col-sm-6 col-md-3">
       <label class="form-label">Пошук по "Історія" (номер)</label>
       <input class="form-control" name="history" placeholder="номер або частина" value="{{ history_q }}">
     </div>
 
     <div class="col-auto">
       <div class="form-check">
-        <input class="form-check-input" type="checkbox" value="1" id="all_months" name="all_months" {% if request.args.get('all_months') %}checked{% endif %}>
+        <input class="form-check-input" type="checkbox" value="1" id="all_months" name="all_months" {% if show_all %}checked{% endif %} onchange="document.getElementById('month_filter').disabled = this.checked;">
         <label class="form-check-label" for="all_months">Показати всі місяці</label>
       </div>
     </div>
@@ -122,6 +137,32 @@
     </table>
     </div>
   {% else %}
-    <p>Записів за цей місяць немає.</p>
+    <p>Записів за обраний період немає.</p>
   {% endif %}
+
+  <script>
+    // Disable month filter when "all months" checkbox is checked
+    document.addEventListener('DOMContentLoaded', function() {
+      const allMonthsCheckbox = document.getElementById('all_months');
+      const monthFilter = document.getElementById('month_filter');
+
+      if (allMonthsCheckbox && monthFilter) {
+        // Initial state
+        if (allMonthsCheckbox.checked) {
+          monthFilter.disabled = true;
+          monthFilter.value = '';
+        }
+
+        // On change
+        allMonthsCheckbox.addEventListener('change', function() {
+          if (this.checked) {
+            monthFilter.disabled = true;
+            monthFilter.value = '';
+          } else {
+            monthFilter.disabled = false;
+          }
+        });
+      }
+    });
+  </script>
 {% endblock %}
