@@ -160,13 +160,13 @@ def create_app(config_class=Config):
 
         # Count by discharge status
         count_discharged = sum(1 for r in records if r.discharge_status == 'Виписаний')
-        count_died = sum(1 for r in records if r.date_of_death is not None)
-        count_other = count - count_discharged - count_died
+        count_processing = sum(1 for r in records if r.discharge_status == 'Опрацьовується')
+        count_violations = sum(1 for r in records if r.discharge_status == 'Порушені вимоги')
 
         # Format month for HTML5 input (YYYY-MM)
         month_filter_value = f"{selected_year}-{selected_month:02d}" if selected_year and selected_month else ""
 
-        return render_template('dashboard.html', records=records, statuses=statuses, physicians=physicians, selected_status=selected_status, selected_physician=selected_physician, history_q=history_q, count=count, month_filter_value=month_filter_value, selected_year=selected_year, selected_month=selected_month, show_all=show_all, has_death_date=has_death_date, count_discharged=count_discharged, count_died=count_died, count_other=count_other)
+        return render_template('dashboard.html', records=records, statuses=statuses, physicians=physicians, selected_status=selected_status, selected_physician=selected_physician, history_q=history_q, count=count, month_filter_value=month_filter_value, selected_year=selected_year, selected_month=selected_month, show_all=show_all, has_death_date=has_death_date, count_discharged=count_discharged, count_processing=count_processing, count_violations=count_violations)
 
     @app.route('/export', methods=['POST'])
     @role_required('editor')
@@ -360,8 +360,8 @@ def create_app(config_class=Config):
                     flash('Дата смерті не може бути раніше дати виписки')
                     return redirect(url_for('add_record'))
 
-            # Do not auto-fill discharge_status from status for operator adds; allow explicit discharge_status if provided
-            discharge_status = request.form.get('discharge_status', '').strip()
+            # Automatically set status to "Опрацьовується" for operator-created records
+            discharge_status = 'Опрацьовується'
 
             r = Record(
                 date_of_discharge=date_of_discharge,
@@ -370,7 +370,7 @@ def create_app(config_class=Config):
                 treating_physician=treating_physician,
                 history=history,
                 k_days=k_days_int,
-                discharge_status=discharge_status or None,
+                discharge_status=discharge_status,
                 date_of_death=date_of_death,
                 created_by=current_user.id
             )

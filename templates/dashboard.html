@@ -19,8 +19,8 @@
       <div class="d-flex gap-2 flex-wrap">
         <span class="badge bg-primary">Всього: {{ count }}</span>
         <span class="badge bg-success">Виписаних: {{ count_discharged }}</span>
-        <span class="badge bg-danger">Померло: {{ count_died }}</span>
-        <span class="badge bg-secondary">В обробці: {{ count_other }}</span>
+        <span class="badge bg-warning text-dark">Опрацьовується: {{ count_processing }}</span>
+        <span class="badge bg-danger">Порушені вимоги: {{ count_violations }}</span>
       </div>
     </div>
   </div>
@@ -39,9 +39,9 @@
           <label class="form-label">Статус виписки</label>
           <select class="form-select" name="discharge_status">
             <option value="">Всі</option>
-            {% for s in statuses %}
-              <option value="{{ s }}" {% if s == selected_status %}selected{% endif %}>{{ s }}</option>
-            {% endfor %}
+            <option value="Виписаний" {% if selected_status == 'Виписаний' %}selected{% endif %}>Виписаний</option>
+            <option value="Опрацьовується" {% if selected_status == 'Опрацьовується' %}selected{% endif %}>Опрацьовується</option>
+            <option value="Порушені вимоги" {% if selected_status == 'Порушені вимоги' %}selected{% endif %}>Порушені вимоги</option>
           </select>
         </div>
 
@@ -148,6 +148,10 @@
               {% if r.discharge_status == 'Виписаний' %}
                 <span class="badge bg-success">{{ r.discharge_status }}</span>
               {% elif r.discharge_status == 'Помер' %}
+                <span class="badge bg-danger">{{ r.discharge_status }}</span>
+              {% elif r.discharge_status == 'Опрацьовується' %}
+                <span class="badge bg-warning text-dark">{{ r.discharge_status }}</span>
+              {% elif r.discharge_status == 'Порушені вимоги' %}
                 <span class="badge bg-danger">{{ r.discharge_status }}</span>
               {% elif r.discharge_status %}
                 <span class="badge bg-secondary">{{ r.discharge_status }}</span>

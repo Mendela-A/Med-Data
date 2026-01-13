@@ -43,7 +43,13 @@
     </div>
     <div class="col-auto">
       <label class="form-label">Статус виписки</label>
-      <input class="form-control input-medium" name="discharge_status" value="{{ r.discharge_status or '' }}" required>
+      <select class="form-select input-medium" name="discharge_status" required>
+        <option value="">Оберіть статус...</option>
+        <option value="Виписаний" {% if r.discharge_status == 'Виписаний' %}selected{% endif %}>Виписаний</option>
+        <option value="Опрацьовується" {% if r.discharge_status == 'Опрацьовується' %}selected{% endif %}>Опрацьовується</option>
+        <option value="Порушені вимоги" {% if r.discharge_status == 'Порушені вимоги' %}selected{% endif %}>Порушені вимоги</option>
+        <option value="Помер" {% if r.discharge_status == 'Помер' %}selected{% endif %}>Помер</option>
+      </select>
     </div>
 
     <div class="col-auto" id="death-row">
