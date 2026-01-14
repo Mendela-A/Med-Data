@@ -55,5 +55,5 @@ static/certs/*.p12
 
 #export data
 import_records.py
-add_departments.py
+
 
