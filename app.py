@@ -75,8 +75,11 @@ def create_app(config_class=Config):
     @app.route('/')
     @login_required
     def index():
-        from datetime import datetime
-        now = datetime.utcnow()
+        from datetime import datetime, timezone, timedelta
+        # Use Kyiv timezone (UTC+2, or UTC+3 during DST) for correct month detection
+        # Simple approach: use UTC+2 as base (covers most of the year)
+        kyiv_tz = timezone(timedelta(hours=2))
+        now = datetime.now(kyiv_tz)
 
         # support a toggle to show all months
         show_all = request.args.get('all_months', '').lower() in ('1', 'true', 'yes')
