@@ -48,7 +48,7 @@
     {% endif %}
   {% endwith %}
 
-  <div class="container">
+  <div class="{% block container_class %}container{% endblock %}">
     <nav aria-label="breadcrumb">
       <ol class="breadcrumb">
         <li class="breadcrumb-item"><a href="{{ url_for('index') }}">Головна</a></li>
