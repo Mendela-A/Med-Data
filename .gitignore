@@ -33,6 +33,7 @@ logs/
 # local sqlite DB folder (persisted locally, not committed)
 /data/
 app.db
+*.db
 
 # Tests
 .pytest_cache/
