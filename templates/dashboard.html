@@ -96,35 +96,6 @@
     </div>
   </div>
 
-  {% if current_user.role in ['editor', 'admin'] %}
-    <div class="card mb-3">
-      <div class="card-body">
-        <h5 class="card-title mb-3">Експорт в Excel</h5>
-        <form class="row g-3 align-items-end" method="post" action="{{ url_for('export') }}">
-          <input type="hidden" name="discharge_status" value="{{ selected_status }}">
-          <input type="hidden" name="treating_physician" value="{{ selected_physician }}">
-          <input type="hidden" name="discharge_department" value="{{ selected_department }}">
-          <input type="hidden" name="history" value="{{ history_q }}">
-          <input type="hidden" name="full_name" value="{{ full_name_q }}">
-          <div class="col-md-3">
-            <label class="form-label">Дата від</label>
-            <input class="form-control" name="from_date" type="date" required>
-          </div>
-          <div class="col-md-3">
-            <label class="form-label">Дата до</label>
-            <input class="form-control" name="to_date" type="date" required>
-          </div>
-          <div class="col-md-6">
-            <button class="btn btn-success" type="submit">
-              <i class="bi bi-download"></i> Вигрузити в Excel
-            </button>
-            <small class="text-muted ms-2">Експорт записів з застосованими фільтрами</small>
-          </div>
-        </form>
-      </div>
-    </div>
-  {% endif %}
-
   {% if records %}
     <div class="card">
       <div class="card-body p-0">

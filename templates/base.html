@@ -17,6 +17,9 @@
             {% if current_user.role == 'operator' %}
               <li class="nav-item"><a class="nav-link" href="{{ url_for('add_record') }}">Додати запис</a></li>
             {% endif %}
+            {% if current_user.role in ['editor', 'admin'] %}
+              <li class="nav-item"><a class="nav-link" href="{{ url_for('export_page') }}">Експорт в Excel</a></li>
+            {% endif %}
             {% if current_user.role == 'admin' %}
               <li class="nav-item"><a class="nav-link" href="{{ url_for('admin_users') }}">Керування користувачами</a></li>
               <li class="nav-item"><a class="nav-link" href="{{ url_for('admin_departments') }}">Керування відділеннями</a></li>

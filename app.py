@@ -178,6 +178,14 @@ def create_app(config_class=Config):
 
         return render_template('dashboard.html', records=records, statuses=statuses, physicians=physicians, departments=departments, selected_status=selected_status, selected_physician=selected_physician, selected_department=selected_department, history_q=history_q, full_name_q=full_name_q, count=count, month_filter_value=month_filter_value, selected_year=selected_year, selected_month=selected_month, show_all=show_all, has_death_date=has_death_date, count_discharged=count_discharged, count_processing=count_processing, count_violations=count_violations)
 
+    @app.route('/export-page')
+    @role_required('editor')
+    def export_page():
+        # Get dropdown values for filters
+        physicians = [p[0] for p in db.session.query(Record.treating_physician).distinct().filter(Record.treating_physician != None).order_by(Record.treating_physician).all()]
+        departments = [d[0] for d in db.session.query(Record.discharge_department).distinct().filter(Record.discharge_department != None).order_by(Record.discharge_department).all()]
+        return render_template('export.html', physicians=physicians, departments=departments)
+
     @app.route('/export', methods=['POST'])
     @role_required('editor')
     def export():
