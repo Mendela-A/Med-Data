@@ -86,6 +86,25 @@ body { background: linear-gradient(180deg, #eaf6f6 0%, #f7fbfd 100%); color: #08
   margin-bottom: 0.5rem;
 }
 
+/* Optimized filter form */
+.card-body form .form-label.small {
+  font-weight: 500;
+  color: #555;
+}
+
+.card-body form .form-control-sm,
+.card-body form .form-select-sm {
+  font-size: 0.875rem;
+}
+
+/* Filter row responsive behavior */
+@media (min-width: 1400px) {
+  .card-body form .row.g-3 > [class*="col-xl-2"] {
+    flex: 0 0 auto;
+    width: 16.666667%;
+  }
+}
+
 /* Table improvements */
 .table-light th {
   background-color: #f0f9f8 !important;

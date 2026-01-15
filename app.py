@@ -138,7 +138,9 @@ def create_app(config_class=Config):
         # --- filtering from query params ---
         selected_status = request.args.get('discharge_status', '').strip()
         selected_physician = request.args.get('treating_physician', '').strip()
+        selected_department = request.args.get('discharge_department', '').strip()
         history_q = request.args.get('history', '').strip()
+        full_name_q = request.args.get('full_name', '').strip()
         has_death_date = request.args.get('has_death_date', '').lower() in ('1', 'true', 'yes')
 
         conditions = []
@@ -146,8 +148,12 @@ def create_app(config_class=Config):
             conditions.append(Record.discharge_status == selected_status)
         if selected_physician:
             conditions.append(Record.treating_physician == selected_physician)
+        if selected_department:
+            conditions.append(Record.discharge_department == selected_department)
         if history_q:
             conditions.append(Record.history.contains(history_q))
+        if full_name_q:
+            conditions.append(Record.full_name.ilike(f'%{full_name_q}%'))
         if has_death_date:
             conditions.append(Record.date_of_death != None)
         if conditions:
@@ -156,6 +162,7 @@ def create_app(config_class=Config):
         # values for dropdowns (distinct non-null values)
         statuses = [s[0] for s in db.session.query(Record.discharge_status).distinct().filter(Record.discharge_status != None).order_by(Record.discharge_status).all()]
         physicians = [p[0] for p in db.session.query(Record.treating_physician).distinct().filter(Record.treating_physician != None).order_by(Record.treating_physician).all()]
+        departments = [d[0] for d in db.session.query(Record.discharge_department).distinct().filter(Record.discharge_department != None).order_by(Record.discharge_department).all()]
 
         # count and results
         count = q.count()
@@ -169,7 +176,7 @@ def create_app(config_class=Config):
         # Format month for HTML5 input (YYYY-MM)
         month_filter_value = f"{selected_year}-{selected_month:02d}" if selected_year and selected_month else ""
 
-        return render_template('dashboard.html', records=records, statuses=statuses, physicians=physicians, selected_status=selected_status, selected_physician=selected_physician, history_q=history_q, count=count, month_filter_value=month_filter_value, selected_year=selected_year, selected_month=selected_month, show_all=show_all, has_death_date=has_death_date, count_discharged=count_discharged, count_processing=count_processing, count_violations=count_violations)
+        return render_template('dashboard.html', records=records, statuses=statuses, physicians=physicians, departments=departments, selected_status=selected_status, selected_physician=selected_physician, selected_department=selected_department, history_q=history_q, full_name_q=full_name_q, count=count, month_filter_value=month_filter_value, selected_year=selected_year, selected_month=selected_month, show_all=show_all, has_death_date=has_death_date, count_discharged=count_discharged, count_processing=count_processing, count_violations=count_violations)
 
     @app.route('/export', methods=['POST'])
     @role_required('editor')
@@ -198,16 +205,22 @@ def create_app(config_class=Config):
             Record.date_of_discharge >= from_d,
             Record.date_of_discharge <= to_d,
         )
-        # apply active filters if provided (discharge_status, treating_physician, history)
+        # apply active filters if provided (discharge_status, treating_physician, discharge_department, history, full_name)
         discharge_status = request.form.get('discharge_status', '').strip()
         treating_physician = request.form.get('treating_physician', '').strip()
+        discharge_department = request.form.get('discharge_department', '').strip()
         history_q = request.form.get('history', '').strip()
+        full_name_q = request.form.get('full_name', '').strip()
         if discharge_status:
             q = q.filter(Record.discharge_status == discharge_status)
         if treating_physician:
             q = q.filter(Record.treating_physician == treating_physician)
+        if discharge_department:
+            q = q.filter(Record.discharge_department == discharge_department)
         if history_q:
             q = q.filter(Record.history.contains(history_q))
+        if full_name_q:
+            q = q.filter(Record.full_name.ilike(f'%{full_name_q}%'))
 
         records = q.order_by(Record.date_of_discharge.desc(), Record.created_at.desc()).all()
 
@@ -273,7 +286,7 @@ def create_app(config_class=Config):
 
         # audit export
         try:
-            log_action(current_user.id, 'export', 'export', None, f'from={from_d} to={to_d} discharge_status={discharge_status} treating_physician={treating_physician} history={history_q}')
+            log_action(current_user.id, 'export', 'export', None, f'from={from_d} to={to_d} discharge_status={discharge_status} treating_physician={treating_physician} discharge_department={discharge_department} history={history_q} full_name={full_name_q}')
         except Exception:
             app.logger.exception('Failed to write audit log for export')
         app.logger.info(f'Export by {getattr(current_user, "username", "unknown")}: from {from_d} to {to_d} count={len(records)}')
@@ -504,7 +517,7 @@ def create_app(config_class=Config):
         flash('Record deleted')
         # preserve filters from form (if any)
         params = {}
-        for k in ('discharge_status', 'treating_physician', 'history'):
+        for k in ('discharge_status', 'treating_physician', 'discharge_department', 'history', 'full_name'):
             v = request.form.get(k, '').strip()
             if v:
                 params[k] = v

@@ -28,59 +28,69 @@
 
 
   <div class="card mb-3">
-    <div class="card-body">
+    <div class="card-body py-3">
       <h5 class="card-title mb-3">Фільтри</h5>
-      <form class="row g-3" method="get">
-        <div class="col-md-3">
-          <label class="form-label">Місяць та рік</label>
-          <input class="form-control" type="month" name="month_filter" value="{{ month_filter_value }}" id="month_filter">
-        </div>
+      <form method="get">
+        <div class="row g-3 mb-3">
+          <div class="col-sm-6 col-md-4 col-xl-2">
+            <label class="form-label small mb-1">Місяць та рік</label>
+            <input class="form-control form-control-sm" type="month" name="month_filter" value="{{ month_filter_value }}" id="month_filter">
+          </div>
 
-        <div class="col-md-3">
-          <label class="form-label">Статус виписки</label>
-          <select class="form-select" name="discharge_status">
-            <option value="">Всі</option>
-            <option value="Виписаний" {% if selected_status == 'Виписаний' %}selected{% endif %}>Виписаний</option>
-            <option value="Опрацьовується" {% if selected_status == 'Опрацьовується' %}selected{% endif %}>Опрацьовується</option>
-            <option value="Порушені вимоги" {% if selected_status == 'Порушені вимоги' %}selected{% endif %}>Порушені вимоги</option>
-          </select>
-        </div>
+          <div class="col-sm-6 col-md-4 col-xl-2">
+            <label class="form-label small mb-1">Статус виписки</label>
+            <select class="form-select form-select-sm" name="discharge_status">
+              <option value="">Всі</option>
+              <option value="Виписаний" {% if selected_status == 'Виписаний' %}selected{% endif %}>Виписаний</option>
+              <option value="Опрацьовується" {% if selected_status == 'Опрацьовується' %}selected{% endif %}>Опрацьовується</option>
+              <option value="Порушені вимоги" {% if selected_status == 'Порушені вимоги' %}selected{% endif %}>Порушені вимоги</option>
+            </select>
+          </div>
 
-        <div class="col-md-3">
-          <label class="form-label">Лікуючий лікар</label>
-          <select class="form-select" name="treating_physician">
-            <option value="">Всі</option>
-            {% for p in physicians %}
-              <option value="{{ p }}" {% if p == selected_physician %}selected{% endif %}>{{ p }}</option>
-            {% endfor %}
-          </select>
-        </div>
+          <div class="col-sm-6 col-md-4 col-xl-2">
+            <label class="form-label small mb-1">Відділення</label>
+            <select class="form-select form-select-sm" name="discharge_department">
+              <option value="">Всі</option>
+              {% for d in departments %}
+                <option value="{{ d }}" {% if d == selected_department %}selected{% endif %}>{{ d }}</option>
+              {% endfor %}
+            </select>
+          </div>
 
-        <div class="col-md-3">
-          <label class="form-label">Пошук по історії (номер)</label>
-          <input class="form-control" name="history" placeholder="Введіть номер" value="{{ history_q }}">
-        </div>
+          <div class="col-sm-6 col-md-4 col-xl-2">
+            <label class="form-label small mb-1">Лікуючий лікар</label>
+            <select class="form-select form-select-sm" name="treating_physician">
+              <option value="">Всі</option>
+              {% for p in physicians %}
+                <option value="{{ p }}" {% if p == selected_physician %}selected{% endif %}>{{ p }}</option>
+              {% endfor %}
+            </select>
+          </div>
 
-        <div class="col-12">
-          <div class="row">
-            <div class="col-auto">
-              <div class="form-check">
-                <input class="form-check-input" type="checkbox" value="1" id="all_months" name="all_months" {% if show_all %}checked{% endif %}>
-                <label class="form-check-label" for="all_months">Показати всі місяці</label>
-              </div>
-            </div>
-            <div class="col-auto">
-              <div class="form-check">
-                <input class="form-check-input" type="checkbox" value="1" id="has_death_date" name="has_death_date" {% if has_death_date %}checked{% endif %}>
-                <label class="form-check-label" for="has_death_date">Тільки з датою смерті</label>
-              </div>
-            </div>
+          <div class="col-sm-6 col-md-4 col-xl-2">
+            <label class="form-label small mb-1">ПІБ</label>
+            <input class="form-control form-control-sm" name="full_name" placeholder="Пошук за ПІБ" value="{{ full_name_q }}">
+          </div>
+
+          <div class="col-sm-6 col-md-4 col-xl-2">
+            <label class="form-label small mb-1">Номер історії</label>
+            <input class="form-control form-control-sm" name="history" placeholder="Введіть номер" value="{{ history_q }}">
           </div>
         </div>
 
-        <div class="col-12">
-          <button class="btn btn-primary" type="submit">Застосувати фільтри</button>
-          <a class="btn btn-outline-secondary ms-2" href="{{ url_for('index') }}">Скинути</a>
+        <div class="d-flex flex-wrap align-items-center gap-3 pt-2 border-top">
+          <div class="form-check mb-0">
+            <input class="form-check-input" type="checkbox" value="1" id="all_months" name="all_months" {% if show_all %}checked{% endif %}>
+            <label class="form-check-label" for="all_months">Всі місяці</label>
+          </div>
+          <div class="form-check mb-0">
+            <input class="form-check-input" type="checkbox" value="1" id="has_death_date" name="has_death_date" {% if has_death_date %}checked{% endif %}>
+            <label class="form-check-label" for="has_death_date">З датою смерті</label>
+          </div>
+          <div class="ms-auto">
+            <button class="btn btn-primary btn-sm" type="submit">Застосувати</button>
+            <a class="btn btn-outline-secondary btn-sm ms-2" href="{{ url_for('index') }}">Скинути</a>
+          </div>
         </div>
       </form>
     </div>
@@ -93,7 +103,9 @@
         <form class="row g-3 align-items-end" method="post" action="{{ url_for('export') }}">
           <input type="hidden" name="discharge_status" value="{{ selected_status }}">
           <input type="hidden" name="treating_physician" value="{{ selected_physician }}">
+          <input type="hidden" name="discharge_department" value="{{ selected_department }}">
           <input type="hidden" name="history" value="{{ history_q }}">
+          <input type="hidden" name="full_name" value="{{ full_name_q }}">
           <div class="col-md-3">
             <label class="form-label">Дата від</label>
             <input class="form-control" name="from_date" type="date" required>
@@ -167,7 +179,7 @@
             <td class="action-cell">
               <div class="action-buttons-container">
                 {% if current_user.role in ['editor', 'admin'] %}
-                  <a class="btn btn-xs btn-outline-primary" href="{{ url_for('edit_record', record_id=r.id, discharge_status=selected_status, treating_physician=selected_physician, history=history_q, has_death_date='1' if has_death_date else '') }}" title="Редагувати">
+                  <a class="btn btn-xs btn-outline-primary" href="{{ url_for('edit_record', record_id=r.id, discharge_status=selected_status, treating_physician=selected_physician, discharge_department=selected_department, history=history_q, full_name=full_name_q, has_death_date='1' if has_death_date else '') }}" title="Редагувати">
                     <i class="bi bi-pencil"></i>Змінити
                   </a>
                 {% endif %}
@@ -175,7 +187,9 @@
                   <form method="post" action="{{ url_for('delete_record', record_id=r.id) }}" class="d-inline" onsubmit="return confirm('Ви справді хочете видалити запис #{{ r.id }}?');">
                     <input type="hidden" name="discharge_status" value="{{ selected_status }}">
                     <input type="hidden" name="treating_physician" value="{{ selected_physician }}">
+                    <input type="hidden" name="discharge_department" value="{{ selected_department }}">
                     <input type="hidden" name="history" value="{{ history_q }}">
+                    <input type="hidden" name="full_name" value="{{ full_name_q }}">
                     <input type="hidden" name="has_death_date" value="{{ '1' if has_death_date else '' }}">
                     <button class="btn btn-xs btn-outline-danger" type="submit" title="Видалити">
                       <i class="bi bi-trash"></i>Видалити
