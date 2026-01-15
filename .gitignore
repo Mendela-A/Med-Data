@@ -51,8 +51,10 @@ static/certs/*.pfx
 static/certs/*.p12
 
 
+
 #Docs
 *.xlsx
+*.txt
 
 #export data
 import_records.py
