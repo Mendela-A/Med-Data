@@ -34,7 +34,7 @@ logs/
 /data/
 app.db
 *.db
-
+backups/
 # Tests
 .pytest_cache/
 

@@ -2,10 +2,27 @@ from datetime import datetime
 from flask_sqlalchemy import SQLAlchemy
 from flask_bcrypt import Bcrypt
 from flask_login import UserMixin
+from sqlalchemy import event
 
 # SQLAlchemy instance (init in app)
 db = SQLAlchemy()
 bcrypt = Bcrypt()
+
+
+def _set_sqlite_pragma(dbapi_conn, connection_record):
+    """Enable WAL mode and other optimizations for SQLite."""
+    cursor = dbapi_conn.cursor()
+    cursor.execute("PRAGMA journal_mode=WAL")
+    cursor.execute("PRAGMA synchronous=NORMAL")
+    cursor.execute("PRAGMA busy_timeout=5000")
+    cursor.close()
+
+
+def init_db_events(app):
+    """Initialize database event listeners for SQLite optimizations."""
+    if app.config.get('SQLALCHEMY_DATABASE_URI', '').startswith('sqlite'):
+        with app.app_context():
+            event.listen(db.engine, "connect", _set_sqlite_pragma)
 
 class User(UserMixin, db.Model):
     __tablename__ = 'users'
