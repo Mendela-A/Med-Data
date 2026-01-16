@@ -122,7 +122,7 @@
             </thead>
       <tbody>
         {% for r in records %}
-          <tr>
+          <tr id="record-{{ r.id }}">
             <td>{{ r.id }}</td>
             <td>{{ r.date_of_discharge.strftime('%d.%m.%Y') if r.date_of_discharge else '' }}</td>
             <td>{{ r.full_name }}</td>
@@ -206,6 +206,21 @@
             monthFilter.disabled = false;
           }
         });
+      }
+
+      // Scroll to edited record with smooth animation and highlight
+      if (window.location.hash) {
+        const targetElement = document.querySelector(window.location.hash);
+        if (targetElement) {
+          setTimeout(function() {
+            targetElement.scrollIntoView({ behavior: 'smooth', block: 'center' });
+            // Add highlight effect
+            targetElement.classList.add('table-row-highlight');
+            setTimeout(function() {
+              targetElement.classList.remove('table-row-highlight');
+            }, 2000);
+          }, 100);
+        }
       }
     });
   </script>

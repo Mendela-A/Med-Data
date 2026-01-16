@@ -369,3 +369,18 @@ input[list]::-webkit-calendar-picker-indicator {
 input[list]:focus::-webkit-calendar-picker-indicator {
   opacity: 1;
 }
+
+/* Highlight edited record */
+@keyframes highlightRow {
+  0% {
+    background-color: rgba(13, 148, 136, 0.3);
+  }
+  100% {
+    background-color: transparent;
+  }
+}
+
+.table-row-highlight {
+  animation: highlightRow 2s ease-out;
+  background-color: rgba(13, 148, 136, 0.15) !important;
+}

@@ -508,7 +508,8 @@ def create_app(config_class=Config):
                     params[k] = v
             if request.form.get('filter_has_death_date', '').strip():
                 params['has_death_date'] = '1'
-            return redirect(url_for('index', **params))
+            # Add anchor to scroll to edited record
+            return redirect(url_for('index', **params, _anchor=f'record-{r.id}'))
 
         # GET -> render form with record data (pass filters through if present) and departments
         departments = Department.query.order_by(Department.name).all()
