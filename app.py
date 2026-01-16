@@ -1,13 +1,18 @@
 import click
 from flask import Flask, render_template, redirect, url_for, request, flash, send_file
 from flask_migrate import Migrate
+from flask_caching import Cache
 from config import Config
 from models import db, User, Record, bcrypt, log_action, Department, init_db_events
 from flask_login import LoginManager, login_user, logout_user, login_required, current_user
 from sqlalchemy.orm import joinedload
+from sqlalchemy import func
 
 login_manager = LoginManager()
 login_manager.login_view = 'login'
+
+# Initialize cache
+cache = Cache()
 
 def create_app(config_class=Config):
     app = Flask(__name__, template_folder='templates', static_folder='static')
@@ -42,6 +47,25 @@ def create_app(config_class=Config):
     Migrate(app, db)
     init_db_events(app)
 
+    # Initialize cache with simple in-memory storage
+    cache.init_app(app, config={
+        'CACHE_TYPE': 'SimpleCache',
+        'CACHE_DEFAULT_TIMEOUT': 900  # 15 minutes default
+    })
+
+    # Database maintenance: run ANALYZE periodically to update query planner statistics
+    @app.before_request
+    def optimize_database():
+        """Periodically optimize database statistics for better query planning"""
+        import random
+        # Run ANALYZE with 1% probability on each request (roughly once per 100 requests)
+        if random.random() < 0.01:
+            try:
+                db.session.execute(db.text("ANALYZE"))
+                db.session.commit()
+            except Exception:
+                pass  # Silent fail - optimization is not critical
+
     # Ensure data directory exists when using a local sqlite file
     db_uri = app.config.get('SQLALCHEMY_DATABASE_URI', '')
     if db_uri.startswith('sqlite:///'):
@@ -72,6 +96,34 @@ def create_app(config_class=Config):
                 return f(*args, **kwargs)
             return decorated_function
         return decorator
+
+    # Cached helper functions for dropdown values
+    @cache.memoize(timeout=900)  # Cache for 15 minutes
+    def get_distinct_statuses():
+        """Get distinct discharge statuses from database"""
+        return [s[0] for s in db.session.query(Record.discharge_status).distinct()
+                .filter(Record.discharge_status != None)
+                .order_by(Record.discharge_status).all()]
+
+    @cache.memoize(timeout=900)  # Cache for 15 minutes
+    def get_distinct_physicians():
+        """Get distinct treating physicians from database"""
+        return [p[0] for p in db.session.query(Record.treating_physician).distinct()
+                .filter(Record.treating_physician != None)
+                .order_by(Record.treating_physician).all()]
+
+    @cache.memoize(timeout=900)  # Cache for 15 minutes
+    def get_distinct_departments():
+        """Get distinct discharge departments from database"""
+        return [d[0] for d in db.session.query(Record.discharge_department).distinct()
+                .filter(Record.discharge_department != None)
+                .order_by(Record.discharge_department).all()]
+
+    def clear_dropdown_cache():
+        """Clear all dropdown caches - call after adding/editing records"""
+        cache.delete_memoized(get_distinct_statuses)
+        cache.delete_memoized(get_distinct_physicians)
+        cache.delete_memoized(get_distinct_departments)
 
     @app.route('/')
     @login_required
@@ -160,31 +212,72 @@ def create_app(config_class=Config):
         if conditions:
             q = q.filter(*conditions)
 
-        # values for dropdowns (distinct non-null values)
-        statuses = [s[0] for s in db.session.query(Record.discharge_status).distinct().filter(Record.discharge_status != None).order_by(Record.discharge_status).all()]
-        physicians = [p[0] for p in db.session.query(Record.treating_physician).distinct().filter(Record.treating_physician != None).order_by(Record.treating_physician).all()]
-        departments = [d[0] for d in db.session.query(Record.discharge_department).distinct().filter(Record.discharge_department != None).order_by(Record.discharge_department).all()]
+        # values for dropdowns (cached)
+        statuses = get_distinct_statuses()
+        physicians = get_distinct_physicians()
+        departments = get_distinct_departments()
 
-        # count and results
-        count = q.count()
-        records = q.order_by(Record.date_of_discharge.desc(), Record.created_at.desc()).all()
+        # Pagination
+        page = request.args.get('page', 1, type=int)
+        per_page = request.args.get('per_page', 100, type=int)  # Default 100 records per page
+        per_page = min(per_page, 200)  # Max 200 per page to prevent abuse
 
-        # Count by discharge status
-        count_discharged = sum(1 for r in records if r.discharge_status == 'Виписаний')
-        count_processing = sum(1 for r in records if r.discharge_status == 'Опрацьовується')
-        count_violations = sum(1 for r in records if r.discharge_status == 'Порушені вимоги')
+        # Get paginated results
+        pagination = q.order_by(Record.date_of_discharge.desc(), Record.created_at.desc()).paginate(
+            page=page,
+            per_page=per_page,
+            error_out=False
+        )
+        records = pagination.items
+        count = pagination.total
+
+        # Count by discharge status - optimized with database-level aggregation
+        # Build query for counting with same filters EXCEPT discharge_status
+        count_query = db.session.query(
+            Record.discharge_status,
+            func.count(Record.id).label('count')
+        )
+
+        # Apply base filters (month/show_all)
+        if not show_all:
+            count_query = count_query.filter(
+                Record.date_of_discharge != None,
+                Record.date_of_discharge >= start.date(),
+                Record.date_of_discharge < end.date(),
+            )
+
+        # Apply all filters EXCEPT discharge_status (since we're grouping by it)
+        if selected_physician:
+            count_query = count_query.filter(Record.treating_physician == selected_physician)
+        if selected_department:
+            count_query = count_query.filter(Record.discharge_department == selected_department)
+        if history_q:
+            count_query = count_query.filter(Record.history.contains(history_q))
+        if full_name_q:
+            count_query = count_query.filter(Record.full_name.ilike(f'%{full_name_q}%'))
+        if has_death_date:
+            count_query = count_query.filter(Record.date_of_death != None)
+
+        # Group by status and execute
+        status_counts = count_query.group_by(Record.discharge_status).all()
+
+        # Extract counts from results (creates a dict: {status: count})
+        status_count_dict = {status: cnt for status, cnt in status_counts if status}
+        count_discharged = status_count_dict.get('Виписаний', 0)
+        count_processing = status_count_dict.get('Опрацьовується', 0)
+        count_violations = status_count_dict.get('Порушені вимоги', 0)
 
         # Format month for HTML5 input (YYYY-MM)
         month_filter_value = f"{selected_year}-{selected_month:02d}" if selected_year and selected_month else ""
 
-        return render_template('dashboard.html', records=records, statuses=statuses, physicians=physicians, departments=departments, selected_status=selected_status, selected_physician=selected_physician, selected_department=selected_department, history_q=history_q, full_name_q=full_name_q, count=count, month_filter_value=month_filter_value, selected_year=selected_year, selected_month=selected_month, show_all=show_all, has_death_date=has_death_date, count_discharged=count_discharged, count_processing=count_processing, count_violations=count_violations)
+        return render_template('dashboard.html', records=records, pagination=pagination, statuses=statuses, physicians=physicians, departments=departments, selected_status=selected_status, selected_physician=selected_physician, selected_department=selected_department, history_q=history_q, full_name_q=full_name_q, count=count, month_filter_value=month_filter_value, selected_year=selected_year, selected_month=selected_month, show_all=show_all, has_death_date=has_death_date, count_discharged=count_discharged, count_processing=count_processing, count_violations=count_violations)
 
     @app.route('/export-page')
     @role_required('editor')
     def export_page():
-        # Get dropdown values for filters
-        physicians = [p[0] for p in db.session.query(Record.treating_physician).distinct().filter(Record.treating_physician != None).order_by(Record.treating_physician).all()]
-        departments = [d[0] for d in db.session.query(Record.discharge_department).distinct().filter(Record.discharge_department != None).order_by(Record.discharge_department).all()]
+        # Get dropdown values for filters (cached)
+        physicians = get_distinct_physicians()
+        departments = get_distinct_departments()
         return render_template('export.html', physicians=physicians, departments=departments)
 
     @app.route('/export', methods=['POST'])
@@ -209,7 +302,8 @@ def create_app(config_class=Config):
             flash('Дата "з" не може бути пізніше дати "по"', 'warning')
             return redirect(url_for('index'))
 
-        q = Record.query.options(joinedload(Record.creator)).filter(
+        # Build query
+        q = Record.query.filter(
             Record.date_of_discharge != None,
             Record.date_of_discharge >= from_d,
             Record.date_of_discharge <= to_d,
@@ -231,13 +325,14 @@ def create_app(config_class=Config):
         if full_name_q:
             q = q.filter(Record.full_name.ilike(f'%{full_name_q}%'))
 
-        records = q.order_by(Record.date_of_discharge.desc(), Record.created_at.desc()).all()
+        # Count total records first (fast, uses indexes)
+        total_count = q.count()
 
-        if not records:
+        if total_count == 0:
             flash('Записів не знайдено для обраного діапазону дат та фільтрів', 'warning')
             return redirect(url_for('index'))
 
-        # create excel with openpyxl, format headers bold, and auto-size columns
+        # create excel with openpyxl
         try:
             from openpyxl import Workbook
             from openpyxl.styles import Font
@@ -246,48 +341,84 @@ def create_app(config_class=Config):
             flash('Для експорту потрібен пакет openpyxl. Будь ласка, встановіть його.', 'danger')
             return redirect(url_for('index'))
 
-        wb = Workbook()
-        ws = wb.active
-        ws.title = 'Vipiski'
+        # Use write_only mode for large exports (>5000 records)
+        use_write_only = total_count > 5000
+        wb = Workbook(write_only=use_write_only)
+        ws = wb.create_sheet() if use_write_only else wb.active
+        if not use_write_only:
+            ws.title = 'Vipiski'
 
         # headers: include all columns from the Record model
         headers = ['ID','Дата виписки','ПІБ','Відділення','Лікар','Історія','К днів','Статус виписки','Дата смерті','Коментар','Створив','Створено']
-        ws.append(headers)
 
-        # append rows
-        for r in records:
-            ws.append([
-                r.id,
-                r.date_of_discharge.strftime('%d.%m.%Y') if r.date_of_discharge else '',
-                r.full_name,
-                r.discharge_department or '',
-                r.treating_physician or '',
-                r.history or '',
-                r.k_days if r.k_days is not None else '',
-                r.discharge_status or '',
-                r.date_of_death.strftime('%d.%m.%Y') if r.date_of_death else '',
-                r.comment or '',
-                r.creator.username if r.creator else r.created_by,
-                r.created_at.strftime('%d.%m.%Y %H:%M') if r.created_at else '',
-            ])
+        # Cache user mapping for fast lookups (avoid N+1)
+        user_map = {u.id: u.username for u in User.query.all()}
 
-        # style headers bold
-        bold = Font(bold=True)
-        for cell in ws[1]:
-            cell.font = bold
+        if use_write_only:
+            # Write-only mode: can't style after writing, must style cells inline
+            from openpyxl.cell import WriteOnlyCell
+            styled_headers = []
+            bold = Font(bold=True)
+            for h in headers:
+                cell = WriteOnlyCell(ws, value=h)
+                cell.font = bold
+                styled_headers.append(cell)
+            ws.append(styled_headers)
+        else:
+            ws.append(headers)
+            # Style headers bold
+            bold = Font(bold=True)
+            for cell in ws[1]:
+                cell.font = bold
 
-        # auto width columns
-        for i, column_cells in enumerate(ws.columns, 1):
-            max_length = 0
-            for cell in column_cells:
-                try:
-                    value = str(cell.value) if cell.value is not None else ''
-                except Exception:
-                    value = ''
-                if len(value) > max_length:
-                    max_length = len(value)
-            adjusted_width = min(max_length + 2, 50)
-            ws.column_dimensions[get_column_letter(i)].width = adjusted_width
+        # Batch processing: load records in chunks of 1000
+        BATCH_SIZE = 1000
+        q = q.order_by(Record.date_of_discharge.desc(), Record.created_at.desc())
+
+        # Calculate column widths from first 100 rows (sampling for performance)
+        col_widths = [len(h) for h in headers]
+        sample_count = 0
+
+        offset = 0
+        while offset < total_count:
+            # Fetch batch
+            batch = q.offset(offset).limit(BATCH_SIZE).all()
+
+            for r in batch:
+                row = [
+                    r.id,
+                    r.date_of_discharge.strftime('%d.%m.%Y') if r.date_of_discharge else '',
+                    r.full_name,
+                    r.discharge_department or '',
+                    r.treating_physician or '',
+                    r.history or '',
+                    r.k_days if r.k_days is not None else '',
+                    r.discharge_status or '',
+                    r.date_of_death.strftime('%d.%m.%Y') if r.date_of_death else '',
+                    r.comment or '',
+                    user_map.get(r.created_by, r.created_by or ''),
+                    r.created_at.strftime('%d.%m.%Y %H:%M') if r.created_at else '',
+                ]
+                ws.append(row)
+
+                # Sample first 100 rows for column width calculation (not in write_only mode)
+                if not use_write_only and sample_count < 100:
+                    for i, val in enumerate(row):
+                        val_len = len(str(val)) if val is not None else 0
+                        if val_len > col_widths[i]:
+                            col_widths[i] = val_len
+                    sample_count += 1
+
+            offset += BATCH_SIZE
+
+            # Clear session to free memory
+            db.session.expire_all()
+
+        # Auto width columns (only in normal mode, not write_only)
+        if not use_write_only:
+            for i, width in enumerate(col_widths, 1):
+                adjusted_width = min(width + 2, 50)
+                ws.column_dimensions[get_column_letter(i)].width = adjusted_width
 
         bio = BytesIO()
         wb.save(bio)
@@ -295,10 +426,10 @@ def create_app(config_class=Config):
 
         # audit export
         try:
-            log_action(current_user.id, 'export', 'export', None, f'from={from_d} to={to_d} discharge_status={discharge_status} treating_physician={treating_physician} discharge_department={discharge_department} history={history_q} full_name={full_name_q}')
+            log_action(current_user.id, 'export', 'export', None, f'from={from_d} to={to_d} discharge_status={discharge_status} treating_physician={treating_physician} discharge_department={discharge_department} history={history_q} full_name={full_name_q} count={total_count}')
         except Exception:
             app.logger.exception('Failed to write audit log for export')
-        app.logger.info(f'Export by {getattr(current_user, "username", "unknown")}: from {from_d} to {to_d} count={len(records)}')
+        app.logger.info(f'Export by {getattr(current_user, "username", "unknown")}: from {from_d} to {to_d} count={total_count} write_only={use_write_only}')
 
         filename = f"vipiski_{datetime.now().strftime('%d-%m-%Y')}.xlsx"
         return send_file(bio, as_attachment=True, download_name=filename, mimetype='application/vnd.openxmlformats-officedocument.spreadsheetml.sheet')
@@ -402,6 +533,8 @@ def create_app(config_class=Config):
             )
             db.session.add(r)
             db.session.commit()
+            # Clear dropdown cache after adding new record
+            clear_dropdown_cache()
             try:
                 log_action(current_user.id, 'record.create', 'record', r.id, f'full_name={r.full_name}')
             except Exception:
@@ -420,8 +553,8 @@ def create_app(config_class=Config):
 
         # GET: pass through any filters so add form can include hidden fields and departments
         departments = Department.query.order_by(Department.name).all()
-        # Get distinct physicians for autocomplete
-        physicians = [p[0] for p in db.session.query(Record.treating_physician).distinct().filter(Record.treating_physician != None).order_by(Record.treating_physician).all()]
+        # Get distinct physicians for autocomplete (cached)
+        physicians = get_distinct_physicians()
         return render_template('add_record.html', selected_status=request.args.get('discharge_status', ''), selected_physician=request.args.get('treating_physician', ''), history_q=request.args.get('history', ''), departments=departments, selected_department=request.args.get('discharge_department', ''), physicians=physicians)
 
     @app.route('/records/<int:record_id>/edit', methods=['GET', 'POST'])
@@ -498,6 +631,8 @@ def create_app(config_class=Config):
             r.updated_at = datetime.utcnow()
 
             db.session.commit()
+            # Clear dropdown cache after editing record
+            clear_dropdown_cache()
             try:
                 log_action(current_user.id, 'record.update', 'record', r.id, f'full_name={r.full_name}')
             except Exception:
@@ -516,8 +651,8 @@ def create_app(config_class=Config):
 
         # GET -> render form with record data (pass filters through if present) and departments
         departments = Department.query.order_by(Department.name).all()
-        # Get distinct physicians for autocomplete
-        physicians = [p[0] for p in db.session.query(Record.treating_physician).distinct().filter(Record.treating_physician != None).order_by(Record.treating_physician).all()]
+        # Get distinct physicians for autocomplete (cached)
+        physicians = get_distinct_physicians()
         return render_template('edit_record.html', r=r, selected_status=request.args.get('discharge_status', ''), selected_physician=request.args.get('treating_physician', ''), history_q=request.args.get('history', ''), departments=departments, physicians=physicians)
 
     @app.route('/records/<int:record_id>/delete', methods=['POST'])
@@ -526,6 +661,8 @@ def create_app(config_class=Config):
         r = Record.query.get_or_404(record_id)
         db.session.delete(r)
         db.session.commit()
+        # Clear dropdown cache after deleting record
+        clear_dropdown_cache()
         try:
             log_action(current_user.id, 'record.delete', 'record', r.id, f'full_name={r.full_name}')
         except Exception:
@@ -660,6 +797,8 @@ def create_app(config_class=Config):
         d = Department(name=name)
         db.session.add(d)
         db.session.commit()
+        # Clear dropdown cache after creating department
+        clear_dropdown_cache()
         try:
             log_action(current_user.id, 'department.create', 'department', d.id, f'name={name}')
         except Exception:
@@ -679,6 +818,8 @@ def create_app(config_class=Config):
             return redirect(url_for('admin_departments'))
         db.session.delete(d)
         db.session.commit()
+        # Clear dropdown cache after deleting department
+        clear_dropdown_cache()
         try:
             log_action(current_user.id, 'department.delete', 'department', d.id, f'name={d.name}')
         except Exception:

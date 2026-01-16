@@ -12,9 +12,32 @@ bcrypt = Bcrypt()
 def _set_sqlite_pragma(dbapi_conn, connection_record):
     """Enable WAL mode and other optimizations for SQLite."""
     cursor = dbapi_conn.cursor()
-    cursor.execute("PRAGMA journal_mode=WAL")
-    cursor.execute("PRAGMA synchronous=NORMAL")
-    cursor.execute("PRAGMA busy_timeout=5000")
+
+    # Журналювання та синхронізація
+    cursor.execute("PRAGMA journal_mode=WAL")  # Write-Ahead Logging для кращої конкурентності
+    cursor.execute("PRAGMA synchronous=NORMAL")  # Баланс між швидкістю та надійністю
+    cursor.execute("PRAGMA busy_timeout=5000")  # 5 секунд таймаут для блокувань
+
+    # Оптимізація кешу та пам'яті
+    cursor.execute("PRAGMA cache_size=-64000")  # 64MB кеш (negative = KB)
+    cursor.execute("PRAGMA temp_store=MEMORY")  # Тимчасові таблиці в пам'яті
+    cursor.execute("PRAGMA mmap_size=268435456")  # 256MB memory-mapped I/O (збільшено з 30MB)
+
+    # Оптимізація читання
+    cursor.execute("PRAGMA query_only=OFF")  # Дозволити запис
+    cursor.execute("PRAGMA read_uncommitted=0")  # Строга ізоляція
+
+    # Оптимізація запису
+    cursor.execute("PRAGMA wal_autocheckpoint=1000")  # Checkpoint кожні 1000 сторінок
+    cursor.execute("PRAGMA journal_size_limit=67108864")  # 64MB ліміт журналу
+
+    # Аналіз та оптимізація запитів
+    cursor.execute("PRAGMA optimize")  # Оптимізація статистики для планувальника
+    cursor.execute("PRAGMA auto_vacuum=INCREMENTAL")  # Поступова очистка вільного місця
+
+    # Оптимізація для багатопотоковості
+    cursor.execute("PRAGMA threads=4")  # Використати 4 потоки для паралельних операцій
+
     cursor.close()
 
 
@@ -27,7 +50,7 @@ def init_db_events(app):
 class User(UserMixin, db.Model):
     __tablename__ = 'users'
     id = db.Column(db.Integer, primary_key=True)
-    username = db.Column(db.String(80), unique=True, nullable=False)
+    username = db.Column(db.String(80), unique=True, nullable=False, index=True)
     password_hash = db.Column(db.String(128), nullable=False)
     role = db.Column(db.String(20), nullable=False, default='operator')  # operator/editor/admin
 
@@ -45,6 +68,15 @@ class User(UserMixin, db.Model):
 
 class Record(db.Model):
     __tablename__ = 'records'
+    __table_args__ = (
+        db.Index('idx_record_discharge_status', 'discharge_status'),
+        db.Index('idx_record_treating_physician', 'treating_physician'),
+        db.Index('idx_record_discharge_department', 'discharge_department'),
+        db.Index('idx_record_date_of_discharge', 'date_of_discharge'),
+        db.Index('idx_record_full_name', 'full_name'),
+        db.Index('idx_record_updated_at', 'updated_at'),
+    )
+
     id = db.Column(db.Integer, primary_key=True)
     date_of_discharge = db.Column(db.Date, nullable=True)  # "дата_виписки"
     full_name = db.Column(db.String(200), nullable=False)  # "ПІБ"
@@ -84,7 +116,7 @@ class Audit(db.Model):
 class Department(db.Model):
     __tablename__ = 'departments'
     id = db.Column(db.Integer, primary_key=True)
-    name = db.Column(db.String(200), nullable=False, unique=True)
+    name = db.Column(db.String(200), nullable=False, unique=True, index=True)
     created_at = db.Column(db.DateTime, default=datetime.utcnow)
 
     def __repr__(self):
