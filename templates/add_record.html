@@ -44,8 +44,13 @@
     </div>
 
     <div class="col-auto">
-      <label class="form-label">Лікар</label>
-      <input class="form-control input-medium" name="treating_physician" required>
+      <label class="form-label">Лікар {% if physicians %}({{ physicians|length }} у списку){% endif %}</label>
+      <input class="form-control input-medium" name="treating_physician" list="physicians-list" autocomplete="off" required>
+      <datalist id="physicians-list">
+        {% for p in physicians %}
+          <option value="{{ p }}">
+        {% endfor %}
+      </datalist>
     </div>
 
     <div class="col-auto" id="death-row">

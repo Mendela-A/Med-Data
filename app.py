@@ -419,7 +419,9 @@ def create_app(config_class=Config):
 
         # GET: pass through any filters so add form can include hidden fields and departments
         departments = Department.query.order_by(Department.name).all()
-        return render_template('add_record.html', selected_status=request.args.get('discharge_status', ''), selected_physician=request.args.get('treating_physician', ''), history_q=request.args.get('history', ''), departments=departments, selected_department=request.args.get('discharge_department', ''))
+        # Get distinct physicians for autocomplete
+        physicians = [p[0] for p in db.session.query(Record.treating_physician).distinct().filter(Record.treating_physician != None).order_by(Record.treating_physician).all()]
+        return render_template('add_record.html', selected_status=request.args.get('discharge_status', ''), selected_physician=request.args.get('treating_physician', ''), history_q=request.args.get('history', ''), departments=departments, selected_department=request.args.get('discharge_department', ''), physicians=physicians)
 
     @app.route('/records/<int:record_id>/edit', methods=['GET', 'POST'])
     @role_required('editor')
@@ -510,7 +512,9 @@ def create_app(config_class=Config):
 
         # GET -> render form with record data (pass filters through if present) and departments
         departments = Department.query.order_by(Department.name).all()
-        return render_template('edit_record.html', r=r, selected_status=request.args.get('discharge_status', ''), selected_physician=request.args.get('treating_physician', ''), history_q=request.args.get('history', ''), departments=departments)
+        # Get distinct physicians for autocomplete
+        physicians = [p[0] for p in db.session.query(Record.treating_physician).distinct().filter(Record.treating_physician != None).order_by(Record.treating_physician).all()]
+        return render_template('edit_record.html', r=r, selected_status=request.args.get('discharge_status', ''), selected_physician=request.args.get('treating_physician', ''), history_q=request.args.get('history', ''), departments=departments, physicians=physicians)
 
     @app.route('/records/<int:record_id>/delete', methods=['POST'])
     @role_required('admin')

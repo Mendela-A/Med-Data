@@ -39,7 +39,12 @@
     </div>
     <div class="col-auto">
       <label class="form-label">Лікар</label>
-      <input class="form-control input-medium" name="treating_physician" value="{{ r.treating_physician or '' }}" required>
+      <input class="form-control input-medium" name="treating_physician" value="{{ r.treating_physician or '' }}" list="physicians-list" autocomplete="off" required>
+      <datalist id="physicians-list">
+        {% for p in physicians %}
+          <option value="{{ p }}">
+        {% endfor %}
+      </datalist>
     </div>
     <div class="col-auto">
       <label class="form-label">Статус виписки</label>
