@@ -114,10 +114,8 @@ def create_app(config_class=Config):
 
     @cache.memoize(timeout=900)  # Cache for 15 minutes
     def get_distinct_departments():
-        """Get distinct discharge departments from database"""
-        return [d[0] for d in db.session.query(Record.discharge_department).distinct()
-                .filter(Record.discharge_department != None)
-                .order_by(Record.discharge_department).all()]
+        """Get departments from Department table"""
+        return [d.name for d in Department.query.order_by(Department.name).all()]
 
     def clear_dropdown_cache():
         """Clear all dropdown caches - call after adding/editing records"""
@@ -556,6 +554,99 @@ def create_app(config_class=Config):
         # Get distinct physicians for autocomplete (cached)
         physicians = get_distinct_physicians()
         return render_template('add_record.html', selected_status=request.args.get('discharge_status', ''), selected_physician=request.args.get('treating_physician', ''), history_q=request.args.get('history', ''), departments=departments, selected_department=request.args.get('discharge_department', ''), physicians=physicians)
+
+    @app.route('/api/records/add', methods=['POST'])
+    @role_required('operator')
+    def api_add_record():
+        """AJAX endpoint for adding records with support for 'save and add another'"""
+        from datetime import datetime
+
+        date_str = request.form.get('date_of_discharge', '').strip()
+        full_name = request.form.get('full_name', '').strip()
+        discharge_department = request.form.get('discharge_department', '').strip()
+        treating_physician = request.form.get('treating_physician', '').strip()
+        history = request.form.get('history', '').strip()
+        k_days = request.form.get('k_days', '').strip()
+        date_of_death_str = request.form.get('date_of_death', '').strip()
+        comment = request.form.get('comment', '').strip()
+
+        # Validate required fields
+        if not all([date_str, full_name, treating_physician, history, k_days]):
+            return jsonify({'success': False, 'error': 'Будь ласка, заповніть усі обов\'язкові поля'}), 400
+
+        # Parse date_of_discharge
+        date_of_discharge = None
+        for fmt in ('%d.%m.%Y', '%Y-%m-%d'):
+            try:
+                date_of_discharge = datetime.strptime(date_str, fmt).date()
+                break
+            except ValueError:
+                continue
+        if date_of_discharge is None:
+            return jsonify({'success': False, 'error': 'Невірний формат дати виписки'}), 400
+
+        # Validate k_days
+        try:
+            k_days_int = int(k_days)
+        except ValueError:
+            return jsonify({'success': False, 'error': '"К днів" повинно бути цілим числом'}), 400
+
+        # Parse date_of_death if provided
+        date_of_death = None
+        if date_of_death_str:
+            for fmt in ('%d.%m.%Y', '%Y-%m-%d'):
+                try:
+                    date_of_death = datetime.strptime(date_of_death_str, fmt).date()
+                    break
+                except ValueError:
+                    continue
+            if date_of_death is None:
+                return jsonify({'success': False, 'error': 'Невірний формат дати смерті'}), 400
+
+            if date_of_death < date_of_discharge:
+                return jsonify({'success': False, 'error': 'Дата смерті не може бути раніше дати виписки'}), 400
+
+        # Create record with status "Опрацьовується"
+        r = Record(
+            date_of_discharge=date_of_discharge,
+            full_name=full_name,
+            discharge_department=discharge_department or None,
+            treating_physician=treating_physician,
+            history=history,
+            k_days=k_days_int,
+            discharge_status='Опрацьовується',
+            date_of_death=date_of_death,
+            comment=comment or None,
+            created_by=current_user.id,
+            updated_by=current_user.id
+        )
+
+        try:
+            db.session.add(r)
+            db.session.commit()
+
+            # Clear dropdown cache
+            clear_dropdown_cache()
+
+            # Audit log
+            try:
+                log_action(current_user.id, 'record.create', 'record', r.id, f'full_name={r.full_name}')
+            except Exception:
+                app.logger.exception('Failed to write audit log for record.create')
+
+            app.logger.info(f'Record created via AJAX: {r.id} by {current_user.username}')
+
+            return jsonify({
+                'success': True,
+                'record_id': r.id,
+                'full_name': r.full_name,
+                'message': f'Запис "{r.full_name}" успішно додано'
+            })
+
+        except Exception as e:
+            db.session.rollback()
+            app.logger.exception('Failed to create record via AJAX')
+            return jsonify({'success': False, 'error': 'Помилка при збереженні запису'}), 500
 
     @app.route('/records/<int:record_id>/edit', methods=['GET', 'POST'])
     @role_required('editor')
