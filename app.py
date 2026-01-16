@@ -67,7 +67,7 @@ def create_app(config_class=Config):
                     return redirect(url_for('login'))
                 # admin has all rights
                 if getattr(current_user, 'role', None) != role and getattr(current_user, 'role', None) != 'admin':
-                    flash('Access denied')
+                    flash('Доступ заборонено', 'danger')
                     return redirect(url_for('index'))
                 return f(*args, **kwargs)
             return decorated_function
@@ -197,16 +197,16 @@ def create_app(config_class=Config):
             from_str = request.form.get('from_date', '').strip()
             to_str = request.form.get('to_date', '').strip()
             if not from_str or not to_str:
-                flash('Please provide both From and To dates for export')
+                flash('Будь ласка, вкажіть обидві дати (з та по) для експорту', 'warning')
                 return redirect(url_for('index'))
             from_d = datetime.strptime(from_str, '%Y-%m-%d').date()
             to_d = datetime.strptime(to_str, '%Y-%m-%d').date()
         except ValueError:
-            flash('Invalid date format for export (use the date picker)')
+            flash('Невірний формат дати для експорту (використовуйте вибір дати)', 'warning')
             return redirect(url_for('index'))
 
         if from_d > to_d:
-            flash('From date cannot be after To date')
+            flash('Дата "з" не може бути пізніше дати "по"', 'warning')
             return redirect(url_for('index'))
 
         q = Record.query.options(joinedload(Record.creator)).filter(
@@ -234,7 +234,7 @@ def create_app(config_class=Config):
         records = q.order_by(Record.date_of_discharge.desc(), Record.created_at.desc()).all()
 
         if not records:
-            flash('No records found for selected date range and filters')
+            flash('Записів не знайдено для обраного діапазону дат та фільтрів', 'warning')
             return redirect(url_for('index'))
 
         # create excel with openpyxl, format headers bold, and auto-size columns
@@ -243,7 +243,7 @@ def create_app(config_class=Config):
             from openpyxl.styles import Font
             from openpyxl.utils import get_column_letter
         except Exception:
-            flash('Export requires openpyxl package. Please install it.')
+            flash('Для експорту потрібен пакет openpyxl. Будь ласка, встановіть його.', 'danger')
             return redirect(url_for('index'))
 
         wb = Workbook()
@@ -306,7 +306,7 @@ def create_app(config_class=Config):
     @app.route('/register', methods=['GET', 'POST'])
     def register():
         # Public registration is disabled. Only administrators can create new users via the admin UI.
-        flash('Реєстрація вимкнена. Нових користувачів створює лише адміністратор.')
+        flash('Реєстрація вимкнена. Нових користувачів створює лише адміністратор.', 'warning')
         return redirect(url_for('login'))
 
     @app.route('/login', methods=['GET', 'POST'])
@@ -318,7 +318,7 @@ def create_app(config_class=Config):
             if user and user.check_password(password):
                 login_user(user)
                 return redirect(url_for('index'))
-            flash('Invalid username or password')
+            flash('Невірне ім\'я користувача або пароль', 'danger')
             return redirect(url_for('login'))
         return render_template('login.html')
 
@@ -344,7 +344,7 @@ def create_app(config_class=Config):
             # date_of_death (if provided) will indicate death; validate format if present
             # discharge_department is optional (may not exist yet); require other main fields
             if not all([date_str, full_name, treating_physician, history, k_days]):
-                flash('Будь ласка, заповніть усі обов\'язкові поля (виключаючи відділення)')
+                flash('Будь ласка, заповніть усі обов\'язкові поля (виключаючи відділення)', 'warning')
                 return redirect(url_for('add_record'))
 
             # validate date format: accept DD.MM.YYYY or YYYY-MM-DD (HTML date input)
@@ -357,14 +357,14 @@ def create_app(config_class=Config):
                 except ValueError:
                     continue
             if date_of_discharge is None:
-                flash('Date of discharge must be in DD.MM.YYYY or YYYY-MM-DD format')
+                flash('Дата виписки повинна бути у форматі ДД.ММ.РРРР або РРРР-ММ-ДД', 'warning')
                 return redirect(url_for('add_record'))
 
             # validate k_days integer
             try:
                 k_days_int = int(k_days)
             except ValueError:
-                flash('"К днів" must be an integer')
+                flash('"К днів" повинно бути цілим числом', 'warning')
                 return redirect(url_for('add_record'))
 
             date_of_death = None
@@ -377,12 +377,12 @@ def create_app(config_class=Config):
                     except ValueError:
                         continue
                 if date_of_death is None:
-                    flash('Date of death must be in DD.MM.YYYY or YYYY-MM-DD format')
+                    flash('Дата смерті повинна бути у форматі ДД.ММ.РРРР або РРРР-ММ-ДД', 'warning')
                     return redirect(url_for('add_record'))
 
                 # date_of_death cannot be earlier than date_of_discharge
                 if date_of_death < date_of_discharge:
-                    flash('Дата смерті не може бути раніше дати виписки')
+                    flash('Дата смерті не може бути раніше дати виписки', 'warning')
                     return redirect(url_for('add_record'))
 
             # Automatically set status to "Опрацьовується" for operator-created records
@@ -397,7 +397,8 @@ def create_app(config_class=Config):
                 k_days=k_days_int,
                 discharge_status=discharge_status,
                 date_of_death=date_of_death,
-                created_by=current_user.id
+                created_by=current_user.id,
+                updated_by=current_user.id
             )
             db.session.add(r)
             db.session.commit()
@@ -406,7 +407,7 @@ def create_app(config_class=Config):
             except Exception:
                 app.logger.exception('Failed to write audit log for record.create')
             app.logger.info(f'Record created: {r.id} by {current_user.username}')
-            flash('Record added')
+            flash(f'Запис #{r.id} ({r.full_name}) успішно додано', 'success')
             # preserve filters if sent with form (check prefixed filter_* fields to avoid shadowing actual inputs)
             params = {}
             for k in ('discharge_status', 'treating_physician', 'history'):
@@ -443,7 +444,7 @@ def create_app(config_class=Config):
 
             # validate presence of main fields (status is optional; only required when it is 'Помер')
             if not all([date_str, full_name, discharge_department, treating_physician, history, k_days, discharge_status]):
-                flash('Будь ласка, заповніть усі обов\'язкові поля')
+                flash('Будь ласка, заповніть усі обов\'язкові поля', 'warning')
                 return redirect(url_for('edit_record', record_id=record_id))
 
             from datetime import datetime
@@ -455,13 +456,13 @@ def create_app(config_class=Config):
                 except ValueError:
                     continue
             if date_of_discharge is None:
-                flash('Date of discharge must be in DD.MM.YYYY or YYYY-MM-DD format')
+                flash('Дата виписки повинна бути у форматі ДД.ММ.РРРР або РРРР-ММ-ДД', 'warning')
                 return redirect(url_for('edit_record', record_id=record_id))
 
             try:
                 k_days_int = int(k_days)
             except ValueError:
-                flash('"К днів" must be an integer')
+                flash('"К днів" повинно бути цілим числом', 'warning')
                 return redirect(url_for('edit_record', record_id=record_id))
 
             # date_of_death handling
@@ -476,11 +477,11 @@ def create_app(config_class=Config):
                     except ValueError:
                         continue
                 if date_of_death is None:
-                    flash('Date of death must be in DD.MM.YYYY or YYYY-MM-DD format')
+                    flash('Дата смерті повинна бути у форматі ДД.ММ.РРРР або РРРР-ММ-ДД', 'warning')
                     return redirect(url_for('edit_record', record_id=record_id))
 
                 if date_of_death < date_of_discharge:
-                    flash('Дата смерті не може бути раніше дати виписки')
+                    flash('Дата смерті не може бути раніше дати виписки', 'warning')
                     return redirect(url_for('edit_record', record_id=record_id))
 
             # apply changes
@@ -493,6 +494,8 @@ def create_app(config_class=Config):
             r.discharge_status = discharge_status
             r.date_of_death = date_of_death
             r.comment = comment
+            r.updated_by = current_user.id
+            r.updated_at = datetime.utcnow()
 
             db.session.commit()
             try:
@@ -500,7 +503,7 @@ def create_app(config_class=Config):
             except Exception:
                 app.logger.exception('Failed to write audit log for record.update')
             app.logger.info(f'Record updated: {r.id} by {current_user.username}')
-            flash('Record updated')
+            flash(f'Запис #{r.id} ({r.full_name}) успішно оновлено', 'success')
             params = {}
             for k in ('discharge_status', 'treating_physician', 'history'):
                 v = request.form.get(f'filter_{k}', '').strip()
@@ -528,7 +531,7 @@ def create_app(config_class=Config):
         except Exception:
             app.logger.exception('Failed to write audit log for record.delete')
         app.logger.info(f'Record deleted: {r.id} by {current_user.username}')
-        flash('Record deleted')
+        flash(f'Запис #{r.id} ({r.full_name}) видалено', 'danger')
         # preserve filters from form (if any)
         params = {}
         for k in ('discharge_status', 'treating_physician', 'discharge_department', 'history', 'full_name'):
@@ -554,10 +557,10 @@ def create_app(config_class=Config):
         role = request.form.get('role', '').strip() or 'operator'
 
         if not username or not password:
-            flash('Username and password are required')
+            flash('Ім\'я користувача та пароль обов\'язкові', 'warning')
             return redirect(url_for('admin_users'))
         if User.query.filter_by(username=username).first():
-            flash('Username already exists')
+            flash('Ім\'я користувача вже зайнято', 'warning')
             return redirect(url_for('admin_users'))
 
         u = User(username=username, role=role)
@@ -570,7 +573,7 @@ def create_app(config_class=Config):
         except Exception:
             app.logger.exception('Failed to write audit log for user.create')
         app.logger.info(f'User created: {username} by {current_user.username}')
-        flash(f'User {username} created')
+        flash(f'Користувача {username} ({role}) успішно створено', 'success')
         return redirect(url_for('admin_users'))
 
     @app.route('/admin/users/<int:user_id>/edit', methods=['GET', 'POST'])
@@ -584,13 +587,13 @@ def create_app(config_class=Config):
             role = request.form.get('role', '').strip()
 
             if not username:
-                flash('Ім\'я користувача обов\'язкове')
+                flash('Ім\'я користувача обов\'язкове', 'warning')
                 return redirect(url_for('admin_edit_user', user_id=user_id))
 
             # Check if username is taken by another user
             existing = User.query.filter_by(username=username).first()
             if existing and existing.id != user_id:
-                flash('Ім\'я користувача вже зайнято')
+                flash('Ім\'я користувача вже зайнято', 'warning')
                 return redirect(url_for('admin_edit_user', user_id=user_id))
 
             # Update username
@@ -615,7 +618,7 @@ def create_app(config_class=Config):
             except Exception:
                 app.logger.exception('Failed to write audit log for user.update')
             app.logger.info(f'User updated: {u.username} by {current_user.username}')
-            flash(f'Користувача {u.username} оновлено')
+            flash(f'Користувача {u.username} успішно оновлено', 'success')
             return redirect(url_for('admin_users'))
 
         return render_template('edit_user.html', user=u)
@@ -624,7 +627,7 @@ def create_app(config_class=Config):
     @role_required('admin')
     def admin_delete_user(user_id):
         if current_user.id == user_id:
-            flash('You cannot delete yourself')
+            flash('Ви не можете видалити самого себе', 'danger')
             return redirect(url_for('admin_users'))
         u = User.query.get_or_404(user_id)
         db.session.delete(u)
@@ -634,7 +637,7 @@ def create_app(config_class=Config):
         except Exception:
             app.logger.exception('Failed to write audit log for user.delete')
         app.logger.info(f'User deleted: {u.username} by {current_user.username}')
-        flash(f'User {u.username} deleted')
+        flash(f'Користувача {u.username} видалено', 'danger')
         return redirect(url_for('admin_users'))
 
     # Departments management
@@ -649,10 +652,10 @@ def create_app(config_class=Config):
     def admin_create_department():
         name = request.form.get('name', '').strip()
         if not name:
-            flash('Name is required')
+            flash('Назва відділення обов\'язкова', 'warning')
             return redirect(url_for('admin_departments'))
         if Department.query.filter_by(name=name).first():
-            flash('Department already exists')
+            flash('Відділення з такою назвою вже існує', 'warning')
             return redirect(url_for('admin_departments'))
         d = Department(name=name)
         db.session.add(d)
@@ -662,7 +665,7 @@ def create_app(config_class=Config):
         except Exception:
             app.logger.exception('Failed to write audit log for department.create')
         app.logger.info(f'Department created: {name} by {current_user.username}')
-        flash(f'Department {name} created')
+        flash(f'Відділення "{name}" успішно створено', 'success')
         return redirect(url_for('admin_departments'))
 
     @app.route('/admin/departments/<int:dept_id>/delete', methods=['POST'])
@@ -672,7 +675,7 @@ def create_app(config_class=Config):
         # prevent deletion if department in use
         in_use = Record.query.filter(Record.discharge_department == d.name).count()
         if in_use:
-            flash('Cannot delete department which is in use by records')
+            flash(f'Неможливо видалити відділення "{d.name}" - використовується в {in_use} записах', 'danger')
             return redirect(url_for('admin_departments'))
         db.session.delete(d)
         db.session.commit()
@@ -681,7 +684,7 @@ def create_app(config_class=Config):
         except Exception:
             app.logger.exception('Failed to write audit log for department.delete')
         app.logger.info(f'Department deleted: {d.name} by {current_user.username}')
-        flash(f'Department {d.name} deleted')
+        flash(f'Відділення "{d.name}" видалено', 'danger')
         return redirect(url_for('admin_departments'))
 
     @app.cli.command('init-db')

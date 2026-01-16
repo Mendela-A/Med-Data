@@ -45,20 +45,39 @@
     </div>
   </nav>
 
-  {% with messages = get_flashed_messages(with_categories=true) %}
-    {% if messages %}
-      <div class="container">
+  <!-- Toast notifications container -->
+  <div class="toast-container position-fixed top-0 end-0 p-3" style="z-index: 9999;">
+    {% with messages = get_flashed_messages(with_categories=true) %}
+      {% if messages %}
         {% for category, message in messages %}
-          {% set bs = 'info' %}
-          {% if category == 'success' %}{% set bs = 'success' %}{% elif category == 'error' or category == 'danger' %}{% set bs = 'danger' %}{% elif category == 'warning' %}{% set bs = 'warning' %}{% endif %}
-          <div class="alert alert-{{ bs }} alert-dismissible fade show" role="alert">
-            {{ message }}
-            <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
+          {% set bs_bg = 'bg-info' %}
+          {% set icon = 'bi-info-circle' %}
+          {% set delay = '4000' %}
+          {% if category == 'success' %}
+            {% set bs_bg = 'bg-success' %}
+            {% set icon = 'bi-check-circle' %}
+            {% set delay = '3000' %}
+          {% elif category == 'error' or category == 'danger' %}
+            {% set bs_bg = 'bg-danger' %}
+            {% set icon = 'bi-exclamation-circle' %}
+            {% set delay = '7000' %}
+          {% elif category == 'warning' %}
+            {% set bs_bg = 'bg-warning' %}
+            {% set icon = 'bi-exclamation-triangle' %}
+            {% set delay = '5000' %}
+          {% endif %}
+          <div class="toast align-items-center text-white {{ bs_bg }} border-0" role="alert" aria-live="assertive" aria-atomic="true" data-bs-delay="{{ delay }}">
+            <div class="d-flex">
+              <div class="toast-body">
+                <i class="bi {{ icon }} me-2"></i>{{ message }}
+              </div>
+              <button type="button" class="btn-close btn-close-white me-2 m-auto" data-bs-dismiss="toast" aria-label="Close"></button>
+            </div>
           </div>
         {% endfor %}
-      </div>
-    {% endif %}
-  {% endwith %}
+      {% endif %}
+    {% endwith %}
+  </div>
 
   <div class="{% block container_class %}container{% endblock %}">
     <nav aria-label="breadcrumb">
@@ -72,5 +91,17 @@
   </div>
 
   <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
+  <script>
+    // Initialize and show all toast notifications
+    document.addEventListener('DOMContentLoaded', function() {
+      const toastElements = document.querySelectorAll('.toast');
+      toastElements.forEach(function(toastEl) {
+        const toast = new bootstrap.Toast(toastEl, {
+          autohide: true
+        });
+        toast.show();
+      });
+    });
+  </script>
 </body>
 </html>

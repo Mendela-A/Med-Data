@@ -6,7 +6,9 @@
       "Bash(python:*)",
       "Bash(./venv/Scripts/python.exe:*)",
       "Bash(docker exec:*)",
-      "Bash(docker compose:*)"
+      "Bash(docker compose:*)",
+      "Bash(docker cp:*)",
+      "Bash(docker logs:*)"
     ]
   }
 }

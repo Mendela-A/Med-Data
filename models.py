@@ -31,7 +31,7 @@ class User(UserMixin, db.Model):
     password_hash = db.Column(db.String(128), nullable=False)
     role = db.Column(db.String(20), nullable=False, default='operator')  # operator/editor/admin
 
-    records = db.relationship('Record', backref='creator', lazy=True)
+    records = db.relationship('Record', foreign_keys='Record.created_by', backref='creator', lazy=True)
 
     def set_password(self, password):
         # bcrypt returns bytes, store as decoded UTF-8 string
@@ -57,6 +57,10 @@ class Record(db.Model):
     comment = db.Column(db.Text, nullable=True)  # "коментар"
     created_by = db.Column(db.Integer, db.ForeignKey('users.id'), nullable=True)
     created_at = db.Column(db.DateTime, default=datetime.utcnow)
+    updated_by = db.Column(db.Integer, db.ForeignKey('users.id'), nullable=True)
+    updated_at = db.Column(db.DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
+
+    updater = db.relationship('User', foreign_keys=[updated_by], backref='updated_records')
 
     def __repr__(self):
         return f"<Record {self.id} {self.full_name}>"

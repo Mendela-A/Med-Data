@@ -114,8 +114,8 @@
                 <th>Дата смерті</th>
                 <th>Коментар</th>
                 {% if current_user.role in ['editor', 'admin'] %}
-                  <th>Створив</th>
-                  <th>Створено</th>
+                  <th>Змінив</th>
+                  <th>Змінено</th>
                   <th>Дія</th>
                 {% endif %}
               </tr>
@@ -152,8 +152,8 @@
             </td>
             <td>{{ r.comment or '' }}</td>
             {% if current_user.role in ['editor', 'admin'] %}
-              <td>{{ r.creator.username if r.creator else r.created_by }}</td>
-              <td>{{ r.created_at.strftime('%d.%m.%Y %H:%M') if r.created_at else '' }}</td>
+              <td>{{ r.updater.username if r.updater else (r.creator.username if r.creator else r.updated_by or r.created_by) }}</td>
+              <td>{{ r.updated_at.strftime('%d.%m.%Y %H:%M') if r.updated_at else (r.created_at.strftime('%d.%m.%Y %H:%M') if r.created_at else '') }}</td>
               <td class="action-cell">
                 <div class="action-buttons-container">
                   <a class="btn btn-xs btn-outline-primary" href="{{ url_for('edit_record', record_id=r.id, discharge_status=selected_status, treating_physician=selected_physician, discharge_department=selected_department, history=history_q, full_name=full_name_q, has_death_date='1' if has_death_date else '') }}" title="Редагувати">
