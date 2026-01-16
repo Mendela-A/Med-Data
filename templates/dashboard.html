@@ -145,7 +145,11 @@
                 —
               {% endif %}
             </td>
-            <td>{{ r.date_of_death.strftime('%d.%m.%Y') if r.date_of_death else '' }}</td>
+            <td>
+              {% if r.date_of_death %}
+                <span class="badge bg-danger">{{ r.date_of_death.strftime('%d.%m.%Y') }}</span>
+              {% endif %}
+            </td>
             <td>{{ r.comment or '' }}</td>
             {% if current_user.role in ['editor', 'admin'] %}
               <td>{{ r.creator.username if r.creator else r.created_by }}</td>
