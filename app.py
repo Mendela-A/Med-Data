@@ -270,14 +270,6 @@ def create_app(config_class=Config):
 
         return render_template('dashboard.html', records=records, pagination=pagination, statuses=statuses, physicians=physicians, departments=departments, selected_status=selected_status, selected_physician=selected_physician, selected_department=selected_department, history_q=history_q, full_name_q=full_name_q, count=count, month_filter_value=month_filter_value, selected_year=selected_year, selected_month=selected_month, show_all=show_all, has_death_date=has_death_date, count_discharged=count_discharged, count_processing=count_processing, count_violations=count_violations)
 
-    @app.route('/export-page')
-    @role_required('editor')
-    def export_page():
-        # Get dropdown values for filters (cached)
-        physicians = get_distinct_physicians()
-        departments = get_distinct_departments()
-        return render_template('export.html', physicians=physicians, departments=departments)
-
     @app.route('/export', methods=['POST'])
     @role_required('editor')
     def export():
@@ -300,34 +292,18 @@ def create_app(config_class=Config):
             flash('Дата "з" не може бути пізніше дати "по"', 'warning')
             return redirect(url_for('index'))
 
-        # Build query
+        # Build query - only date range filter
         q = Record.query.filter(
             Record.date_of_discharge != None,
             Record.date_of_discharge >= from_d,
             Record.date_of_discharge <= to_d,
         )
-        # apply active filters if provided (discharge_status, treating_physician, discharge_department, history, full_name)
-        discharge_status = request.form.get('discharge_status', '').strip()
-        treating_physician = request.form.get('treating_physician', '').strip()
-        discharge_department = request.form.get('discharge_department', '').strip()
-        history_q = request.form.get('history', '').strip()
-        full_name_q = request.form.get('full_name', '').strip()
-        if discharge_status:
-            q = q.filter(Record.discharge_status == discharge_status)
-        if treating_physician:
-            q = q.filter(Record.treating_physician == treating_physician)
-        if discharge_department:
-            q = q.filter(Record.discharge_department == discharge_department)
-        if history_q:
-            q = q.filter(Record.history.contains(history_q))
-        if full_name_q:
-            q = q.filter(Record.full_name.ilike(f'%{full_name_q}%'))
 
         # Count total records first (fast, uses indexes)
         total_count = q.count()
 
         if total_count == 0:
-            flash('Записів не знайдено для обраного діапазону дат та фільтрів', 'warning')
+            flash('Записів не знайдено для обраного діапазону дат', 'warning')
             return redirect(url_for('index'))
 
         # create excel with openpyxl
