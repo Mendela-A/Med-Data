@@ -1,5 +1,5 @@
 import click
-from flask import Flask, render_template, redirect, url_for, request, flash, send_file
+from flask import Flask, render_template, redirect, url_for, request, flash, send_file, jsonify
 from flask_migrate import Migrate
 from flask_caching import Cache
 from config import Config
@@ -560,6 +560,9 @@ def create_app(config_class=Config):
     def api_add_record():
         """AJAX endpoint for adding records with support for 'save and add another'"""
         from datetime import datetime
+
+        app.logger.info(f'API add_record called by {current_user.username}')
+        app.logger.debug(f'Form data: {dict(request.form)}')
 
         date_str = request.form.get('date_of_discharge', '').strip()
         full_name = request.form.get('full_name', '').strip()

@@ -297,6 +297,7 @@
     });
   </script>
 
+  {% if current_user.role == 'operator' %}
   <!-- Add Record Modal -->
   <div class="modal fade" id="addRecordModal" tabindex="-1" aria-labelledby="addRecordModalLabel" aria-hidden="true">
     <div class="modal-dialog modal-lg">
@@ -340,7 +341,7 @@
                 <select class="form-select" id="discharge_department" name="discharge_department">
                   <option value="">(не вказано)</option>
                   {% for d in departments %}
-                    <option value="{{ d.name }}">{{ d.name }}</option>
+                    <option value="{{ d }}">{{ d }}</option>
                   {% endfor %}
                 </select>
               </div>
@@ -394,161 +395,175 @@
       </div>
     </div>
   </div>
+  {% endif %}
+{% endblock %}
 
-  <script>
-    // Add Record Modal functionality
-    (function() {
-      const modal = document.getElementById('addRecordModal');
-      const form = document.getElementById('addRecordForm');
-      const successAlert = document.getElementById('addRecordSuccess');
-      const errorAlert = document.getElementById('addRecordError');
-      const successMessage = document.getElementById('successMessage');
-      const errorMessage = document.getElementById('errorMessage');
-      const counterDiv = document.getElementById('recordCounter');
-      const counterValue = document.getElementById('counterValue');
-      const keepFieldsCheckbox = document.getElementById('keepFields');
+{% block scripts %}
+{% if current_user.role == 'operator' %}
+<script>
+  // Add Record Modal functionality
+  (function() {
+    const modal = document.getElementById('addRecordModal');
+    const form = document.getElementById('addRecordForm');
+    const successAlert = document.getElementById('addRecordSuccess');
+    const errorAlert = document.getElementById('addRecordError');
+    const successMessage = document.getElementById('successMessage');
+    const errorMessage = document.getElementById('errorMessage');
+    const counterDiv = document.getElementById('recordCounter');
+    const counterValue = document.getElementById('counterValue');
+    const keepFieldsCheckbox = document.getElementById('keepFields');
 
-      let recordCount = 0;
+    // Exit if modal doesn't exist (user might not have permission)
+    if (!modal || !form) {
+      return;
+    }
 
-      // Load keep fields preference from localStorage
-      const keepFieldsPref = localStorage.getItem('keepFields');
-      if (keepFieldsPref !== null) {
-        keepFieldsCheckbox.checked = keepFieldsPref === 'true';
-      }
+    let recordCount = 0;
 
-      // Save preference when changed
-      keepFieldsCheckbox.addEventListener('change', function() {
-        localStorage.setItem('keepFields', this.checked);
-      });
+    // Load keep fields preference from localStorage
+    const keepFieldsPref = localStorage.getItem('keepFields');
+    if (keepFieldsPref !== null) {
+      keepFieldsCheckbox.checked = keepFieldsPref === 'true';
+    }
 
-      // Reset form and counter when modal is closed completely
-      if (modal) {
-        modal.addEventListener('hidden.bs.modal', function() {
-          form.reset();
-          successAlert.style.display = 'none';
-          successAlert.classList.remove('show');
-          errorAlert.style.display = 'none';
-          errorAlert.classList.remove('show');
-          counterDiv.style.display = 'none';
-          recordCount = 0;
-        });
+    // Save preference when changed
+    keepFieldsCheckbox.addEventListener('change', function() {
+      localStorage.setItem('keepFields', this.checked);
+    });
 
-        // Focus on first input when modal opens
-        modal.addEventListener('shown.bs.modal', function() {
-          document.getElementById('full_name').focus();
-        });
-      }
+    // Reset form and counter when modal is closed completely
+    modal.addEventListener('hidden.bs.modal', function() {
+      form.reset();
+      successAlert.style.display = 'none';
+      successAlert.classList.remove('show');
+      errorAlert.style.display = 'none';
+      errorAlert.classList.remove('show');
+      counterDiv.style.display = 'none';
+      recordCount = 0;
+    });
 
-      function showSuccess(message) {
-        successMessage.textContent = message;
-        successAlert.style.display = 'block';
-        successAlert.classList.add('show');
-        errorAlert.style.display = 'none';
-        errorAlert.classList.remove('show');
+    // Focus on first input when modal opens
+    modal.addEventListener('shown.bs.modal', function() {
+      document.getElementById('full_name').focus();
+    });
 
-        // Auto-hide after 3 seconds
-        setTimeout(function() {
-          successAlert.classList.remove('show');
-          setTimeout(function() {
-            successAlert.style.display = 'none';
-          }, 150);
-        }, 3000);
-      }
+    function showSuccess(message) {
+      successMessage.textContent = message;
+      successAlert.style.display = 'block';
+      successAlert.classList.add('show');
+      errorAlert.style.display = 'none';
+      errorAlert.classList.remove('show');
 
-      function showError(message) {
-        errorMessage.textContent = message;
-        errorAlert.style.display = 'block';
-        errorAlert.classList.add('show');
-        successAlert.style.display = 'none';
+      // Auto-hide after 3 seconds
+      setTimeout(function() {
         successAlert.classList.remove('show');
+        setTimeout(function() {
+          successAlert.style.display = 'none';
+        }, 150);
+      }, 3000);
+    }
+
+    function showError(message) {
+      errorMessage.textContent = message;
+      errorAlert.style.display = 'block';
+      errorAlert.classList.add('show');
+      successAlert.style.display = 'none';
+      successAlert.classList.remove('show');
+    }
+
+    function updateCounter() {
+      recordCount++;
+      counterValue.textContent = recordCount;
+      counterDiv.style.display = 'block';
+    }
+
+    function clearForm(keepFields) {
+      const department = form.querySelector('#discharge_department').value;
+      const physician = form.querySelector('#treating_physician').value;
+
+      form.reset();
+
+      // Restore fields if needed
+      if (keepFields && keepFieldsCheckbox.checked) {
+        form.querySelector('#discharge_department').value = department;
+        form.querySelector('#treating_physician').value = physician;
       }
 
-      function updateCounter() {
-        recordCount++;
-        counterValue.textContent = recordCount;
-        counterDiv.style.display = 'block';
-      }
+      // Focus on first input
+      document.getElementById('full_name').focus();
+    }
 
-      function clearForm(keepFields) {
-        const department = form.querySelector('#discharge_department').value;
-        const physician = form.querySelector('#treating_physician').value;
+    function submitForm(closeAfter) {
+      const formData = new FormData(form);
 
-        form.reset();
+      // Show loading state
+      const saveBtn = closeAfter ? document.getElementById('saveAndClose') : document.getElementById('saveAndAddAnother');
+      const originalText = saveBtn.innerHTML;
+      saveBtn.innerHTML = '<span class="spinner-border spinner-border-sm me-2"></span>Збереження...';
+      saveBtn.disabled = true;
 
-        // Restore fields if needed
-        if (keepFields && keepFieldsCheckbox.checked) {
-          form.querySelector('#discharge_department').value = department;
-          form.querySelector('#treating_physician').value = physician;
+      fetch('{{ url_for("api_add_record") }}', {
+        method: 'POST',
+        body: formData,
+        headers: {
+          'X-Requested-With': 'XMLHttpRequest'
         }
+      })
+      .then(response => response.json())
+      .then(data => {
+        saveBtn.innerHTML = originalText;
+        saveBtn.disabled = false;
 
-        // Focus on first input
-        document.getElementById('full_name').focus();
-      }
+        if (data.success) {
+          showSuccess(data.message);
+          updateCounter();
 
-      function submitForm(closeAfter) {
-        const formData = new FormData(form);
-
-        // Show loading state
-        const saveBtn = closeAfter ? document.getElementById('saveAndClose') : document.getElementById('saveAndAddAnother');
-        const originalText = saveBtn.innerHTML;
-        saveBtn.innerHTML = '<span class="spinner-border spinner-border-sm me-2"></span>Збереження...';
-        saveBtn.disabled = true;
-
-        fetch('{{ url_for("api_add_record") }}', {
-          method: 'POST',
-          body: formData,
-          headers: {
-            'X-Requested-With': 'XMLHttpRequest'
-          }
-        })
-        .then(response => response.json())
-        .then(data => {
-          saveBtn.innerHTML = originalText;
-          saveBtn.disabled = false;
-
-          if (data.success) {
-            showSuccess(data.message);
-            updateCounter();
-
-            if (closeAfter) {
-              // Close modal and reload page after short delay
-              setTimeout(function() {
-                bootstrap.Modal.getInstance(modal).hide();
-                location.reload();
-              }, 1000);
-            } else {
-              // Clear form but keep some fields
-              clearForm(true);
-            }
+          if (closeAfter) {
+            // Close modal and reload page after short delay
+            setTimeout(function() {
+              bootstrap.Modal.getInstance(modal).hide();
+              location.reload();
+            }, 1000);
           } else {
-            showError(data.error || 'Помилка при збереженні запису');
+            // Clear form but keep some fields
+            clearForm(true);
           }
-        })
-        .catch(error => {
-          saveBtn.innerHTML = originalText;
-          saveBtn.disabled = false;
-          showError('Помилка з'єднання з сервером');
-          console.error('Error:', error);
-        });
-      }
+        } else {
+          showError(data.error || 'Помилка при збереженні запису');
+        }
+      })
+      .catch(error => {
+        saveBtn.innerHTML = originalText;
+        saveBtn.disabled = false;
+        showError('Помилка з\'єднання з сервером');
+        console.error('Error:', error);
+      });
+    }
 
-      // Save and close button
-      document.getElementById('saveAndClose')?.addEventListener('click', function() {
+    // Save and close button
+    const saveAndCloseBtn = document.getElementById('saveAndClose');
+    if (saveAndCloseBtn) {
+      saveAndCloseBtn.addEventListener('click', function() {
         if (form.checkValidity()) {
           submitForm(true);
         } else {
           form.reportValidity();
         }
       });
+    }
 
-      // Save and add another button
-      document.getElementById('saveAndAddAnother')?.addEventListener('click', function() {
+    // Save and add another button
+    const saveAndAddAnotherBtn = document.getElementById('saveAndAddAnother');
+    if (saveAndAddAnotherBtn) {
+      saveAndAddAnotherBtn.addEventListener('click', function() {
         if (form.checkValidity()) {
           submitForm(false);
         } else {
           form.reportValidity();
         }
       });
-    })();
-  </script>
+    }
+  })();
+</script>
+{% endif %}
 {% endblock %}
