@@ -26,11 +26,13 @@
         <option value="operator" {% if user.role == 'operator' %}selected{% endif %}>operator</option>
         <option value="editor" {% if user.role == 'editor' %}selected{% endif %}>editor</option>
         <option value="admin" {% if user.role == 'admin' %}selected{% endif %}>admin</option>
+        <option value="viewer" {% if user.role == 'viewer' %}selected{% endif %}>viewer</option>
       </select>
       <div class="form-text">
         <strong>operator:</strong> може додавати записи<br>
         <strong>editor:</strong> може редагувати та експортувати записи<br>
-        <strong>admin:</strong> має повний доступ до системи
+        <strong>admin:</strong> має повний доступ до системи<br>
+        <strong>viewer:</strong> тільки перегляд записів та статистики
       </div>
     </div>
 

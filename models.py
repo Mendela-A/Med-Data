@@ -52,7 +52,7 @@ class User(UserMixin, db.Model):
     id = db.Column(db.Integer, primary_key=True)
     username = db.Column(db.String(80), unique=True, nullable=False, index=True)
     password_hash = db.Column(db.String(128), nullable=False)
-    role = db.Column(db.String(20), nullable=False, default='operator')  # operator/editor/admin
+    role = db.Column(db.String(20), nullable=False, default='operator')  # operator/editor/admin/viewer
 
     records = db.relationship('Record', foreign_keys='Record.created_by', backref='creator', lazy=True)
 

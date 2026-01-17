@@ -82,15 +82,19 @@ def create_app(config_class=Config):
         return User.query.get(int(user_id))
 
     from functools import wraps
-    def role_required(role):
-        """Decorator to require a specific role or admin."""
+    def role_required(*roles):
+        """Decorator to require specific role(s). Admin always has access unless explicitly excluded."""
         def decorator(f):
             @wraps(f)
             def decorated_function(*args, **kwargs):
                 if not current_user.is_authenticated:
                     return redirect(url_for('login'))
-                # admin has all rights
-                if getattr(current_user, 'role', None) != role and getattr(current_user, 'role', None) != 'admin':
+                user_role = getattr(current_user, 'role', None)
+                # admin has all rights (unless roles explicitly exclude it)
+                allowed_roles = list(roles)
+                if 'admin' not in allowed_roles and user_role == 'admin':
+                    allowed_roles.append('admin')
+                if user_role not in allowed_roles:
                     flash('Доступ заборонено', 'danger')
                     return redirect(url_for('index'))
                 return f(*args, **kwargs)
@@ -126,6 +130,10 @@ def create_app(config_class=Config):
     @app.route('/')
     @login_required
     def index():
+        # Redirect viewer to statistics page ONLY if no filters applied
+        if current_user.role == 'viewer' and not request.args:
+            return redirect(url_for('admin_statistics'))
+
         from datetime import datetime, timezone, timedelta
         # Use Kyiv timezone (UTC+2, or UTC+3 during DST) for correct month detection
         # Simple approach: use UTC+2 as base (covers most of the year)
@@ -1005,7 +1013,7 @@ def create_app(config_class=Config):
 
     # Statistics page
     @app.route('/admin/statistics')
-    @role_required('admin')
+    @role_required('admin', 'viewer')
     def admin_statistics():
         from datetime import datetime
         from sqlalchemy import extract, case
@@ -1168,6 +1176,27 @@ def create_app(config_class=Config):
             app.logger.exception('Failed to write audit log for create-admin')
         app.logger.info(f'Admin user created by CLI: {username}')
         click.echo(f'Created admin user {username}')
+
+    @app.cli.command('create-user')
+    @click.argument('username')
+    @click.argument('password')
+    @click.argument('role', type=click.Choice(['admin', 'editor', 'operator', 'viewer'], case_sensitive=False))
+    def create_user(username, password, role):
+        """Create a user with specified role: flask create-user <username> <password> <role>"""
+        if User.query.filter_by(username=username).first():
+            click.echo('User already exists.')
+            return
+        u = User(username=username, role=role.lower())
+        u.set_password(password)
+        db.session.add(u)
+        db.session.commit()
+        # audit (CLI-created)
+        try:
+            log_action(None, 'user.create', 'user', u.id, f'created by CLI with role={role}')
+        except Exception:
+            app.logger.exception('Failed to write audit log for create-user')
+        app.logger.info(f'User created by CLI: {username} with role {role}')
+        click.echo(f'Created {role} user {username}')
 
     @app.cli.command('backup-db')
     @click.option('--output', '-o', default=None, help='Output file path (default: data/backup_YYYYMMDD_HHMMSS.db)')
