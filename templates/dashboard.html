@@ -165,9 +165,23 @@
               <td>{{ r.updated_at.strftime('%d.%m.%Y %H:%M') if r.updated_at else (r.created_at.strftime('%d.%m.%Y %H:%M') if r.created_at else '') }}</td>
               <td class="action-cell">
                 <div class="action-buttons-container">
-                  <a class="btn btn-xs btn-outline-primary" href="{{ url_for('edit_record', record_id=r.id, discharge_status=selected_status, treating_physician=selected_physician, discharge_department=selected_department, history=history_q, full_name=full_name_q, has_death_date='1' if has_death_date else '') }}" title="Редагувати">
+                  <button
+                    class="btn btn-xs btn-outline-primary edit-record-btn"
+                    data-bs-toggle="modal"
+                    data-bs-target="#editRecordModal"
+                    data-record-id="{{ r.id }}"
+                    data-full-name="{{ r.full_name }}"
+                    data-date-of-discharge="{{ r.date_of_discharge.strftime('%Y-%m-%d') if r.date_of_discharge else '' }}"
+                    data-discharge-department="{{ r.discharge_department or '' }}"
+                    data-treating-physician="{{ r.treating_physician or '' }}"
+                    data-history="{{ r.history or '' }}"
+                    data-k-days="{{ r.k_days if r.k_days is not none else '' }}"
+                    data-discharge-status="{{ r.discharge_status or '' }}"
+                    data-date-of-death="{{ r.date_of_death.strftime('%Y-%m-%d') if r.date_of_death else '' }}"
+                    data-comment="{{ r.comment or '' }}"
+                    title="Редагувати">
                     <i class="bi bi-pencil"></i>Змінити
-                  </a>
+                  </button>
                   {% if current_user.role == 'admin' %}
                     <form method="post" action="{{ url_for('delete_record', record_id=r.id) }}" class="d-inline" onsubmit="return confirm('Ви справді хочете видалити запис #{{ r.id }}?');">
                       <input type="hidden" name="discharge_status" value="{{ selected_status }}">
@@ -396,6 +410,102 @@
     </div>
   </div>
   {% endif %}
+
+  {% if current_user.role in ['editor', 'admin'] %}
+  <!-- Edit Record Modal -->
+  <div class="modal fade" id="editRecordModal" tabindex="-1" aria-labelledby="editRecordModalLabel" aria-hidden="true">
+    <div class="modal-dialog modal-lg">
+      <div class="modal-content">
+        <div class="modal-header">
+          <h5 class="modal-title" id="editRecordModalLabel">Редагувати запис</h5>
+          <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+        </div>
+        <div class="modal-body">
+          <!-- Success alert (hidden by default) -->
+          <div id="editRecordSuccess" class="alert alert-success alert-dismissible fade" role="alert" style="display: none;">
+            <i class="bi bi-check-circle-fill me-2"></i><span id="editSuccessMessage"></span>
+            <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
+          </div>
+
+          <!-- Error alert (hidden by default) -->
+          <div id="editRecordError" class="alert alert-danger alert-dismissible fade" role="alert" style="display: none;">
+            <i class="bi bi-exclamation-triangle-fill me-2"></i><span id="editErrorMessage"></span>
+            <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
+          </div>
+
+          <form id="editRecordForm">
+            <input type="hidden" id="edit_record_id" name="record_id">
+            <div class="row g-3">
+              <div class="col-md-6">
+                <label for="edit_full_name" class="form-label">ПІБ <span class="text-danger">*</span></label>
+                <input type="text" class="form-control" id="edit_full_name" name="full_name" maxlength="200" required>
+              </div>
+
+              <div class="col-md-6">
+                <label for="edit_date_of_discharge" class="form-label">Дата виписки <span class="text-danger">*</span></label>
+                <input type="date" class="form-control" id="edit_date_of_discharge" name="date_of_discharge" required>
+              </div>
+
+              <div class="col-md-6">
+                <label for="edit_discharge_department" class="form-label">Відділення <span class="text-danger">*</span></label>
+                <select class="form-select" id="edit_discharge_department" name="discharge_department" required>
+                  <option value="">(не вказано)</option>
+                  {% for d in departments %}
+                    <option value="{{ d }}">{{ d }}</option>
+                  {% endfor %}
+                </select>
+              </div>
+
+              <div class="col-md-6">
+                <label for="edit_treating_physician" class="form-label">Лікуючий лікар <span class="text-danger">*</span></label>
+                <input type="text" class="form-control" id="edit_treating_physician" name="treating_physician" list="physicians-list-edit-modal" maxlength="200" required>
+                <datalist id="physicians-list-edit-modal">
+                  {% for p in physicians %}
+                    <option value="{{ p }}">
+                  {% endfor %}
+                </datalist>
+              </div>
+
+              <div class="col-md-6">
+                <label for="edit_history" class="form-label">Історія <span class="text-danger">*</span></label>
+                <input type="text" class="form-control" id="edit_history" name="history" maxlength="6" required>
+              </div>
+
+              <div class="col-md-6">
+                <label for="edit_k_days" class="form-label">К днів <span class="text-danger">*</span></label>
+                <input type="number" class="form-control" id="edit_k_days" name="k_days" min="0" required>
+              </div>
+
+              <div class="col-md-6">
+                <label for="edit_discharge_status" class="form-label">Статус виписки <span class="text-danger">*</span></label>
+                <select class="form-select" id="edit_discharge_status" name="discharge_status" required>
+                  <option value="">Оберіть статус</option>
+                  <option value="Виписаний">Виписаний</option>
+                  <option value="Опрацьовується">Опрацьовується</option>
+                  <option value="Порушені вимоги">Порушені вимоги</option>
+                </select>
+              </div>
+
+              <div class="col-md-6">
+                <label for="edit_date_of_death" class="form-label">Дата смерті</label>
+                <input type="date" class="form-control" id="edit_date_of_death" name="date_of_death">
+              </div>
+
+              <div class="col-12">
+                <label for="edit_comment" class="form-label">Коментар</label>
+                <textarea class="form-control" id="edit_comment" name="comment" rows="2"></textarea>
+              </div>
+            </div>
+          </form>
+        </div>
+        <div class="modal-footer">
+          <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Скасувати</button>
+          <button type="button" class="btn btn-primary" id="saveEditRecord">Зберегти</button>
+        </div>
+      </div>
+    </div>
+  </div>
+  {% endif %}
 {% endblock %}
 
 {% block scripts %}
@@ -558,6 +668,143 @@
       saveAndAddAnotherBtn.addEventListener('click', function() {
         if (form.checkValidity()) {
           submitForm(false);
+        } else {
+          form.reportValidity();
+        }
+      });
+    }
+  })();
+</script>
+{% endif %}
+
+{% if current_user.role in ['editor', 'admin'] %}
+<script>
+  // Edit Record Modal functionality
+  (function() {
+    const modal = document.getElementById('editRecordModal');
+    const form = document.getElementById('editRecordForm');
+    const successAlert = document.getElementById('editRecordSuccess');
+    const errorAlert = document.getElementById('editRecordError');
+    const successMessage = document.getElementById('editSuccessMessage');
+    const errorMessage = document.getElementById('editErrorMessage');
+
+    // Exit if modal doesn't exist
+    if (!modal || !form) {
+      return;
+    }
+
+    // Handle edit button clicks
+    document.addEventListener('click', function(e) {
+      const editBtn = e.target.closest('.edit-record-btn');
+      if (!editBtn) return;
+
+      // Load data from button's data attributes
+      const recordId = editBtn.dataset.recordId;
+      const fullName = editBtn.dataset.fullName;
+      const dateOfDischarge = editBtn.dataset.dateOfDischarge;
+      const dischargeDepartment = editBtn.dataset.dischargeDepartment;
+      const treatingPhysician = editBtn.dataset.treatingPhysician;
+      const history = editBtn.dataset.history;
+      const kDays = editBtn.dataset.kDays;
+      const dischargeStatus = editBtn.dataset.dischargeStatus;
+      const dateOfDeath = editBtn.dataset.dateOfDeath;
+      const comment = editBtn.dataset.comment;
+
+      // Populate form fields
+      document.getElementById('edit_record_id').value = recordId;
+      document.getElementById('edit_full_name').value = fullName;
+      document.getElementById('edit_date_of_discharge').value = dateOfDischarge;
+      document.getElementById('edit_discharge_department').value = dischargeDepartment;
+      document.getElementById('edit_treating_physician').value = treatingPhysician;
+      document.getElementById('edit_history').value = history;
+      document.getElementById('edit_k_days').value = kDays;
+      document.getElementById('edit_discharge_status').value = dischargeStatus;
+      document.getElementById('edit_date_of_death').value = dateOfDeath;
+      document.getElementById('edit_comment').value = comment;
+
+      // Update modal title
+      document.getElementById('editRecordModalLabel').textContent = `Редагувати запис #${recordId}`;
+
+      // Clear alerts
+      successAlert.style.display = 'none';
+      successAlert.classList.remove('show');
+      errorAlert.style.display = 'none';
+      errorAlert.classList.remove('show');
+    });
+
+    // Reset form when modal is closed
+    modal.addEventListener('hidden.bs.modal', function() {
+      form.reset();
+      successAlert.style.display = 'none';
+      successAlert.classList.remove('show');
+      errorAlert.style.display = 'none';
+      errorAlert.classList.remove('show');
+    });
+
+    function showSuccess(message) {
+      successMessage.textContent = message;
+      successAlert.style.display = 'block';
+      successAlert.classList.add('show');
+      errorAlert.style.display = 'none';
+      errorAlert.classList.remove('show');
+    }
+
+    function showError(message) {
+      errorMessage.textContent = message;
+      errorAlert.style.display = 'block';
+      errorAlert.classList.add('show');
+      successAlert.style.display = 'none';
+      successAlert.classList.remove('show');
+    }
+
+    function submitEditForm() {
+      const formData = new FormData(form);
+      const recordId = document.getElementById('edit_record_id').value;
+
+      // Show loading state
+      const saveBtn = document.getElementById('saveEditRecord');
+      const originalText = saveBtn.innerHTML;
+      saveBtn.innerHTML = '<span class="spinner-border spinner-border-sm me-2"></span>Збереження...';
+      saveBtn.disabled = true;
+
+      fetch(`/api/records/${recordId}/edit`, {
+        method: 'POST',
+        body: formData,
+        headers: {
+          'X-Requested-With': 'XMLHttpRequest'
+        }
+      })
+      .then(response => response.json())
+      .then(data => {
+        saveBtn.innerHTML = originalText;
+        saveBtn.disabled = false;
+
+        if (data.success) {
+          showSuccess(data.message);
+
+          // Close modal and reload page after short delay
+          setTimeout(function() {
+            bootstrap.Modal.getInstance(modal).hide();
+            location.reload();
+          }, 1000);
+        } else {
+          showError(data.error || 'Помилка при оновленні запису');
+        }
+      })
+      .catch(error => {
+        saveBtn.innerHTML = originalText;
+        saveBtn.disabled = false;
+        showError('Помилка з\'єднання з сервером');
+        console.error('Error:', error);
+      });
+    }
+
+    // Save button
+    const saveEditBtn = document.getElementById('saveEditRecord');
+    if (saveEditBtn) {
+      saveEditBtn.addEventListener('click', function() {
+        if (form.checkValidity()) {
+          submitEditForm();
         } else {
           form.reportValidity();
         }

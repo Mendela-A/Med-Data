@@ -651,6 +651,102 @@ def create_app(config_class=Config):
             app.logger.exception('Failed to create record via AJAX')
             return jsonify({'success': False, 'error': 'Помилка при збереженні запису'}), 500
 
+    @app.route('/api/records/<int:record_id>/edit', methods=['POST'])
+    @role_required('editor')
+    def api_edit_record(record_id):
+        """AJAX endpoint for editing records"""
+        from datetime import datetime
+
+        app.logger.info(f'API edit_record called by {current_user.username} for record {record_id}')
+        app.logger.debug(f'Form data: {dict(request.form)}')
+
+        r = Record.query.get_or_404(record_id)
+
+        date_str = request.form.get('date_of_discharge', '').strip()
+        full_name = request.form.get('full_name', '').strip()
+        discharge_department = request.form.get('discharge_department', '').strip()
+        treating_physician = request.form.get('treating_physician', '').strip()
+        history = request.form.get('history', '').strip()
+        k_days = request.form.get('k_days', '').strip()
+        discharge_status = request.form.get('discharge_status', '').strip()
+        date_of_death_str = request.form.get('date_of_death', '').strip()
+        comment = request.form.get('comment', '').strip()
+
+        # Validate required fields
+        if not all([date_str, full_name, discharge_department, treating_physician, history, k_days, discharge_status]):
+            return jsonify({'success': False, 'error': 'Будь ласка, заповніть усі обов\'язкові поля'}), 400
+
+        # Parse date_of_discharge
+        date_of_discharge = None
+        for fmt in ('%d.%m.%Y', '%Y-%m-%d'):
+            try:
+                date_of_discharge = datetime.strptime(date_str, fmt).date()
+                break
+            except ValueError:
+                continue
+        if date_of_discharge is None:
+            return jsonify({'success': False, 'error': 'Невірний формат дати виписки'}), 400
+
+        # Validate k_days
+        try:
+            k_days_int = int(k_days)
+        except ValueError:
+            return jsonify({'success': False, 'error': '"К днів" повинно бути цілим числом'}), 400
+
+        # Parse date_of_death if provided
+        date_of_death = None
+        if date_of_death_str:
+            for fmt in ('%d.%m.%Y', '%Y-%m-%d'):
+                try:
+                    date_of_death = datetime.strptime(date_of_death_str, fmt).date()
+                    break
+                except ValueError:
+                    continue
+            if date_of_death is None:
+                return jsonify({'success': False, 'error': 'Невірний формат дати смерті'}), 400
+
+            if date_of_death < date_of_discharge:
+                return jsonify({'success': False, 'error': 'Дата смерті не може бути раніше дати виписки'}), 400
+
+        # Update record
+        try:
+            r.date_of_discharge = date_of_discharge
+            r.full_name = full_name
+            r.discharge_department = discharge_department
+            r.treating_physician = treating_physician
+            r.history = history
+            r.k_days = k_days_int
+            r.discharge_status = discharge_status
+            r.date_of_death = date_of_death
+            r.comment = comment or None
+            r.updated_by = current_user.id
+            r.updated_at = datetime.utcnow()
+
+            db.session.commit()
+
+            # Clear dropdown cache
+            clear_dropdown_cache()
+
+            # Audit log
+            try:
+                log_action(current_user.id, 'record.update', 'record', r.id, f'full_name={r.full_name}')
+            except Exception:
+                app.logger.exception('Failed to write audit log for record.update')
+
+            app.logger.info(f'Record updated via AJAX: {r.id} by {current_user.username}')
+
+            return jsonify({
+                'success': True,
+                'record_id': r.id,
+                'full_name': r.full_name,
+                'message': f'Запис "{r.full_name}" успішно оновлено'
+            })
+
+        except Exception as e:
+            db.session.rollback()
+            app.logger.exception('Failed to update record via AJAX')
+            return jsonify({'success': False, 'error': 'Помилка при оновленні запису'}), 500
+
     @app.route('/records/<int:record_id>/edit', methods=['GET', 'POST'])
     @role_required('editor')
     def edit_record(record_id):
