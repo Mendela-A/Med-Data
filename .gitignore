@@ -58,5 +58,6 @@ static/certs/*.p12
 
 #export data
 import_records.py
-
-
+test_performance.py
+migrate_add_updater.py
+add_departments.py
