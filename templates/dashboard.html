@@ -17,7 +17,13 @@
           Записи (поточний місяць)
         {% endif %}
       </h1>
-      <div class="d-flex gap-2 flex-wrap">
+      <div class="d-flex gap-2 flex-wrap align-items-center">
+        {% if request.args.get('from_stats') == '1' and current_user.role == 'admin' %}
+        <a href="{{ url_for('admin_statistics', month_year='%04d-%02d'|format(selected_year, selected_month) if selected_year and selected_month else '') }}"
+           class="btn btn-sm btn-outline-primary me-2">
+          <i class="bi bi-arrow-left me-1"></i>Повернутись до статистики
+        </a>
+        {% endif %}
         <span class="badge bg-primary">Всього: {{ count }}</span>
         <span class="badge bg-success">Виписаних: {{ count_discharged }}</span>
         <span class="badge bg-warning text-dark">Опрацьовується: {{ count_processing }}</span>

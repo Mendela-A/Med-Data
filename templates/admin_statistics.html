@@ -51,74 +51,44 @@
 <!-- KPI Cards -->
 <div class="row mb-4">
   <div class="col-md-3">
-    <div class="card">
-      <div class="card-body text-center">
-        <h5 class="card-title text-muted small">Всього записів</h5>
-        <h2 class="text-primary mb-0">{{ total_records }}</h2>
+    <a href="{{ url_for('index', month_filter='%04d-%02d'|format(selected_year, selected_month), from_stats='1') }}" class="text-decoration-none stat-card-link">
+      <div class="card stat-card">
+        <div class="card-body text-center">
+          <h5 class="card-title text-muted small">Всього записів</h5>
+          <h2 class="text-primary mb-0">{{ total_records }}</h2>
+        </div>
       </div>
-    </div>
+    </a>
   </div>
   <div class="col-md-3">
-    <div class="card">
-      <div class="card-body text-center">
-        <h5 class="card-title text-muted small">Опрацьовується</h5>
-        <h2 class="text-secondary mb-0">{{ status_distribution['Опрацьовується'] }}</h2>
+    <a href="{{ url_for('index', month_filter='%04d-%02d'|format(selected_year, selected_month), discharge_status='Опрацьовується', from_stats='1') }}" class="text-decoration-none stat-card-link">
+      <div class="card stat-card">
+        <div class="card-body text-center">
+          <h5 class="card-title text-muted small">Опрацьовується</h5>
+          <h2 class="text-secondary mb-0">{{ status_distribution['Опрацьовується'] }}</h2>
+        </div>
       </div>
-    </div>
+    </a>
   </div>
   <div class="col-md-3">
-    <div class="card">
-      <div class="card-body text-center">
-        <h5 class="card-title text-muted small">Виписаних</h5>
-        <h2 class="text-success mb-0">{{ status_distribution['Виписаний'] }}</h2>
+    <a href="{{ url_for('index', month_filter='%04d-%02d'|format(selected_year, selected_month), discharge_status='Виписаний', from_stats='1') }}" class="text-decoration-none stat-card-link">
+      <div class="card stat-card">
+        <div class="card-body text-center">
+          <h5 class="card-title text-muted small">Виписаних</h5>
+          <h2 class="text-success mb-0">{{ status_distribution['Виписаний'] }}</h2>
+        </div>
       </div>
-    </div>
+    </a>
   </div>
   <div class="col-md-3">
-    <div class="card">
-      <div class="card-body text-center">
-        <h5 class="card-title text-muted small">Померло</h5>
-        <h2 class="text-danger mb-0">{{ status_distribution['Помер'] }}</h2>
+    <a href="{{ url_for('index', month_filter='%04d-%02d'|format(selected_year, selected_month), has_death_date='1', from_stats='1') }}" class="text-decoration-none stat-card-link">
+      <div class="card stat-card">
+        <div class="card-body text-center">
+          <h5 class="card-title text-muted small">Померло</h5>
+          <h2 class="text-danger mb-0">{{ status_distribution['Помер'] }}</h2>
+        </div>
       </div>
-    </div>
-  </div>
-</div>
-
-<!-- Section 1: Records added per day -->
-<div class="card mb-4">
-  <div class="card-body">
-    <h5 class="card-title mb-3">
-      <i class="bi bi-calendar-plus me-2"></i>Записи додані за день
-    </h5>
-
-    {% if records_per_day %}
-    <div class="table-responsive">
-      <table class="table table-striped table-hover table-sm">
-        <thead class="table-light">
-          <tr>
-            <th>Дата</th>
-            <th class="text-end">Кількість записів</th>
-          </tr>
-        </thead>
-        <tbody>
-          {% for record in records_per_day %}
-          <tr>
-            <td>{{ record.date }}</td>
-            <td class="text-end"><strong>{{ record.count }}</strong></td>
-          </tr>
-          {% endfor %}
-        </tbody>
-        <tfoot class="table-light">
-          <tr>
-            <th>Всього</th>
-            <th class="text-end"><strong>{{ records_per_day | sum(attribute='count') }}</strong></th>
-          </tr>
-        </tfoot>
-      </table>
-    </div>
-    {% else %}
-    <p class="text-muted">Немає даних за поточний місяць</p>
-    {% endif %}
+    </a>
   </div>
 </div>
 
@@ -154,15 +124,33 @@
         <tbody id="statusByDeptBody">
           {% for dept in dept_list %}
           <tr>
-            <td><strong>{{ dept }}</strong></td>
-            <td class="text-center">
-              <span class="badge bg-secondary">{{ status_by_dept[dept]['Опрацьовується'] }}</span>
+            <td>
+              <a href="{{ url_for('index', month_filter='%04d-%02d'|format(selected_year, selected_month), discharge_department=dept, from_stats='1') }}"
+                 class="text-decoration-none text-dark fw-bold"
+                 title="Переглянути всі записи для {{ dept }}">
+                {{ dept }}
+              </a>
             </td>
             <td class="text-center">
-              <span class="badge bg-success">{{ status_by_dept[dept]['Виписаний'] }}</span>
+              <a href="{{ url_for('index', month_filter='%04d-%02d'|format(selected_year, selected_month), discharge_department=dept, discharge_status='Опрацьовується', from_stats='1') }}"
+                 class="text-decoration-none"
+                 title="Переглянути записи що опрацьовуються для {{ dept }}">
+                <span class="badge bg-secondary badge-clickable">{{ status_by_dept[dept]['Опрацьовується'] }}</span>
+              </a>
             </td>
             <td class="text-center">
-              <span class="badge bg-danger">{{ status_by_dept[dept]['Помер'] }}</span>
+              <a href="{{ url_for('index', month_filter='%04d-%02d'|format(selected_year, selected_month), discharge_department=dept, discharge_status='Виписаний', from_stats='1') }}"
+                 class="text-decoration-none"
+                 title="Переглянути виписані записи для {{ dept }}">
+                <span class="badge bg-success badge-clickable">{{ status_by_dept[dept]['Виписаний'] }}</span>
+              </a>
+            </td>
+            <td class="text-center">
+              <a href="{{ url_for('index', month_filter='%04d-%02d'|format(selected_year, selected_month), discharge_department=dept, has_death_date='1', from_stats='1') }}"
+                 class="text-decoration-none"
+                 title="Переглянути записи померлих для {{ dept }}">
+                <span class="badge bg-danger badge-clickable">{{ status_by_dept[dept]['Помер'] }}</span>
+              </a>
             </td>
             <td class="text-center">
               <strong>{{ status_by_dept[dept]['Опрацьовується'] + status_by_dept[dept]['Виписаний'] + status_by_dept[dept]['Помер'] }}</strong>
@@ -172,15 +160,33 @@
         </tbody>
         <tfoot class="table-light">
           <tr>
-            <th>Всього</th>
-            <th class="text-center">
-              <span class="badge bg-secondary">{{ status_distribution['Опрацьовується'] }}</span>
+            <th>
+              <a href="{{ url_for('index', month_filter='%04d-%02d'|format(selected_year, selected_month), from_stats='1') }}"
+                 class="text-decoration-none text-dark"
+                 title="Переглянути всі записи">
+                Всього
+              </a>
             </th>
             <th class="text-center">
-              <span class="badge bg-success">{{ status_distribution['Виписаний'] }}</span>
+              <a href="{{ url_for('index', month_filter='%04d-%02d'|format(selected_year, selected_month), discharge_status='Опрацьовується', from_stats='1') }}"
+                 class="text-decoration-none"
+                 title="Переглянути всі записи що опрацьовуються">
+                <span class="badge bg-secondary badge-clickable">{{ status_distribution['Опрацьовується'] }}</span>
+              </a>
             </th>
             <th class="text-center">
-              <span class="badge bg-danger">{{ status_distribution['Помер'] }}</span>
+              <a href="{{ url_for('index', month_filter='%04d-%02d'|format(selected_year, selected_month), discharge_status='Виписаний', from_stats='1') }}"
+                 class="text-decoration-none"
+                 title="Переглянути всі виписані записи">
+                <span class="badge bg-success badge-clickable">{{ status_distribution['Виписаний'] }}</span>
+              </a>
+            </th>
+            <th class="text-center">
+              <a href="{{ url_for('index', month_filter='%04d-%02d'|format(selected_year, selected_month), has_death_date='1', from_stats='1') }}"
+                 class="text-decoration-none"
+                 title="Переглянути всі записи померлих">
+                <span class="badge bg-danger badge-clickable">{{ status_distribution['Помер'] }}</span>
+              </a>
             </th>
             <th class="text-center">
               <strong>{{ total_records }}</strong>
@@ -256,6 +262,44 @@
         </div>
       </div>
     </div>
+  </div>
+</div>
+
+<!-- Section 1: Records added per day -->
+<div class="card mb-4">
+  <div class="card-body">
+    <h5 class="card-title mb-3">
+      <i class="bi bi-calendar-plus me-2"></i>Записи додані за день
+    </h5>
+
+    {% if records_per_day %}
+    <div class="table-responsive">
+      <table class="table table-striped table-hover table-sm">
+        <thead class="table-light">
+          <tr>
+            <th>Дата</th>
+            <th class="text-end">Кількість записів</th>
+          </tr>
+        </thead>
+        <tbody>
+          {% for record in records_per_day %}
+          <tr>
+            <td>{{ record.date }}</td>
+            <td class="text-end"><strong>{{ record.count }}</strong></td>
+          </tr>
+          {% endfor %}
+        </tbody>
+        <tfoot class="table-light">
+          <tr>
+            <th>Всього</th>
+            <th class="text-end"><strong>{{ records_per_day | sum(attribute='count') }}</strong></th>
+          </tr>
+        </tfoot>
+      </table>
+    </div>
+    {% else %}
+    <p class="text-muted">Немає даних за поточний місяць</p>
+    {% endif %}
   </div>
 </div>
 
