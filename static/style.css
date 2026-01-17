@@ -163,7 +163,17 @@ td .badge {
   flex-direction: column;
   gap: 0.25rem;
   justify-content: flex-start;
-  align-items: flex-start;
+  align-items: stretch;
+}
+
+.action-buttons-container .btn-xs {
+  width: 100%;
+  text-align: center;
+}
+
+.action-buttons-container form {
+  width: 100%;
+  margin: 0;
 }
 
 /* Extra small button size */
