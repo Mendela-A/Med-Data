@@ -1018,6 +1018,120 @@ def create_app(config_class=Config):
         flash(f'Відділення "{d.name}" видалено', 'danger')
         return redirect(url_for('admin_departments'))
 
+    # Statistics page
+    @app.route('/admin/statistics')
+    @role_required('admin')
+    def admin_statistics():
+        from datetime import datetime
+        from sqlalchemy import extract, case
+
+        # Get selected month/year from query params or use current
+        now = datetime.now()
+
+        # Try to get from 'year' and 'month' params first (for backward compatibility)
+        selected_year = request.args.get('year', type=int)
+        selected_month = request.args.get('month', type=int)
+
+        # If not found, try month_year param (YYYY-MM format from HTML5 month input)
+        month_year = request.args.get('month_year', '')
+        if month_year and '-' in month_year:
+            try:
+                year_str, month_str = month_year.split('-')
+                selected_year = int(year_str)
+                selected_month = int(month_str)
+            except (ValueError, IndexError):
+                pass
+
+        # Default to current month if not set
+        if selected_year is None:
+            selected_year = now.year
+        if selected_month is None:
+            selected_month = now.month
+
+        # Validate month/year
+        if not (1 <= selected_month <= 12):
+            selected_month = now.month
+        if not (2000 <= selected_year <= 2100):
+            selected_year = now.year
+
+        # Get selected month boundaries
+        first_day = datetime(selected_year, selected_month, 1)
+        if selected_month == 12:
+            last_day = datetime(selected_year + 1, 1, 1)
+        else:
+            last_day = datetime(selected_year, selected_month + 1, 1)
+
+        # 1. Records added per day for current month
+        records_per_day = db.session.query(
+            func.date(Record.created_at).label('date'),
+            func.count(Record.id).label('count')
+        ).filter(
+            Record.created_at >= first_day,
+            Record.created_at < last_day
+        ).group_by(
+            func.date(Record.created_at)
+        ).order_by('date').all()
+
+        # 2. Status distribution by department
+        departments = db.session.query(Record.discharge_department).distinct().all()
+        dept_list = sorted([d[0] for d in departments if d[0]])
+
+        status_by_dept = {}
+        for dept in dept_list:
+            status_counts = db.session.query(
+                Record.discharge_status,
+                func.count(Record.id).label('count')
+            ).filter(
+                Record.discharge_department == dept,
+                Record.created_at >= first_day,
+                Record.created_at < last_day
+            ).group_by(Record.discharge_status).all()
+
+            status_by_dept[dept] = {
+                'Опрацьовується': 0,
+                'Виписаний': 0,
+                'Помер': 0
+            }
+            for status, count in status_counts:
+                if status in status_by_dept[dept]:
+                    status_by_dept[dept][status] = count
+
+        # 3. Overall status distribution for current month
+        overall_status = db.session.query(
+            Record.discharge_status,
+            func.count(Record.id).label('count')
+        ).filter(
+            Record.created_at >= first_day,
+            Record.created_at < last_day
+        ).group_by(Record.discharge_status).all()
+
+        status_distribution = {
+            'Опрацьовується': 0,
+            'Виписаний': 0,
+            'Помер': 0
+        }
+        for status, count in overall_status:
+            if status in status_distribution:
+                status_distribution[status] = count
+
+        # Calculate total records for selected month
+        total_records = sum(status_distribution.values())
+
+        # Month name for display
+        selected_month_name = datetime(selected_year, selected_month, 1).strftime('%B %Y')
+
+        return render_template(
+            'admin_statistics.html',
+            records_per_day=records_per_day,
+            status_by_dept=status_by_dept,
+            dept_list=dept_list,
+            status_distribution=status_distribution,
+            total_records=total_records,
+            current_month=selected_month_name,
+            selected_year=selected_year,
+            selected_month=selected_month
+        )
+
     @app.cli.command('init-db')
     def init_db():
         """Create database tables."""
