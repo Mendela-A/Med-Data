@@ -131,17 +131,27 @@
 
     {% if status_by_dept %}
     <div class="table-responsive">
-      <table class="table table-striped table-hover table-sm">
+      <table class="table table-striped table-hover table-sm" id="statusByDeptTable">
         <thead class="table-light">
           <tr>
-            <th>Відділення</th>
-            <th class="text-center">Опрацьовується</th>
-            <th class="text-center">Виписаний</th>
-            <th class="text-center">Помер</th>
-            <th class="text-center">Всього</th>
+            <th class="sortable-header" data-column="department" data-type="text" title="Натисніть для сортування">
+              Відділення <i class="bi bi-chevron-expand sort-icon"></i>
+            </th>
+            <th class="sortable-header text-center" data-column="processing" data-type="number" title="Натисніть для сортування">
+              Опрацьовується <i class="bi bi-chevron-expand sort-icon"></i>
+            </th>
+            <th class="sortable-header text-center" data-column="discharged" data-type="number" title="Натисніть для сортування">
+              Виписаний <i class="bi bi-chevron-expand sort-icon"></i>
+            </th>
+            <th class="sortable-header text-center" data-column="deceased" data-type="number" title="Натисніть для сортування">
+              Помер <i class="bi bi-chevron-expand sort-icon"></i>
+            </th>
+            <th class="sortable-header text-center" data-column="total" data-type="number" title="Натисніть для сортування">
+              Всього <i class="bi bi-chevron-expand sort-icon"></i>
+            </th>
           </tr>
         </thead>
-        <tbody>
+        <tbody id="statusByDeptBody">
           {% for dept in dept_list %}
           <tr>
             <td><strong>{{ dept }}</strong></td>
@@ -285,6 +295,123 @@
           form.dispatchEvent(new Event('submit'));
         }
       });
+    }
+
+    // Table sorting functionality
+    const table = document.getElementById('statusByDeptTable');
+    const tbody = document.getElementById('statusByDeptBody');
+
+    if (table && tbody) {
+      let currentSort = {
+        column: localStorage.getItem('stats_sort_column') || 'department',
+        order: localStorage.getItem('stats_sort_order') || 'asc'
+      };
+
+      // Function to extract sortable value from cell
+      function getCellValue(row, column) {
+        const cells = row.cells;
+        let value;
+
+        switch(column) {
+          case 'department':
+            value = cells[0].textContent.trim();
+            break;
+          case 'processing':
+            value = parseInt(cells[1].querySelector('.badge').textContent.trim()) || 0;
+            break;
+          case 'discharged':
+            value = parseInt(cells[2].querySelector('.badge').textContent.trim()) || 0;
+            break;
+          case 'deceased':
+            value = parseInt(cells[3].querySelector('.badge').textContent.trim()) || 0;
+            break;
+          case 'total':
+            value = parseInt(cells[4].textContent.trim()) || 0;
+            break;
+          default:
+            value = cells[0].textContent.trim();
+        }
+
+        return value;
+      }
+
+      // Function to sort table
+      function sortTable(column, order) {
+        // Add sorting class for animation
+        tbody.classList.add('sorting');
+
+        // Get all rows except footer
+        const rows = Array.from(tbody.querySelectorAll('tr'));
+
+        // Sort rows
+        rows.sort((a, b) => {
+          const aValue = getCellValue(a, column);
+          const bValue = getCellValue(b, column);
+
+          let comparison = 0;
+
+          if (typeof aValue === 'string') {
+            comparison = aValue.localeCompare(bValue, 'uk');
+          } else {
+            comparison = aValue - bValue;
+          }
+
+          return order === 'asc' ? comparison : -comparison;
+        });
+
+        // Remove sorting animation after a delay
+        setTimeout(() => {
+          // Reorder DOM
+          rows.forEach(row => tbody.appendChild(row));
+          tbody.classList.remove('sorting');
+        }, 150);
+
+        // Update header states
+        updateHeaderStates(column, order);
+
+        // Save to localStorage
+        localStorage.setItem('stats_sort_column', column);
+        localStorage.setItem('stats_sort_order', order);
+
+        currentSort = { column, order };
+      }
+
+      // Function to update header visual states
+      function updateHeaderStates(column, order) {
+        const headers = table.querySelectorAll('.sortable-header');
+        headers.forEach(header => {
+          header.classList.remove('sorted-asc', 'sorted-desc');
+          if (header.dataset.column === column) {
+            header.classList.add(order === 'asc' ? 'sorted-asc' : 'sorted-desc');
+          }
+        });
+      }
+
+      // Add click handlers to sortable headers
+      const headers = table.querySelectorAll('.sortable-header');
+      headers.forEach(header => {
+        header.addEventListener('click', function() {
+          const column = this.dataset.column;
+          let order = 'desc'; // Default to descending for numbers (most useful)
+
+          // If clicking the same column, toggle order
+          if (currentSort.column === column) {
+            order = currentSort.order === 'asc' ? 'desc' : 'asc';
+          } else {
+            // For department (text), default to ascending
+            if (column === 'department') {
+              order = 'asc';
+            }
+          }
+
+          sortTable(column, order);
+        });
+      });
+
+      // Apply saved sort on page load
+      if (currentSort.column && currentSort.order) {
+        sortTable(currentSort.column, currentSort.order);
+      }
     }
   });
 </script>

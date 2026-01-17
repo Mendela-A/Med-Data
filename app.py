@@ -229,46 +229,55 @@ def create_app(config_class=Config):
         records = pagination.items
         count = pagination.total
 
-        # Count by discharge status - optimized with database-level aggregation
-        # Build query for counting with same filters EXCEPT discharge_status
-        count_query = db.session.query(
-            Record.discharge_status,
-            func.count(Record.id).label('count')
-        )
+        # Count by status - померлих рахуємо по date_of_death
+        # Build base query with common filters
+        base_count_query = db.session.query(func.count(Record.id))
 
         # Apply base filters (month/show_all)
         if not show_all:
-            count_query = count_query.filter(
+            base_count_query = base_count_query.filter(
                 Record.date_of_discharge != None,
                 Record.date_of_discharge >= start.date(),
                 Record.date_of_discharge < end.date(),
             )
 
-        # Apply all filters EXCEPT discharge_status (since we're grouping by it)
+        # Apply common filters
         if selected_physician:
-            count_query = count_query.filter(Record.treating_physician == selected_physician)
+            base_count_query = base_count_query.filter(Record.treating_physician == selected_physician)
         if selected_department:
-            count_query = count_query.filter(Record.discharge_department == selected_department)
+            base_count_query = base_count_query.filter(Record.discharge_department == selected_department)
         if history_q:
-            count_query = count_query.filter(Record.history.contains(history_q))
+            base_count_query = base_count_query.filter(Record.history.contains(history_q))
         if full_name_q:
-            count_query = count_query.filter(Record.full_name.ilike(f'%{full_name_q}%'))
+            base_count_query = base_count_query.filter(Record.full_name.ilike(f'%{full_name_q}%'))
         if has_death_date:
-            count_query = count_query.filter(Record.date_of_death != None)
+            base_count_query = base_count_query.filter(Record.date_of_death != None)
 
-        # Group by status and execute
-        status_counts = count_query.group_by(Record.discharge_status).all()
+        # Померлих - де є date_of_death
+        count_deceased = base_count_query.filter(Record.date_of_death.isnot(None)).scalar() or 0
 
-        # Extract counts from results (creates a dict: {status: count})
-        status_count_dict = {status: cnt for status, cnt in status_counts if status}
-        count_discharged = status_count_dict.get('Виписаний', 0)
-        count_processing = status_count_dict.get('Опрацьовується', 0)
-        count_violations = status_count_dict.get('Порушені вимоги', 0)
+        # Виписаних - статус "Виписаний" БЕЗ дати смерті
+        count_discharged = base_count_query.filter(
+            Record.discharge_status == 'Виписаний',
+            Record.date_of_death.is_(None)
+        ).scalar() or 0
+
+        # Опрацьовується - статус "Опрацьовується" БЕЗ дати смерті
+        count_processing = base_count_query.filter(
+            Record.discharge_status == 'Опрацьовується',
+            Record.date_of_death.is_(None)
+        ).scalar() or 0
+
+        # Порушені вимоги - статус "Порушені вимоги" БЕЗ дати смерті
+        count_violations = base_count_query.filter(
+            Record.discharge_status == 'Порушені вимоги',
+            Record.date_of_death.is_(None)
+        ).scalar() or 0
 
         # Format month for HTML5 input (YYYY-MM)
         month_filter_value = f"{selected_year}-{selected_month:02d}" if selected_year and selected_month else ""
 
-        return render_template('dashboard.html', records=records, pagination=pagination, statuses=statuses, physicians=physicians, departments=departments, selected_status=selected_status, selected_physician=selected_physician, selected_department=selected_department, history_q=history_q, full_name_q=full_name_q, count=count, month_filter_value=month_filter_value, selected_year=selected_year, selected_month=selected_month, show_all=show_all, has_death_date=has_death_date, count_discharged=count_discharged, count_processing=count_processing, count_violations=count_violations)
+        return render_template('dashboard.html', records=records, pagination=pagination, statuses=statuses, physicians=physicians, departments=departments, selected_status=selected_status, selected_physician=selected_physician, selected_department=selected_department, history_q=history_q, full_name_q=full_name_q, count=count, month_filter_value=month_filter_value, selected_year=selected_year, selected_month=selected_month, show_all=show_all, has_death_date=has_death_date, count_discharged=count_discharged, count_processing=count_processing, count_violations=count_violations, count_deceased=count_deceased)
 
     @app.route('/export', methods=['POST'])
     @role_required('editor')
@@ -1054,41 +1063,67 @@ def create_app(config_class=Config):
 
         status_by_dept = {}
         for dept in dept_list:
-            status_counts = db.session.query(
-                Record.discharge_status,
-                func.count(Record.id).label('count')
-            ).filter(
+            # Померлих рахуємо по date_of_death (є дата смерті)
+            deceased_count = db.session.query(func.count(Record.id)).filter(
                 Record.discharge_department == dept,
                 Record.created_at >= first_day,
-                Record.created_at < last_day
-            ).group_by(Record.discharge_status).all()
+                Record.created_at < last_day,
+                Record.date_of_death.isnot(None)
+            ).scalar()
+
+            # Виписаних - статус "Виписаний" БЕЗ дати смерті
+            discharged_count = db.session.query(func.count(Record.id)).filter(
+                Record.discharge_department == dept,
+                Record.created_at >= first_day,
+                Record.created_at < last_day,
+                Record.discharge_status == 'Виписаний',
+                Record.date_of_death.is_(None)
+            ).scalar()
+
+            # Опрацьовується - статус "Опрацьовується" БЕЗ дати смерті
+            processing_count = db.session.query(func.count(Record.id)).filter(
+                Record.discharge_department == dept,
+                Record.created_at >= first_day,
+                Record.created_at < last_day,
+                Record.discharge_status == 'Опрацьовується',
+                Record.date_of_death.is_(None)
+            ).scalar()
 
             status_by_dept[dept] = {
-                'Опрацьовується': 0,
-                'Виписаний': 0,
-                'Помер': 0
+                'Помер': deceased_count or 0,
+                'Виписаний': discharged_count or 0,
+                'Опрацьовується': processing_count or 0
             }
-            for status, count in status_counts:
-                if status in status_by_dept[dept]:
-                    status_by_dept[dept][status] = count
 
         # 3. Overall status distribution for current month
-        overall_status = db.session.query(
-            Record.discharge_status,
-            func.count(Record.id).label('count')
-        ).filter(
+        # Померлих рахуємо по date_of_death
+        total_deceased = db.session.query(func.count(Record.id)).filter(
             Record.created_at >= first_day,
-            Record.created_at < last_day
-        ).group_by(Record.discharge_status).all()
+            Record.created_at < last_day,
+            Record.date_of_death.isnot(None)
+        ).scalar()
+
+        # Виписаних - статус "Виписаний" БЕЗ дати смерті
+        total_discharged = db.session.query(func.count(Record.id)).filter(
+            Record.created_at >= first_day,
+            Record.created_at < last_day,
+            Record.discharge_status == 'Виписаний',
+            Record.date_of_death.is_(None)
+        ).scalar()
+
+        # Опрацьовується - статус "Опрацьовується" БЕЗ дати смерті
+        total_processing = db.session.query(func.count(Record.id)).filter(
+            Record.created_at >= first_day,
+            Record.created_at < last_day,
+            Record.discharge_status == 'Опрацьовується',
+            Record.date_of_death.is_(None)
+        ).scalar()
 
         status_distribution = {
-            'Опрацьовується': 0,
-            'Виписаний': 0,
-            'Помер': 0
+            'Помер': total_deceased or 0,
+            'Виписаний': total_discharged or 0,
+            'Опрацьовується': total_processing or 0
         }
-        for status, count in overall_status:
-            if status in status_distribution:
-                status_distribution[status] = count
 
         # Calculate total records for selected month
         total_records = sum(status_distribution.values())

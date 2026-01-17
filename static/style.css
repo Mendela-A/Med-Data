@@ -486,3 +486,56 @@ input[list]:focus::-webkit-calendar-picker-indicator {
 .toast-container .toast + .toast {
   margin-top: 0.75rem;
 }
+
+/* Sortable table headers */
+.sortable-header {
+  cursor: pointer;
+  user-select: none;
+  position: relative;
+  transition: background-color 0.2s ease;
+}
+
+.sortable-header:hover {
+  background-color: rgba(13, 148, 136, 0.15) !important;
+}
+
+.sortable-header .sort-icon {
+  font-size: 0.75rem;
+  opacity: 0.4;
+  margin-left: 0.25rem;
+  transition: opacity 0.2s ease, color 0.2s ease;
+}
+
+.sortable-header:hover .sort-icon {
+  opacity: 0.7;
+}
+
+/* Active sorting state */
+.sortable-header.sorted-asc .sort-icon,
+.sortable-header.sorted-desc .sort-icon {
+  opacity: 1;
+  color: #0d9488;
+}
+
+.sortable-header.sorted-asc .sort-icon::before {
+  content: '\F145'; /* bi-chevron-up */
+}
+
+.sortable-header.sorted-desc .sort-icon::before {
+  content: '\F147'; /* bi-chevron-down */
+}
+
+/* Hide default icon when sorted */
+.sortable-header.sorted-asc .bi-chevron-expand,
+.sortable-header.sorted-desc .bi-chevron-expand {
+  display: none;
+}
+
+/* Table row transition for smooth sorting */
+#statusByDeptBody {
+  transition: opacity 0.15s ease;
+}
+
+#statusByDeptBody.sorting {
+  opacity: 0.6;
+}
