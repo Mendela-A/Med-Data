@@ -3,7 +3,7 @@ from flask import Flask, render_template, redirect, url_for, request, flash, sen
 from flask_migrate import Migrate
 from flask_caching import Cache
 from config import Config
-from models import db, User, Record, bcrypt, log_action, Department, init_db_events
+from models import db, User, Record, bcrypt, log_action, Department, NSZUCorrection, init_db_events
 from flask_login import LoginManager, login_user, logout_user, login_required, current_user
 from sqlalchemy.orm import joinedload
 from sqlalchemy import func
@@ -1010,6 +1010,316 @@ def create_app(config_class=Config):
         app.logger.info(f'Department deleted: {d.name} by {current_user.username}')
         flash(f'Відділення "{d.name}" видалено', 'danger')
         return redirect(url_for('admin_departments'))
+
+    # NSZU Corrections routes
+    @app.route('/nszu')
+    @login_required
+    def nszu_list():
+        """List all NSZU corrections with filters"""
+        q = NSZUCorrection.query
+
+        # Filtering
+        selected_status = request.args.get('status', '').strip()
+        selected_doctor = request.args.get('doctor', '').strip()
+        nszu_record_id_q = request.args.get('nszu_record_id', '').strip()
+
+        conditions = []
+        if selected_status:
+            conditions.append(NSZUCorrection.status == selected_status)
+        if selected_doctor:
+            conditions.append(NSZUCorrection.doctor == selected_doctor)
+        if nszu_record_id_q:
+            conditions.append(NSZUCorrection.nszu_record_id.contains(nszu_record_id_q))
+
+        if conditions:
+            q = q.filter(*conditions)
+
+        # Get distinct values for filters
+        statuses = [s[0] for s in db.session.query(NSZUCorrection.status).distinct().filter(NSZUCorrection.status != None).order_by(NSZUCorrection.status).all()]
+        doctors = [d[0] for d in db.session.query(NSZUCorrection.doctor).distinct().filter(NSZUCorrection.doctor != None).order_by(NSZUCorrection.doctor).all()]
+
+        # Pagination
+        page = request.args.get('page', 1, type=int)
+        per_page = request.args.get('per_page', 100, type=int)
+        per_page = min(per_page, 200)
+
+        pagination = q.order_by(NSZUCorrection.created_at.desc()).paginate(
+            page=page,
+            per_page=per_page,
+            error_out=False
+        )
+
+        corrections = pagination.items
+        count = pagination.total
+
+        return render_template('nszu_list.html',
+                             corrections=corrections,
+                             pagination=pagination,
+                             statuses=statuses,
+                             doctors=doctors,
+                             selected_status=selected_status,
+                             selected_doctor=selected_doctor,
+                             nszu_record_id_q=nszu_record_id_q,
+                             count=count)
+
+    @app.route('/nszu/add', methods=['GET', 'POST'])
+    @role_required('operator')
+    def nszu_add():
+        """Add new NSZU correction"""
+        if request.method == 'POST':
+            date_str = request.form.get('date', '').strip()
+            nszu_record_id = request.form.get('nszu_record_id', '').strip()
+            doctor = request.form.get('doctor', '').strip()
+            status = request.form.get('status', 'В обробці').strip()
+            detail = request.form.get('detail', '').strip()
+            fakt_summ_str = request.form.get('fakt_summ', '').strip()
+            comment = request.form.get('comment', '').strip()
+
+            # Validate required fields
+            if not all([date_str, nszu_record_id, doctor]):
+                flash('Будь ласка, заповніть усі обов\'язкові поля (дата, НСЗУ ID, лікар)', 'warning')
+                return redirect(url_for('nszu_add'))
+
+            # Parse date
+            from datetime import datetime
+            date_obj = None
+            for fmt in ('%d.%m.%Y', '%Y-%m-%d'):
+                try:
+                    date_obj = datetime.strptime(date_str, fmt).date()
+                    break
+                except ValueError:
+                    continue
+
+            if date_obj is None:
+                flash('Дата повинна бути у форматі ДД.ММ.РРРР або РРРР-ММ-ДД', 'warning')
+                return redirect(url_for('nszu_add'))
+
+            # Parse fakt_summ
+            fakt_summ = None
+            if fakt_summ_str and fakt_summ_str != '-':
+                try:
+                    # Replace comma with dot for decimal parsing
+                    fakt_summ_str = fakt_summ_str.replace(',', '.')
+                    fakt_summ = float(fakt_summ_str)
+                except ValueError:
+                    flash('Фактична сума повинна бути числом', 'warning')
+                    return redirect(url_for('nszu_add'))
+            else:
+                fakt_summ = 0.00
+
+            # Create correction
+            correction = NSZUCorrection(
+                date=date_obj,
+                nszu_record_id=nszu_record_id,
+                doctor=doctor,
+                status=status,
+                detail=detail or None,
+                fakt_summ=fakt_summ,
+                comment=comment or None,
+                created_by=current_user.id,
+                updated_by=current_user.id
+            )
+
+            db.session.add(correction)
+            db.session.commit()
+
+            try:
+                log_action(current_user.id, 'nszu.create', 'nszu_correction', correction.id, f'nszu_record_id={nszu_record_id}')
+            except Exception:
+                app.logger.exception('Failed to write audit log for nszu.create')
+
+            app.logger.info(f'NSZU correction created: {correction.id} by {current_user.username}')
+            flash(f'Запис перевірки НСЗУ #{correction.id} успішно додано', 'success')
+            return redirect(url_for('nszu_list'))
+
+        # GET - render form
+        # Get distinct doctors for autocomplete
+        doctors = [d[0] for d in db.session.query(NSZUCorrection.doctor).distinct().filter(NSZUCorrection.doctor != None).order_by(NSZUCorrection.doctor).all()]
+        statuses = ['В обробці', 'Опрацьовано', 'Не підлягає оплаті']
+
+        return render_template('nszu_add.html', doctors=doctors, statuses=statuses)
+
+    @app.route('/nszu/<int:correction_id>/edit', methods=['GET', 'POST'])
+    @role_required('editor')
+    def nszu_edit(correction_id):
+        """Edit NSZU correction"""
+        correction = NSZUCorrection.query.get_or_404(correction_id)
+
+        if request.method == 'POST':
+            date_str = request.form.get('date', '').strip()
+            nszu_record_id = request.form.get('nszu_record_id', '').strip()
+            doctor = request.form.get('doctor', '').strip()
+            status = request.form.get('status', '').strip()
+            detail = request.form.get('detail', '').strip()
+            fakt_summ_str = request.form.get('fakt_summ', '').strip()
+            comment = request.form.get('comment', '').strip()
+
+            # Validate required fields
+            if not all([date_str, nszu_record_id, doctor, status]):
+                flash('Будь ласка, заповніть усі обов\'язкові поля', 'warning')
+                return redirect(url_for('nszu_edit', correction_id=correction_id))
+
+            # Parse date
+            from datetime import datetime
+            date_obj = None
+            for fmt in ('%d.%m.%Y', '%Y-%m-%d'):
+                try:
+                    date_obj = datetime.strptime(date_str, fmt).date()
+                    break
+                except ValueError:
+                    continue
+
+            if date_obj is None:
+                flash('Дата повинна бути у форматі ДД.ММ.РРРР або РРРР-ММ-ДД', 'warning')
+                return redirect(url_for('nszu_edit', correction_id=correction_id))
+
+            # Parse fakt_summ
+            fakt_summ = None
+            if fakt_summ_str and fakt_summ_str != '-':
+                try:
+                    fakt_summ_str = fakt_summ_str.replace(',', '.')
+                    fakt_summ = float(fakt_summ_str)
+                except ValueError:
+                    flash('Фактична сума повинна бути числом', 'warning')
+                    return redirect(url_for('nszu_edit', correction_id=correction_id))
+            else:
+                fakt_summ = 0.00
+
+            # Update correction
+            correction.date = date_obj
+            correction.nszu_record_id = nszu_record_id
+            correction.doctor = doctor
+            correction.status = status
+            correction.detail = detail or None
+            correction.fakt_summ = fakt_summ
+            correction.comment = comment or None
+            correction.updated_by = current_user.id
+            correction.updated_at = datetime.utcnow()
+
+            db.session.commit()
+
+            try:
+                log_action(current_user.id, 'nszu.update', 'nszu_correction', correction.id, f'nszu_record_id={nszu_record_id}')
+            except Exception:
+                app.logger.exception('Failed to write audit log for nszu.update')
+
+            app.logger.info(f'NSZU correction updated: {correction.id} by {current_user.username}')
+            flash(f'Запис перевірки НСЗУ #{correction.id} успішно оновлено', 'success')
+            return redirect(url_for('nszu_list'))
+
+        # GET - render form
+        doctors = [d[0] for d in db.session.query(NSZUCorrection.doctor).distinct().filter(NSZUCorrection.doctor != None).order_by(NSZUCorrection.doctor).all()]
+        statuses = ['В обробці', 'Опрацьовано', 'Не підлягає оплаті']
+
+        return render_template('nszu_edit.html', correction=correction, doctors=doctors, statuses=statuses)
+
+    @app.route('/nszu/<int:correction_id>/delete', methods=['POST'])
+    @role_required('admin')
+    def nszu_delete(correction_id):
+        """Delete NSZU correction (admin only)"""
+        correction = NSZUCorrection.query.get_or_404(correction_id)
+        nszu_id = correction.nszu_record_id
+
+        db.session.delete(correction)
+        db.session.commit()
+
+        try:
+            log_action(current_user.id, 'nszu.delete', 'nszu_correction', correction_id, f'nszu_record_id={nszu_id}')
+        except Exception:
+            app.logger.exception('Failed to write audit log for nszu.delete')
+
+        app.logger.info(f'NSZU correction deleted: {correction_id} by {current_user.username}')
+        flash(f'Запис перевірки НСЗУ #{correction_id} видалено', 'danger')
+        return redirect(url_for('nszu_list'))
+
+    @app.route('/nszu/export', methods=['POST'])
+    @role_required('editor')
+    def nszu_export():
+        """Export NSZU corrections to Excel"""
+        from datetime import datetime
+        from io import BytesIO
+
+        try:
+            from_str = request.form.get('from_date', '').strip()
+            to_str = request.form.get('to_date', '').strip()
+            if not from_str or not to_str:
+                flash('Будь ласка, вкажіть обидві дати (з та по) для експорту', 'warning')
+                return redirect(url_for('nszu_list'))
+            from_d = datetime.strptime(from_str, '%Y-%m-%d').date()
+            to_d = datetime.strptime(to_str, '%Y-%m-%d').date()
+        except ValueError:
+            flash('Невірний формат дати для експорту', 'warning')
+            return redirect(url_for('nszu_list'))
+
+        if from_d > to_d:
+            flash('Дата "з" не може бути пізніше дати "по"', 'warning')
+            return redirect(url_for('nszu_list'))
+
+        # Build query
+        q = NSZUCorrection.query.filter(
+            NSZUCorrection.date >= from_d,
+            NSZUCorrection.date <= to_d,
+        )
+
+        total_count = q.count()
+
+        if total_count == 0:
+            flash('Записів не знайдено для обраного діапазону дат', 'warning')
+            return redirect(url_for('nszu_list'))
+
+        # Create Excel
+        try:
+            from openpyxl import Workbook
+            from openpyxl.styles import Font
+        except Exception:
+            flash('Для експорту потрібен пакет openpyxl', 'danger')
+            return redirect(url_for('nszu_list'))
+
+        wb = Workbook()
+        ws = wb.active
+        ws.title = 'NSZU'
+
+        # Headers
+        headers = ['ID', 'Дата', 'НСЗУ ID', 'Лікар', 'Статус', 'Деталі', 'Факт. сума', 'Коментар', 'Створив', 'Створено']
+        ws.append(headers)
+
+        # Style headers
+        bold = Font(bold=True)
+        for cell in ws[1]:
+            cell.font = bold
+
+        # Get user mapping
+        user_map = {u.id: u.username for u in User.query.all()}
+
+        # Add data
+        for c in q.order_by(NSZUCorrection.date.desc()).all():
+            row = [
+                c.id,
+                c.date.strftime('%d.%m.%Y') if c.date else '',
+                c.nszu_record_id or '',
+                c.doctor or '',
+                c.status or '',
+                c.detail or '',
+                float(c.fakt_summ) if c.fakt_summ else 0.00,
+                c.comment or '',
+                user_map.get(c.created_by, c.created_by or ''),
+                c.created_at.strftime('%d.%m.%Y %H:%M') if c.created_at else '',
+            ]
+            ws.append(row)
+
+        bio = BytesIO()
+        wb.save(bio)
+        bio.seek(0)
+
+        try:
+            log_action(current_user.id, 'nszu.export', 'export', None, f'from={from_d} to={to_d} count={total_count}')
+        except Exception:
+            app.logger.exception('Failed to write audit log for nszu.export')
+
+        app.logger.info(f'NSZU export by {current_user.username}: from {from_d} to {to_d} count={total_count}')
+
+        filename = f"nszu_{datetime.now().strftime('%d-%m-%Y')}.xlsx"
+        return send_file(bio, as_attachment=True, download_name=filename, mimetype='application/vnd.openxmlformats-officedocument.spreadsheetml.sheet')
 
     # Statistics page
     @app.route('/admin/statistics')

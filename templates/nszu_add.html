@@ -1,0 +1,63 @@
+{% extends "base.html" %}
+{% block title %}Додати перевірку НСЗУ{% endblock %}
+{% block breadcrumbs %}
+  <li class="breadcrumb-item"><a href="{{ url_for('nszu_list') }}">Перевірка НСЗУ</a></li>
+  <li class="breadcrumb-item active" aria-current="page">Додати</li>
+{% endblock %}
+
+{% block content %}
+  <h1 class="h4">Додати перевірку НСЗУ</h1>
+  <form method="post" class="mt-3 row g-3">
+    <div class="col-md-6">
+      <label class="form-label">Дата <span class="text-danger">*</span></label>
+      <input class="form-control" name="date" type="date" required>
+    </div>
+
+    <div class="col-md-6">
+      <label class="form-label">НСЗУ ID <span class="text-danger">*</span></label>
+      <input class="form-control" name="nszu_record_id" maxlength="100" placeholder="UUID запису з НСЗУ" required>
+    </div>
+
+    <div class="col-md-6">
+      <label class="form-label">Лікар <span class="text-danger">*</span> {% if doctors %}({{ doctors|length }} у списку){% endif %}</label>
+      <input class="form-control" name="doctor" list="doctors-list" autocomplete="off" maxlength="200" required>
+      <datalist id="doctors-list">
+        {% for d in doctors %}
+          <option value="{{ d }}">
+        {% endfor %}
+      </datalist>
+    </div>
+
+    <div class="col-md-6">
+      <label class="form-label">Статус</label>
+      <select class="form-select" name="status">
+        {% for s in statuses %}
+          <option value="{{ s }}" {% if s == 'В обробці' %}selected{% endif %}>{{ s }}</option>
+        {% endfor %}
+      </select>
+    </div>
+
+    <div class="col-12">
+      <label class="form-label">Деталі</label>
+      <textarea class="form-control" name="detail" rows="3" placeholder="Опис проблеми або причини"></textarea>
+    </div>
+
+    <div class="col-md-6">
+      <label class="form-label">Фактична сума</label>
+      <input class="form-control" name="fakt_summ" type="text" placeholder="0.00 або -">
+      <small class="form-text text-muted">Можна вводити з комою або крапкою (наприклад: 1234,56 або 1234.56)</small>
+    </div>
+
+    <div class="col-12">
+      <label class="form-label">Коментар</label>
+      <textarea class="form-control" name="comment" rows="2"></textarea>
+    </div>
+
+    <div class="col-12">
+      <button class="btn btn-success" type="submit">
+        <i class="bi bi-plus-circle me-1"></i>Додати
+      </button>
+      <a class="btn btn-secondary ms-2" href="{{ url_for('nszu_list') }}">Скасувати</a>
+    </div>
+  </form>
+{% endblock %}

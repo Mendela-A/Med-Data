@@ -1,0 +1,75 @@
+{% extends "base.html" %}
+{% block title %}Редагувати перевірку НСЗУ #{{ correction.id }}{% endblock %}
+{% block breadcrumbs %}
+  <li class="breadcrumb-item"><a href="{{ url_for('nszu_list') }}">Перевірка НСЗУ</a></li>
+  <li class="breadcrumb-item active" aria-current="page">Редагувати #{{ correction.id }}</li>
+{% endblock %}
+
+{% block content %}
+  <h1 class="h4">Редагувати перевірку НСЗУ #{{ correction.id }}</h1>
+  <form method="post" class="mt-3 row g-3">
+    <div class="col-md-6">
+      <label class="form-label">Дата <span class="text-danger">*</span></label>
+      <input class="form-control" name="date" type="date" value="{{ correction.date.strftime('%Y-%m-%d') if correction.date else '' }}" required>
+    </div>
+
+    <div class="col-md-6">
+      <label class="form-label">НСЗУ ID <span class="text-danger">*</span></label>
+      <input class="form-control" name="nszu_record_id" maxlength="100" value="{{ correction.nszu_record_id }}" required>
+    </div>
+
+    <div class="col-md-6">
+      <label class="form-label">Лікар <span class="text-danger">*</span> {% if doctors %}({{ doctors|length }} у списку){% endif %}</label>
+      <input class="form-control" name="doctor" list="doctors-list" autocomplete="off" maxlength="200" value="{{ correction.doctor }}" required>
+      <datalist id="doctors-list">
+        {% for d in doctors %}
+          <option value="{{ d }}">
+        {% endfor %}
+      </datalist>
+    </div>
+
+    <div class="col-md-6">
+      <label class="form-label">Статус <span class="text-danger">*</span></label>
+      <select class="form-select" name="status" required>
+        {% for s in statuses %}
+          <option value="{{ s }}" {% if s == correction.status %}selected{% endif %}>{{ s }}</option>
+        {% endfor %}
+      </select>
+    </div>
+
+    <div class="col-12">
+      <label class="form-label">Деталі</label>
+      <textarea class="form-control" name="detail" rows="3">{{ correction.detail if correction.detail else '' }}</textarea>
+    </div>
+
+    <div class="col-md-6">
+      <label class="form-label">Фактична сума</label>
+      <input class="form-control" name="fakt_summ" type="text" value="{{ '{:.2f}'.format(correction.fakt_summ) if correction.fakt_summ else '0.00' }}">
+      <small class="form-text text-muted">Можна вводити з комою або крапкою</small>
+    </div>
+
+    <div class="col-12">
+      <label class="form-label">Коментар</label>
+      <textarea class="form-control" name="comment" rows="2">{{ correction.comment if correction.comment else '' }}</textarea>
+    </div>
+
+    <div class="col-12">
+      <button class="btn btn-primary" type="submit">
+        <i class="bi bi-check-circle me-1"></i>Зберегти
+      </button>
+      <a class="btn btn-secondary ms-2" href="{{ url_for('nszu_list') }}">Скасувати</a>
+    </div>
+  </form>
+
+  {% if current_user.role in ['editor', 'admin'] %}
+    <div class="mt-4 p-3 bg-light rounded">
+      <h6 class="text-muted mb-2">Інформація про запис</h6>
+      <p class="mb-1"><small><strong>Створив:</strong> {{ correction.creator.username if correction.creator else 'N/A' }}</small></p>
+      <p class="mb-1"><small><strong>Створено:</strong> {{ correction.created_at.strftime('%d.%m.%Y %H:%M') if correction.created_at else 'N/A' }}</small></p>
+      {% if correction.updater %}
+        <p class="mb-1"><small><strong>Оновив:</strong> {{ correction.updater.username }}</small></p>
+        <p class="mb-0"><small><strong>Оновлено:</strong> {{ correction.updated_at.strftime('%d.%m.%Y %H:%M') if correction.updated_at else 'N/A' }}</small></p>
+      {% endif %}
+    </div>
+  {% endif %}
+{% endblock %}
