@@ -1013,7 +1013,7 @@ def create_app(config_class=Config):
 
     # NSZU Corrections routes
     @app.route('/nszu')
-    @login_required
+    @role_required('editor', 'viewer')
     def nszu_list():
         """List all NSZU corrections with filters"""
         q = NSZUCorrection.query
@@ -1063,7 +1063,7 @@ def create_app(config_class=Config):
                              count=count)
 
     @app.route('/nszu/add', methods=['GET', 'POST'])
-    @role_required('operator')
+    @role_required('editor')
     def nszu_add():
         """Add new NSZU correction"""
         if request.method == 'POST':
