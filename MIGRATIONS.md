@@ -1,22 +1,138 @@
-How to apply the new Alembic migration (remove `status` column)
+# Інструкція по міграції бази даних
 
-1) Ensure dependencies are installed in your virtualenv:
-   pip install Flask-Migrate alembic
+## Попередні вимоги
 
-2) If you haven't initialized migrations in this project before, you can either:
-   - Use the included `migrations` directory (already provided), and run:
-       flask db upgrade
-     (If `flask` CLI picks up the app, this will run `migrations/env.py` and apply revisions.)
+Переконайтеся, що встановлені необхідні пакети:
+```bash
+pip install Flask-Migrate alembic flask-caching
+```
 
-   - Or initialize afresh (if you prefer):
-       flask db init
-       flask db migrate -m "Initial"  # only if needed to baseline
-       flask db upgrade
+## Основні команди міграції
 
-3) To apply the specific migration added for removing `status`, run:
-       flask db upgrade
+### 1. Застосування існуючих міграцій
+```bash
+flask db upgrade
+```
+Ця команда застосує всі непримінені міграції до бази даних.
 
-Notes:
-- The repository contains a migration script `migrations/versions/20260109_remove_status.py` which drops the `status` column from the `records` table.
-- The models in `models.py` have been updated to remove the `status` attribute to keep the code consistent with the schema change.
-- If your database already has the `status` column absent or the migrations system in a different state, `flask db upgrade` will print a warning or skip accordingly.
+### 2. Створення нової міграції
+```bash
+flask db migrate -m "Опис змін"
+```
+Автоматично генерує міграцію на основі змін у моделях.
+
+### 3. Перегляд поточного стану
+```bash
+flask db current
+```
+Показує поточну версію бази даних.
+
+### 4. Перегляд історії міграцій
+```bash
+flask db history
+```
+Показує всі доступні міграції.
+
+### 5. Відкат до попередньої версії
+```bash
+flask db downgrade
+```
+Відкочує останню застосовану міграцію.
+
+### 6. Ініціалізація міграцій (тільки для нового проекту)
+```bash
+flask db init
+```
+**Увага:** Не виконуйте цю команду, якщо папка `migrations` вже існує!
+
+## Історія міграцій проекту
+
+### 1. **20260109_remove_status** - Видалення колонки status
+- Видалено колонку `status` з таблиці `records`
+- Оновлено модель `Record` в `models.py`
+
+### 2. **e451abd846fe** - Додано таблицю НСЗУ корекцій
+- Створено таблицю `nszu_corrections` для відстеження перевірок НСЗУ
+- Додано індекси для оптимізації запитів
+- Створено зв'язки з таблицею `users`
+
+## Порядок розгортання на новому сервері
+
+1. **Клонуйте репозиторій**
+   ```bash
+   git clone <repository-url>
+   cd test
+   ```
+
+2. **Створіть віртуальне середовище**
+   ```bash
+   python -m venv venv
+   venv/Scripts/activate  # Windows
+   # або
+   source venv/bin/activate  # Linux/Mac
+   ```
+
+3. **Встановіть залежності**
+   ```bash
+   pip install -r requirements.txt
+   ```
+
+4. **Застосуйте міграції**
+   ```bash
+   flask db upgrade
+   ```
+
+5. **Ініціалізуйте базу даних з admin користувачем**
+   ```bash
+   flask init-db --admin-username admin --admin-password <your-password>
+   ```
+
+## Робота з міграціями в Docker
+
+Якщо використовуєте Docker:
+
+```bash
+docker-compose exec web flask db upgrade
+```
+
+## Поширені проблеми та їх вирішення
+
+### Помилка: "Table already exists"
+Якщо таблиця вже існує в БД, позначте міграцію як виконану:
+```bash
+flask db stamp <revision_id>
+```
+
+### Помилка: "Target database is not up to date"
+Спочатку застосуйте всі міграції:
+```bash
+flask db upgrade
+```
+
+### Конфлікт міграцій
+Якщо є конфлікт, можна:
+1. Відкотити проблемну міграцію: `flask db downgrade`
+2. Виправити файл міграції вручну
+3. Застосувати знову: `flask db upgrade`
+
+## Важливі примітки
+
+- **Завжди робіть backup бази даних** перед застосуванням міграцій на продакшені
+- Перевіряйте згенеровані файли міграцій перед застосуванням
+- Не редагуйте файли міграцій вручну після їх застосування
+- Зберігайте всі файли міграцій в системі контролю версій (git)
+
+## Структура файлів міграції
+
+```
+migrations/
+├── env.py                  # Конфігурація Alembic
+├── script.py.mako         # Шаблон для нових міграцій
+└── versions/
+    ├── 20260109_remove_status.py
+    └── e451abd846fe_add_nszu_corrections_table.py
+```
+
+## Додаткова інформація
+
+Документація Flask-Migrate: https://flask-migrate.readthedocs.io/
