@@ -331,7 +331,7 @@
               <a href="{{ url_for('index', month_filter='%04d-%02d'|format(selected_year, selected_month), discharge_status='Опрацьовується', from_stats='1') }}"
                  class="text-decoration-none"
                  title="Переглянути всі записи що опрацьовуються">
-                <span class="badge bg-secondary badge-clickable">{{ status_distribution['Опрацьовується'] }}</span>
+                <span class="badge bg-warning badge-clickable">{{ status_distribution['Опрацьовується'] }}</span>
               </a>
             </th>
             <th class="text-center">
