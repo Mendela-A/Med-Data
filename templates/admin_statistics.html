@@ -16,10 +16,20 @@
 <!-- Month Filter -->
 <div class="card mb-4">
   <div class="card-body">
+    <!-- Info alert about date filtering -->
+    <div class="alert alert-info mb-3" role="alert">
+      <i class="bi bi-info-circle me-2"></i>
+      <strong>Увага:</strong> статистика показує записи за датою <strong>створення в системі</strong>, а не за датою виписки.
+      Для перегляду записів за датою виписки використовуйте головну сторінку.
+    </div>
     <form method="get" action="{{ url_for('admin_statistics') }}" id="monthFilterForm" class="row g-3 align-items-end">
       <div class="col-md-3">
         <label for="month_select" class="form-label small fw-bold">
           <i class="bi bi-calendar-month me-1"></i>Виберіть місяць
+          <i class="bi bi-info-circle text-muted"
+             data-bs-toggle="tooltip"
+             data-bs-placement="right"
+             data-bs-title="Показує записи створені в системі за обраний місяць"></i>
         </label>
         <input
           type="month"
@@ -55,7 +65,7 @@
        class="text-decoration-none stat-card-link"
        data-bs-toggle="tooltip"
        data-bs-placement="top"
-       data-bs-title="Загальна кількість записів за обраний місяць">
+       data-bs-title="Загальна кількість записів створених за обраний місяць">
       <div class="card stat-card">
         <div class="card-body text-center">
           <h5 class="card-title text-muted small">Всього записів</h5>
@@ -113,6 +123,15 @@
   <div class="card-body">
     <h5 class="card-title mb-3">
       <i class="bi bi-building me-2"></i>Розподіл статусів по відділеннях
+      <button type="button"
+              class="btn btn-sm btn-outline-secondary ms-2"
+              data-bs-toggle="popover"
+              data-bs-placement="bottom"
+              data-bs-html="true"
+              data-bs-title="<i class='bi bi-info-circle me-1'></i>Як рахується статистика?"
+              data-bs-content="<ul class='mb-0 ps-3'><li><strong>Померло</strong> — пріоритетна категорія: всі записи з датою смерті рахуються сюди, незалежно від статусу виписки</li><li><strong>Виписаний, Опрацьовується</strong> — рахуються тільки записи БЕЗ дати смерті</li><li><strong>Всього</strong> = сума всіх категорій по відділенню</li></ul>">
+        <i class="bi bi-question-circle"></i>
+      </button>
     </h5>
 
     {% if status_by_dept %}
@@ -123,16 +142,36 @@
             <th class="sortable-header" data-column="department" data-type="text" title="Натисніть для сортування">
               Відділення <i class="bi bi-chevron-expand sort-icon"></i>
             </th>
-            <th class="sortable-header text-center" data-column="processing" data-type="number" title="Натисніть для сортування">
+            <th class="sortable-header text-center"
+                data-column="processing"
+                data-type="number"
+                data-bs-toggle="tooltip"
+                data-bs-placement="top"
+                data-bs-title="Записи зі статусом 'Опрацьовується' без дати смерті. Натисніть для сортування">
               Опрацьовується <i class="bi bi-chevron-expand sort-icon"></i>
             </th>
-            <th class="sortable-header text-center" data-column="discharged" data-type="number" title="Натисніть для сортування">
+            <th class="sortable-header text-center"
+                data-column="discharged"
+                data-type="number"
+                data-bs-toggle="tooltip"
+                data-bs-placement="top"
+                data-bs-title="Записи зі статусом 'Виписаний' без дати смерті. Натисніть для сортування">
               Виписаний <i class="bi bi-chevron-expand sort-icon"></i>
             </th>
-            <th class="sortable-header text-center" data-column="deceased" data-type="number" title="Натисніть для сортування">
+            <th class="sortable-header text-center"
+                data-column="deceased"
+                data-type="number"
+                data-bs-toggle="tooltip"
+                data-bs-placement="top"
+                data-bs-title="Всі записи з датою смерті (незалежно від статусу виписки). Натисніть для сортування">
               Помер <i class="bi bi-chevron-expand sort-icon"></i>
             </th>
-            <th class="sortable-header text-center" data-column="total" data-type="number" title="Натисніть для сортування">
+            <th class="sortable-header text-center"
+                data-column="total"
+                data-type="number"
+                data-bs-toggle="tooltip"
+                data-bs-placement="top"
+                data-bs-title="Сума всіх категорій по відділенню. Натисніть для сортування">
               Всього <i class="bi bi-chevron-expand sort-icon"></i>
             </th>
           </tr>
@@ -231,7 +270,12 @@
             <tr>
               <th>Статус</th>
               <th class="text-end">Кількість</th>
-              <th class="text-end">%</th>
+              <th class="text-end"
+                  data-bs-toggle="tooltip"
+                  data-bs-placement="top"
+                  data-bs-title="Відсоток від загальної кількості записів за місяць">
+                % <i class="bi bi-info-circle text-muted small"></i>
+              </th>
             </tr>
           </thead>
           <tbody>
@@ -317,6 +361,10 @@
     // Initialize Bootstrap tooltips
     const tooltipTriggerList = document.querySelectorAll('[data-bs-toggle="tooltip"]');
     const tooltipList = [...tooltipTriggerList].map(tooltipTriggerEl => new bootstrap.Tooltip(tooltipTriggerEl));
+
+    // Initialize Bootstrap popovers
+    const popoverTriggerList = document.querySelectorAll('[data-bs-toggle="popover"]');
+    const popoverList = [...popoverTriggerList].map(popoverTriggerEl => new bootstrap.Popover(popoverTriggerEl));
 
     const form = document.getElementById('monthFilterForm');
     const monthInput = document.getElementById('month_select');
