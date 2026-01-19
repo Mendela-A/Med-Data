@@ -24,11 +24,45 @@
           <i class="bi bi-arrow-left me-1"></i>Повернутись до статистики
         </a>
         {% endif %}
-        <span class="badge bg-primary">Всього: {{ count }}</span>
-        <span class="badge bg-success">Виписаних: {{ count_discharged }}</span>
-        <span class="badge bg-warning text-dark">Опрацьовується: {{ count_processing }}</span>
-        <span class="badge bg-danger">Порушені вимоги: {{ count_violations }}</span>
-        <span class="badge bg-dark">Померло: {{ count_deceased }}</span>
+        <span class="badge bg-primary"
+              data-bs-toggle="tooltip"
+              data-bs-placement="top"
+              data-bs-title="Загальна кількість записів у вибірці (з урахуванням всіх фільтрів)">
+          Всього: {{ count }}
+        </span>
+        <span class="badge bg-success"
+              data-bs-toggle="tooltip"
+              data-bs-placement="top"
+              data-bs-title="Записи зі статусом 'Виписаний' без дати смерті">
+          Виписаних: {{ count_discharged }}
+        </span>
+        <span class="badge bg-warning text-dark"
+              data-bs-toggle="tooltip"
+              data-bs-placement="top"
+              data-bs-title="Записи зі статусом 'Опрацьовується' без дати смерті">
+          Опрацьовується: {{ count_processing }}
+        </span>
+        <span class="badge bg-danger"
+              data-bs-toggle="tooltip"
+              data-bs-placement="top"
+              data-bs-title="Записи зі статусом 'Порушені вимоги' без дати смерті">
+          Порушені вимоги: {{ count_violations }}
+        </span>
+        <span class="badge bg-dark"
+              data-bs-toggle="tooltip"
+              data-bs-placement="top"
+              data-bs-title="Всі записи з датою смерті (незалежно від статусу виписки)">
+          Померло: {{ count_deceased }}
+        </span>
+        <button type="button"
+                class="btn btn-sm btn-outline-secondary"
+                data-bs-toggle="popover"
+                data-bs-placement="bottom"
+                data-bs-html="true"
+                data-bs-title="<i class='bi bi-info-circle me-1'></i>Як рахується статистика?"
+                data-bs-content="<ul class='mb-0 ps-3'><li><strong>Померло</strong> — пріоритетна категорія: всі записи з датою смерті рахуються сюди, незалежно від статусу виписки</li><li><strong>Виписаних, Опрацьовується, Порушені вимоги</strong> — рахуються тільки записи БЕЗ дати смерті</li><li><strong>Всього</strong> = сума всіх категорій</li></ul>">
+          <i class="bi bi-question-circle"></i>
+        </button>
       </div>
     </div>
   </div>
@@ -280,6 +314,14 @@
   <script>
     // Disable month filter when "all months" checkbox is checked
     document.addEventListener('DOMContentLoaded', function() {
+      // Initialize Bootstrap tooltips
+      const tooltipTriggerList = document.querySelectorAll('[data-bs-toggle="tooltip"]');
+      const tooltipList = [...tooltipTriggerList].map(tooltipTriggerEl => new bootstrap.Tooltip(tooltipTriggerEl));
+
+      // Initialize Bootstrap popovers
+      const popoverTriggerList = document.querySelectorAll('[data-bs-toggle="popover"]');
+      const popoverList = [...popoverTriggerList].map(popoverTriggerEl => new bootstrap.Popover(popoverTriggerEl));
+
       const allMonthsCheckbox = document.getElementById('all_months');
       const monthFilter = document.getElementById('month_filter');
 
@@ -388,7 +430,13 @@
               </div>
 
               <div class="col-md-6">
-                <label for="date_of_death" class="form-label">Дата смерті</label>
+                <label for="date_of_death" class="form-label">
+                  Дата смерті
+                  <i class="bi bi-info-circle text-muted"
+                     data-bs-toggle="tooltip"
+                     data-bs-placement="right"
+                     data-bs-title="Якщо вказано дату смерті, запис буде рахуватися як 'Померло' в статистиці"></i>
+                </label>
                 <input type="date" class="form-control" id="date_of_death" name="date_of_death">
               </div>
 
@@ -494,7 +542,13 @@
               </div>
 
               <div class="col-md-6">
-                <label for="edit_date_of_death" class="form-label">Дата смерті</label>
+                <label for="edit_date_of_death" class="form-label">
+                  Дата смерті
+                  <i class="bi bi-info-circle text-muted"
+                     data-bs-toggle="tooltip"
+                     data-bs-placement="right"
+                     data-bs-title="Якщо вказано дату смерті, запис буде рахуватися як 'Померло' в статистиці"></i>
+                </label>
                 <input type="date" class="form-control" id="edit_date_of_death" name="date_of_death">
               </div>
 
@@ -561,6 +615,10 @@
 
     // Focus on first input when modal opens
     modal.addEventListener('shown.bs.modal', function() {
+      // Initialize tooltips in modal
+      const tooltips = modal.querySelectorAll('[data-bs-toggle="tooltip"]');
+      tooltips.forEach(el => new bootstrap.Tooltip(el));
+
       document.getElementById('full_name').focus();
     });
 
@@ -737,6 +795,10 @@
       successAlert.classList.remove('show');
       errorAlert.style.display = 'none';
       errorAlert.classList.remove('show');
+
+      // Initialize tooltips in modal
+      const tooltips = modal.querySelectorAll('[data-bs-toggle="tooltip"]');
+      tooltips.forEach(el => new bootstrap.Tooltip(el));
     });
 
     // Reset form when modal is closed

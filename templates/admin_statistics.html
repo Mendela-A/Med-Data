@@ -51,7 +51,11 @@
 <!-- KPI Cards -->
 <div class="row mb-4">
   <div class="col-md-3">
-    <a href="{{ url_for('index', month_filter='%04d-%02d'|format(selected_year, selected_month), from_stats='1') }}" class="text-decoration-none stat-card-link">
+    <a href="{{ url_for('index', month_filter='%04d-%02d'|format(selected_year, selected_month), from_stats='1') }}"
+       class="text-decoration-none stat-card-link"
+       data-bs-toggle="tooltip"
+       data-bs-placement="top"
+       data-bs-title="Загальна кількість записів за обраний місяць">
       <div class="card stat-card">
         <div class="card-body text-center">
           <h5 class="card-title text-muted small">Всього записів</h5>
@@ -61,7 +65,11 @@
     </a>
   </div>
   <div class="col-md-3">
-    <a href="{{ url_for('index', month_filter='%04d-%02d'|format(selected_year, selected_month), discharge_status='Опрацьовується', from_stats='1') }}" class="text-decoration-none stat-card-link">
+    <a href="{{ url_for('index', month_filter='%04d-%02d'|format(selected_year, selected_month), discharge_status='Опрацьовується', from_stats='1') }}"
+       class="text-decoration-none stat-card-link"
+       data-bs-toggle="tooltip"
+       data-bs-placement="top"
+       data-bs-title="Записи зі статусом 'Опрацьовується' без дати смерті">
       <div class="card stat-card">
         <div class="card-body text-center">
           <h5 class="card-title text-muted small">Опрацьовується</h5>
@@ -71,7 +79,11 @@
     </a>
   </div>
   <div class="col-md-3">
-    <a href="{{ url_for('index', month_filter='%04d-%02d'|format(selected_year, selected_month), discharge_status='Виписаний', from_stats='1') }}" class="text-decoration-none stat-card-link">
+    <a href="{{ url_for('index', month_filter='%04d-%02d'|format(selected_year, selected_month), discharge_status='Виписаний', from_stats='1') }}"
+       class="text-decoration-none stat-card-link"
+       data-bs-toggle="tooltip"
+       data-bs-placement="top"
+       data-bs-title="Записи зі статусом 'Виписаний' без дати смерті">
       <div class="card stat-card">
         <div class="card-body text-center">
           <h5 class="card-title text-muted small">Виписаних</h5>
@@ -81,7 +93,11 @@
     </a>
   </div>
   <div class="col-md-3">
-    <a href="{{ url_for('index', month_filter='%04d-%02d'|format(selected_year, selected_month), has_death_date='1', from_stats='1') }}" class="text-decoration-none stat-card-link">
+    <a href="{{ url_for('index', month_filter='%04d-%02d'|format(selected_year, selected_month), has_death_date='1', from_stats='1') }}"
+       class="text-decoration-none stat-card-link"
+       data-bs-toggle="tooltip"
+       data-bs-placement="top"
+       data-bs-title="Всі записи з датою смерті (незалежно від статусу виписки)">
       <div class="card stat-card">
         <div class="card-body text-center">
           <h5 class="card-title text-muted small">Померло</h5>
@@ -298,6 +314,10 @@
 <script>
   // Handle month selection form submission
   document.addEventListener('DOMContentLoaded', function() {
+    // Initialize Bootstrap tooltips
+    const tooltipTriggerList = document.querySelectorAll('[data-bs-toggle="tooltip"]');
+    const tooltipList = [...tooltipTriggerList].map(tooltipTriggerEl => new bootstrap.Tooltip(tooltipTriggerEl));
+
     const form = document.getElementById('monthFilterForm');
     const monthInput = document.getElementById('month_select');
 
