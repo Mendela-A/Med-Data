@@ -1143,6 +1143,54 @@ def create_app(config_class=Config):
         # Calculate total records for selected month
         total_records = sum(status_distribution.values())
 
+        # Get previous month data for trends
+        if selected_month == 1:
+            prev_month = 12
+            prev_year = selected_year - 1
+        else:
+            prev_month = selected_month - 1
+            prev_year = selected_year
+
+        prev_first_day = datetime(prev_year, prev_month, 1)
+        if prev_month == 12:
+            prev_last_day = datetime(prev_year + 1, 1, 1)
+        else:
+            prev_last_day = datetime(prev_year, prev_month + 1, 1)
+
+        # Previous month statistics
+        prev_deceased = db.session.query(func.count(Record.id)).filter(
+            Record.date_of_discharge != None,
+            Record.date_of_discharge >= prev_first_day.date(),
+            Record.date_of_discharge < prev_last_day.date(),
+            Record.date_of_death.isnot(None)
+        ).scalar() or 0
+
+        prev_discharged = db.session.query(func.count(Record.id)).filter(
+            Record.date_of_discharge != None,
+            Record.date_of_discharge >= prev_first_day.date(),
+            Record.date_of_discharge < prev_last_day.date(),
+            Record.discharge_status == 'Виписаний',
+            Record.date_of_death.is_(None)
+        ).scalar() or 0
+
+        prev_processing = db.session.query(func.count(Record.id)).filter(
+            Record.date_of_discharge != None,
+            Record.date_of_discharge >= prev_first_day.date(),
+            Record.date_of_discharge < prev_last_day.date(),
+            Record.discharge_status == 'Опрацьовується',
+            Record.date_of_death.is_(None)
+        ).scalar() or 0
+
+        prev_total = prev_deceased + prev_discharged + prev_processing
+
+        # Calculate trends
+        trends = {
+            'total': total_records - prev_total,
+            'processing': status_distribution['Опрацьовується'] - prev_processing,
+            'discharged': status_distribution['Виписаний'] - prev_discharged,
+            'deceased': status_distribution['Помер'] - prev_deceased
+        }
+
         # Month name for display
         selected_month_name = datetime(selected_year, selected_month, 1).strftime('%B %Y')
 
@@ -1153,6 +1201,7 @@ def create_app(config_class=Config):
             dept_list=dept_list,
             status_distribution=status_distribution,
             total_records=total_records,
+            trends=trends,
             current_month=selected_month_name,
             selected_year=selected_year,
             selected_month=selected_month
