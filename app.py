@@ -1054,15 +1054,16 @@ def create_app(config_class=Config):
         else:
             last_day = datetime(selected_year, selected_month + 1, 1)
 
-        # 1. Records added per day for current month
+        # 1. Records per day by discharge date for current month
         records_per_day = db.session.query(
-            func.date(Record.created_at).label('date'),
+            func.date(Record.date_of_discharge).label('date'),
             func.count(Record.id).label('count')
         ).filter(
-            Record.created_at >= first_day,
-            Record.created_at < last_day
+            Record.date_of_discharge != None,
+            Record.date_of_discharge >= first_day.date(),
+            Record.date_of_discharge < last_day.date()
         ).group_by(
-            func.date(Record.created_at)
+            func.date(Record.date_of_discharge)
         ).order_by('date').all()
 
         # 2. Status distribution by department
@@ -1074,16 +1075,18 @@ def create_app(config_class=Config):
             # Померлих рахуємо по date_of_death (є дата смерті)
             deceased_count = db.session.query(func.count(Record.id)).filter(
                 Record.discharge_department == dept,
-                Record.created_at >= first_day,
-                Record.created_at < last_day,
+                Record.date_of_discharge != None,
+                Record.date_of_discharge >= first_day.date(),
+                Record.date_of_discharge < last_day.date(),
                 Record.date_of_death.isnot(None)
             ).scalar()
 
             # Виписаних - статус "Виписаний" БЕЗ дати смерті
             discharged_count = db.session.query(func.count(Record.id)).filter(
                 Record.discharge_department == dept,
-                Record.created_at >= first_day,
-                Record.created_at < last_day,
+                Record.date_of_discharge != None,
+                Record.date_of_discharge >= first_day.date(),
+                Record.date_of_discharge < last_day.date(),
                 Record.discharge_status == 'Виписаний',
                 Record.date_of_death.is_(None)
             ).scalar()
@@ -1091,8 +1094,9 @@ def create_app(config_class=Config):
             # Опрацьовується - статус "Опрацьовується" БЕЗ дати смерті
             processing_count = db.session.query(func.count(Record.id)).filter(
                 Record.discharge_department == dept,
-                Record.created_at >= first_day,
-                Record.created_at < last_day,
+                Record.date_of_discharge != None,
+                Record.date_of_discharge >= first_day.date(),
+                Record.date_of_discharge < last_day.date(),
                 Record.discharge_status == 'Опрацьовується',
                 Record.date_of_death.is_(None)
             ).scalar()
@@ -1106,23 +1110,26 @@ def create_app(config_class=Config):
         # 3. Overall status distribution for current month
         # Померлих рахуємо по date_of_death
         total_deceased = db.session.query(func.count(Record.id)).filter(
-            Record.created_at >= first_day,
-            Record.created_at < last_day,
+            Record.date_of_discharge != None,
+            Record.date_of_discharge >= first_day.date(),
+            Record.date_of_discharge < last_day.date(),
             Record.date_of_death.isnot(None)
         ).scalar()
 
         # Виписаних - статус "Виписаний" БЕЗ дати смерті
         total_discharged = db.session.query(func.count(Record.id)).filter(
-            Record.created_at >= first_day,
-            Record.created_at < last_day,
+            Record.date_of_discharge != None,
+            Record.date_of_discharge >= first_day.date(),
+            Record.date_of_discharge < last_day.date(),
             Record.discharge_status == 'Виписаний',
             Record.date_of_death.is_(None)
         ).scalar()
 
         # Опрацьовується - статус "Опрацьовується" БЕЗ дати смерті
         total_processing = db.session.query(func.count(Record.id)).filter(
-            Record.created_at >= first_day,
-            Record.created_at < last_day,
+            Record.date_of_discharge != None,
+            Record.date_of_discharge >= first_day.date(),
+            Record.date_of_discharge < last_day.date(),
             Record.discharge_status == 'Опрацьовується',
             Record.date_of_death.is_(None)
         ).scalar()

@@ -16,20 +16,10 @@
 <!-- Month Filter -->
 <div class="card mb-4">
   <div class="card-body">
-    <!-- Info alert about date filtering -->
-    <div class="alert alert-info mb-3" role="alert">
-      <i class="bi bi-info-circle me-2"></i>
-      <strong>Увага:</strong> статистика показує записи за датою <strong>створення в системі</strong>, а не за датою виписки.
-      Для перегляду записів за датою виписки використовуйте головну сторінку.
-    </div>
     <form method="get" action="{{ url_for('admin_statistics') }}" id="monthFilterForm" class="row g-3 align-items-end">
       <div class="col-md-3">
         <label for="month_select" class="form-label small fw-bold">
           <i class="bi bi-calendar-month me-1"></i>Виберіть місяць
-          <i class="bi bi-info-circle text-muted"
-             data-bs-toggle="tooltip"
-             data-bs-placement="right"
-             data-bs-title="Показує записи створені в системі за обраний місяць"></i>
         </label>
         <input
           type="month"
@@ -65,7 +55,7 @@
        class="text-decoration-none stat-card-link"
        data-bs-toggle="tooltip"
        data-bs-placement="top"
-       data-bs-title="Загальна кількість записів створених за обраний місяць">
+       data-bs-title="Загальна кількість записів виписаних за обраний місяць">
       <div class="card stat-card">
         <div class="card-body text-center">
           <h5 class="card-title text-muted small">Всього записів</h5>
@@ -314,11 +304,11 @@
   </div>
 </div>
 
-<!-- Section 1: Records added per day -->
+<!-- Section 1: Records by discharge date -->
 <div class="card mb-4">
   <div class="card-body">
     <h5 class="card-title mb-3">
-      <i class="bi bi-calendar-plus me-2"></i>Записи додані за день
+      <i class="bi bi-calendar-check me-2"></i>Записи по датах виписки
     </h5>
 
     {% if records_per_day %}
