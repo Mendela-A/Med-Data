@@ -28,7 +28,7 @@
       <form method="get">
         <div class="row g-3 mb-3">
           <div class="col-sm-6 col-md-4 col-xl-3">
-            <label class="form-label small mb-1">Статус</label>
+            <label class="form-label small mb-1"><i class="bi bi-flag me-1"></i>Статус</label>
             <select class="form-select form-select-sm" name="status">
               <option value="">Всі</option>
               <option value="В обробці" {% if selected_status == 'В обробці' %}selected{% endif %}>В обробці</option>
@@ -39,7 +39,7 @@
           </div>
 
           <div class="col-sm-6 col-md-4 col-xl-3">
-            <label class="form-label small mb-1">Лікар</label>
+            <label class="form-label small mb-1"><i class="bi bi-person me-1"></i>Лікар</label>
             <select class="form-select form-select-sm" name="doctor">
               <option value="">Всі</option>
               {% for d in doctors %}
@@ -49,12 +49,15 @@
           </div>
 
           <div class="col-sm-6 col-md-4 col-xl-3">
-            <label class="form-label small mb-1">НСЗУ ID</label>
-            <input class="form-control form-control-sm" name="nszu_record_id" placeholder="Пошук за ID" value="{{ nszu_record_id_q }}">
+            <label class="form-label small mb-1"><i class="bi bi-search me-1"></i>НСЗУ ID</label>
+            <div class="input-group input-group-sm">
+              <span class="input-group-text"><i class="bi bi-search"></i></span>
+              <input class="form-control" name="nszu_record_id" placeholder="Пошук за ID" value="{{ nszu_record_id_q }}">
+            </div>
           </div>
 
           <div class="col-sm-6 col-md-4 col-xl-3">
-            <label class="form-label small mb-1">На сторінку:</label>
+            <label class="form-label small mb-1"><i class="bi bi-list-ol me-1"></i>На сторінку</label>
             <select class="form-select form-select-sm" name="per_page">
               <option value="25" {% if pagination.per_page == 25 %}selected{% endif %}>25</option>
               <option value="50" {% if pagination.per_page == 50 %}selected{% endif %}>50</option>
@@ -66,8 +69,12 @@
 
         <div class="d-flex flex-wrap align-items-center gap-3 pt-2 border-top">
           <div class="ms-auto">
-            <button class="btn btn-primary btn-sm" type="submit">Застосувати</button>
-            <a class="btn btn-outline-secondary btn-sm ms-2" href="{{ url_for('nszu_list') }}">Скинути</a>
+            <button class="btn btn-primary btn-sm" type="submit">
+              <i class="bi bi-funnel me-1"></i>Застосувати
+            </button>
+            <a class="btn btn-outline-secondary btn-sm ms-2" href="{{ url_for('nszu_list') }}">
+              <i class="bi bi-x-circle me-1"></i>Скинути
+            </a>
           </div>
         </div>
       </form>
@@ -87,8 +94,8 @@
                 <th style="width: 150px;">Лікар</th>
                 <th style="width: 120px;">Статус</th>
                 <th style="width: 25%;">Деталі</th>
-                <th style="width: 100px;">Факт. сума</th>
                 <th style="width: 20%;">Коментар</th>
+                <th style="width: 100px;">Факт. сума</th>
                 {% if current_user.role in ['editor', 'admin'] %}
                   <th style="width: 100px;">Створив</th>
                   <th style="width: 130px;">Створено</th>
@@ -117,8 +124,8 @@
                     {% endif %}
                   </td>
                   <td>{{ c.detail[:200] if c.detail else '' }}{% if c.detail and c.detail|length > 200 %}...{% endif %}</td>
-                  <td>{{ '{:.2f}'.format(c.fakt_summ) if c.fakt_summ else '0.00' }}</td>
                   <td>{{ c.comment[:150] if c.comment else '' }}{% if c.comment and c.comment|length > 150 %}...{% endif %}</td>
+                  <td>{{ '{:.2f}'.format(c.fakt_summ) if c.fakt_summ else '0.00' }}</td>
                   {% if current_user.role in ['editor', 'admin'] %}
                     <td>{{ c.creator.username if c.creator else '' }}</td>
                     <td>{{ c.created_at.strftime('%d.%m.%Y %H:%M') if c.created_at else '' }}</td>
