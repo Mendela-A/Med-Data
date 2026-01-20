@@ -81,6 +81,56 @@
     </div>
   </div>
 
+  <!-- Quick Statistics for filtered records -->
+  {% if count > 0 %}
+  <div class="card mb-3">
+    <div class="card-body py-2">
+      <div class="d-flex flex-wrap gap-3 align-items-center">
+        <span class="text-muted small">
+          <i class="bi bi-funnel me-1"></i>Відфільтровано:
+        </span>
+
+        <div class="d-flex flex-wrap gap-2">
+          {% if status_stats.get('В обробці') %}
+          <span class="badge bg-secondary" style="font-size: 0.9rem; padding: 0.4rem 0.7rem;">
+            В обробці: {{ status_stats['В обробці']['count'] }}
+            <small class="opacity-75">({{ '{:,.2f}'.format(status_stats['В обробці']['sum']) }} грн)</small>
+          </span>
+          {% endif %}
+
+          {% if status_stats.get('Опрацьовано') %}
+          <span class="badge bg-warning" style="font-size: 0.9rem; padding: 0.4rem 0.7rem;">
+            Опрацьовано: {{ status_stats['Опрацьовано']['count'] }}
+            <small class="opacity-75">({{ '{:,.2f}'.format(status_stats['Опрацьовано']['sum']) }} грн)</small>
+          </span>
+          {% endif %}
+
+          {% if status_stats.get('Оплачено') %}
+          <span class="badge bg-success" style="font-size: 0.9rem; padding: 0.4rem 0.7rem;">
+            Оплачено: {{ status_stats['Оплачено']['count'] }}
+            <small class="opacity-75">({{ '{:,.2f}'.format(status_stats['Оплачено']['sum']) }} грн)</small>
+          </span>
+          {% endif %}
+
+          {% if status_stats.get('Не підлягає оплаті') %}
+          <span class="badge bg-danger" style="font-size: 0.9rem; padding: 0.4rem 0.7rem;">
+            Не підлягає оплаті: {{ status_stats['Не підлягає оплаті']['count'] }}
+            <small class="opacity-75">({{ '{:,.2f}'.format(status_stats['Не підлягає оплаті']['sum']) }} грн)</small>
+          </span>
+          {% endif %}
+        </div>
+
+        <div class="ms-auto">
+          <span class="badge bg-primary" style="font-size: 0.95rem; padding: 0.45rem 0.8rem;">
+            <i class="bi bi-cash-stack me-1"></i>
+            Всього сума: <strong>{{ '{:,.2f}'.format(total_filtered_sum) }} грн</strong>
+          </span>
+        </div>
+      </div>
+    </div>
+  </div>
+  {% endif %}
+
   {% if corrections %}
     <div class="card">
       <div class="card-body p-0">

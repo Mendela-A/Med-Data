@@ -1052,6 +1052,17 @@ def create_app(config_class=Config):
         corrections = pagination.items
         count = pagination.total
 
+        # Calculate quick statistics for filtered records
+        from sqlalchemy import func
+        filtered_stats = db.session.query(
+            NSZUCorrection.status,
+            func.count(NSZUCorrection.id).label('count'),
+            func.sum(NSZUCorrection.fakt_summ).label('total_sum')
+        ).filter(*conditions if conditions else []).group_by(NSZUCorrection.status).all()
+
+        status_stats = {stat.status: {'count': stat.count, 'sum': float(stat.total_sum or 0)} for stat in filtered_stats}
+        total_filtered_sum = sum(stat['sum'] for stat in status_stats.values())
+
         return render_template('nszu_list.html',
                              corrections=corrections,
                              pagination=pagination,
@@ -1060,7 +1071,9 @@ def create_app(config_class=Config):
                              selected_status=selected_status,
                              selected_doctor=selected_doctor,
                              nszu_record_id_q=nszu_record_id_q,
-                             count=count)
+                             count=count,
+                             status_stats=status_stats,
+                             total_filtered_sum=total_filtered_sum)
 
     @app.route('/nszu/add', methods=['GET', 'POST'])
     @role_required('editor')
