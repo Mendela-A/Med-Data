@@ -28,6 +28,14 @@
       <input class="form-control input-xsmall" name="k_days" type="number" min="0" required>
     </div>
 
+    <div class="col-auto" id="death-row">
+      <label class="form-label">
+        <input type="checkbox" id="death-checkbox" class="form-check-input me-1">
+        <span style="color: #c82333;">Дата смерті</span>
+      </label>
+      <input id="date_of_death" class="form-control date-input" name="date_of_death" type="date" disabled>
+    </div>
+
     <div class="col-auto">
       <label class="form-label">Історія</label>
       <input class="form-control input-history" name="history" maxlength="6" required>
@@ -53,11 +61,6 @@
       </datalist>
     </div>
 
-    <div class="col-auto" id="death-row">
-      <label class="form-label">Дата смерті</label>
-      <input id="date_of_death" class="form-control date-input" name="date_of_death" type="date">
-    </div>
-
     <div class="col-12">
       <label class="form-label">Коментар</label>
       <textarea class="form-control" name="comment" rows="2"></textarea>
@@ -68,4 +71,48 @@
       <a class="btn btn-secondary ms-2" href="{{ url_for('index') }}">Скасувати</a>
     </div>
   </form>
+{% endblock %}
+
+{% block scripts %}
+<script>
+  // Auto-fill yesterday's date for discharge date
+  document.addEventListener('DOMContentLoaded', function() {
+    const dateInput = document.querySelector('input[name="date_of_discharge"]');
+    if (dateInput && !dateInput.value) {
+      // Set yesterday's date in YYYY-MM-DD format
+      const yesterday = new Date();
+      yesterday.setDate(yesterday.getDate() - 1);
+      const year = yesterday.getFullYear();
+      const month = String(yesterday.getMonth() + 1).padStart(2, '0');
+      const day = String(yesterday.getDate()).padStart(2, '0');
+      dateInput.value = `${year}-${month}-${day}`;
+    }
+
+    // Handle death date checkbox
+    const deathCheckbox = document.getElementById('death-checkbox');
+    const deathDateInput = document.getElementById('date_of_death');
+
+    if (deathCheckbox && deathDateInput) {
+      deathCheckbox.addEventListener('change', function() {
+        if (this.checked) {
+          deathDateInput.disabled = false;
+          deathDateInput.focus();
+        } else {
+          deathDateInput.disabled = true;
+          deathDateInput.value = '';
+        }
+      });
+
+      // Clear date if checkbox is unchecked on form submit
+      const form = deathDateInput.closest('form');
+      if (form) {
+        form.addEventListener('submit', function() {
+          if (!deathCheckbox.checked) {
+            deathDateInput.value = '';
+          }
+        });
+      }
+    }
+  });
+</script>
 {% endblock %}

@@ -104,7 +104,7 @@
           {% endif %}
 
           {% if status_stats.get('Опрацьовано') %}
-          <span class="badge bg-warning" style="font-size: 0.9rem; padding: 0.4rem 0.7rem;">
+          <span class="badge bg-warning text-dark" style="font-size: 0.9rem; padding: 0.4rem 0.7rem;">
             Опрацьовано: {{ status_stats['Опрацьовано']['count'] }}
             <small class="opacity-75">({{ '{:,.2f}'.format(status_stats['Опрацьовано']['sum']) }} грн)</small>
           </span>
@@ -169,7 +169,7 @@
                     {% if c.status == 'Оплачено' %}
                       <span class="badge bg-success">{{ c.status }}</span>
                     {% elif c.status == 'Опрацьовано' %}
-                      <span class="badge bg-warning">{{ c.status }}</span>
+                      <span class="badge bg-warning text-dark">{{ c.status }}</span>
                     {% elif c.status == 'В обробці' %}
                       <span class="badge bg-secondary">{{ c.status }}</span>
                     {% elif c.status == 'Не підлягає оплаті' %}
