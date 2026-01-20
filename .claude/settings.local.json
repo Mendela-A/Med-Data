@@ -19,7 +19,9 @@
       "Bash(timeout 10 sh:*)",
       "Bash(docker-compose ps:*)",
       "Bash(docker-compose logs:*)",
-      "Bash(venv/Scripts/python.exe:*)"
+      "Bash(venv/Scripts/python.exe:*)",
+      "Bash(git add:*)",
+      "Bash(git commit:*)"
     ]
   }
 }
