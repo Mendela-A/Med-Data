@@ -123,6 +123,38 @@ class Department(db.Model):
         return f"<Department {self.id} {self.name}>"
 
 
+class NSZUCorrection(db.Model):
+    __tablename__ = 'nszu_corrections'
+    __table_args__ = (
+        db.Index('idx_nszu_status', 'status'),
+        db.Index('idx_nszu_doctor', 'doctor'),
+        db.Index('idx_nszu_created_at', 'created_at'),
+        db.Index('idx_nszu_record_id', 'nszu_record_id'),
+        db.Index('idx_nszu_date', 'date'),
+    )
+
+    id = db.Column(db.Integer, primary_key=True)
+    date = db.Column(db.Date, nullable=False)  # Дата створення корекції
+    nszu_record_id = db.Column(db.String(100), nullable=False, index=True)  # UUID від НСЗУ
+    doctor = db.Column(db.String(200), nullable=False)  # ПІБ лікаря
+    status = db.Column(db.String(50), nullable=False, default='В обробці')  # Статус
+    detail = db.Column(db.Text, nullable=True)  # Опис проблеми
+    fakt_summ = db.Column(db.Numeric(10, 2), nullable=True)  # Фактична сума
+    comment = db.Column(db.Text, nullable=True)  # Коментар
+
+    created_by = db.Column(db.Integer, db.ForeignKey('users.id'), nullable=True)
+    created_at = db.Column(db.DateTime, default=datetime.utcnow)
+    updated_by = db.Column(db.Integer, db.ForeignKey('users.id'), nullable=True)
+    updated_at = db.Column(db.DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
+
+    # Relationships
+    creator = db.relationship('User', foreign_keys=[created_by], backref='nszu_corrections_created')
+    updater = db.relationship('User', foreign_keys=[updated_by], backref='nszu_corrections_updated')
+
+    def __repr__(self):
+        return f"<NSZUCorrection {self.id} {self.nszu_record_id}>"
+
+
 def log_action(actor_id, action, target_type=None, target_id=None, details=None):
     """Create an audit log entry and commit it."""
     a = Audit(actor_id=actor_id, action=action, target_type=target_type, target_id=target_id, details=details)

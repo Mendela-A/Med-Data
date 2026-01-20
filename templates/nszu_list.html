@@ -1,0 +1,355 @@
+{% extends "base.html" %}
+{% block title %}Перевірка НСЗУ{% endblock %}
+{% block container_class %}container-fluid px-4{% endblock %}
+{% block content %}
+  {% block breadcrumbs %}
+    <li class="breadcrumb-item active" aria-current="page">Перевірка НСЗУ</li>
+  {% endblock %}
+
+  <div class="d-flex justify-content-between align-items-center mb-3">
+    <div>
+      <h1 class="h3 mb-2">Перевірка НСЗУ</h1>
+      <div class="d-flex gap-2 flex-wrap align-items-center">
+        <span class="badge bg-primary">Всього: {{ count }}</span>
+        <span class="badge bg-info">{{ current_month }}</span>
+      </div>
+    </div>
+    {% if current_user.role in ['editor', 'admin'] %}
+    <div>
+      <button type="button" class="btn btn-success" data-bs-toggle="modal" data-bs-target="#addRecordModal">
+        <i class="bi bi-plus-circle me-1"></i>Додати запис
+      </button>
+    </div>
+    {% endif %}
+  </div>
+
+  <div class="card mb-3">
+    <div class="card-body py-3">
+      <h5 class="card-title mb-3">Фільтри</h5>
+      <form method="get">
+        <div class="row g-3 mb-3">
+          <div class="col-sm-6 col-md-4 col-xl-2">
+            <label class="form-label small mb-1"><i class="bi bi-calendar-month me-1"></i>Місяць</label>
+            <input type="month" class="form-control form-control-sm" name="month_year"
+                   value="{{ '%04d-%02d'|format(selected_year, selected_month) }}" min="2020-01">
+          </div>
+
+          <div class="col-sm-6 col-md-4 col-xl-2">
+            <label class="form-label small mb-1"><i class="bi bi-flag me-1"></i>Статус</label>
+            <select class="form-select form-select-sm" name="status">
+              <option value="">Всі</option>
+              <option value="В обробці" {% if selected_status == 'В обробці' %}selected{% endif %}>В обробці</option>
+              <option value="Опрацьовано" {% if selected_status == 'Опрацьовано' %}selected{% endif %}>Опрацьовано</option>
+              <option value="Оплачено" {% if selected_status == 'Оплачено' %}selected{% endif %}>Оплачено</option>
+              <option value="Не підлягає оплаті" {% if selected_status == 'Не підлягає оплаті' %}selected{% endif %}>Не підлягає оплаті</option>
+            </select>
+          </div>
+
+          <div class="col-sm-6 col-md-4 col-xl-2">
+            <label class="form-label small mb-1"><i class="bi bi-person me-1"></i>Лікар</label>
+            <select class="form-select form-select-sm" name="doctor">
+              <option value="">Всі</option>
+              {% for d in doctors %}
+                <option value="{{ d }}" {% if d == selected_doctor %}selected{% endif %}>{{ d }}</option>
+              {% endfor %}
+            </select>
+          </div>
+
+          <div class="col-sm-6 col-md-4 col-xl-3">
+            <label class="form-label small mb-1"><i class="bi bi-search me-1"></i>НСЗУ ID</label>
+            <div class="input-group input-group-sm">
+              <span class="input-group-text"><i class="bi bi-search"></i></span>
+              <input class="form-control" name="nszu_record_id" placeholder="Пошук за ID" value="{{ nszu_record_id_q }}">
+            </div>
+          </div>
+
+          <div class="col-sm-6 col-md-4 col-xl-2">
+            <label class="form-label small mb-1"><i class="bi bi-list-ol me-1"></i>На сторінку</label>
+            <select class="form-select form-select-sm" name="per_page">
+              <option value="25" {% if pagination.per_page == 25 %}selected{% endif %}>25</option>
+              <option value="50" {% if pagination.per_page == 50 %}selected{% endif %}>50</option>
+              <option value="100" {% if pagination.per_page == 100 %}selected{% endif %}>100</option>
+              <option value="200" {% if pagination.per_page == 200 %}selected{% endif %}>200</option>
+            </select>
+          </div>
+        </div>
+
+        <div class="d-flex flex-wrap align-items-center gap-2 pt-2 border-top">
+          <button class="btn btn-primary btn-sm" type="submit">
+            <i class="bi bi-funnel me-1"></i>Застосувати
+          </button>
+          <a class="btn btn-outline-secondary btn-sm" href="{{ url_for('nszu_list') }}">
+            <i class="bi bi-arrow-clockwise me-1"></i>Поточний місяць
+          </a>
+        </div>
+      </form>
+    </div>
+  </div>
+
+  <!-- Quick Statistics for filtered records -->
+  {% if count > 0 %}
+  <div class="card mb-3">
+    <div class="card-body py-2">
+      <div class="d-flex flex-wrap gap-3 align-items-center">
+        <span class="text-muted small">
+          <i class="bi bi-funnel me-1"></i>Відфільтровано:
+        </span>
+
+        <div class="d-flex flex-wrap gap-2">
+          {% if status_stats.get('В обробці') %}
+          <span class="badge bg-secondary" style="font-size: 0.9rem; padding: 0.4rem 0.7rem;">
+            В обробці: {{ status_stats['В обробці']['count'] }}
+            <small class="opacity-75">({{ '{:,.2f}'.format(status_stats['В обробці']['sum']) }} грн)</small>
+          </span>
+          {% endif %}
+
+          {% if status_stats.get('Опрацьовано') %}
+          <span class="badge bg-warning" style="font-size: 0.9rem; padding: 0.4rem 0.7rem;">
+            Опрацьовано: {{ status_stats['Опрацьовано']['count'] }}
+            <small class="opacity-75">({{ '{:,.2f}'.format(status_stats['Опрацьовано']['sum']) }} грн)</small>
+          </span>
+          {% endif %}
+
+          {% if status_stats.get('Оплачено') %}
+          <span class="badge bg-success" style="font-size: 0.9rem; padding: 0.4rem 0.7rem;">
+            Оплачено: {{ status_stats['Оплачено']['count'] }}
+            <small class="opacity-75">({{ '{:,.2f}'.format(status_stats['Оплачено']['sum']) }} грн)</small>
+          </span>
+          {% endif %}
+
+          {% if status_stats.get('Не підлягає оплаті') %}
+          <span class="badge bg-danger" style="font-size: 0.9rem; padding: 0.4rem 0.7rem;">
+            Не підлягає оплаті: {{ status_stats['Не підлягає оплаті']['count'] }}
+            <small class="opacity-75">({{ '{:,.2f}'.format(status_stats['Не підлягає оплаті']['sum']) }} грн)</small>
+          </span>
+          {% endif %}
+        </div>
+
+        <div class="ms-auto">
+          <span class="badge bg-primary" style="font-size: 0.95rem; padding: 0.45rem 0.8rem;">
+            <i class="bi bi-cash-stack me-1"></i>
+            Всього сума: <strong>{{ '{:,.2f}'.format(total_filtered_sum) }} грн</strong>
+          </span>
+        </div>
+      </div>
+    </div>
+  </div>
+  {% endif %}
+
+  {% if corrections %}
+    <div class="card">
+      <div class="card-body p-0">
+        <div class="table-responsive">
+          <table class="table table-striped table-hover mb-0">
+            <thead class="table-light">
+              <tr>
+                <th style="width: 50px;">ID</th>
+                <th style="width: 100px;">Дата</th>
+                <th style="width: 120px;">НСЗУ ID</th>
+                <th style="width: 150px;">Лікар</th>
+                <th style="width: 120px;">Статус</th>
+                <th style="width: 25%;">Деталі</th>
+                <th style="width: 20%;">Коментар</th>
+                <th style="width: 100px;">Факт. сума</th>
+                {% if current_user.role in ['editor', 'admin'] %}
+                  <th style="width: 100px;">Оновив</th>
+                  <th style="width: 130px;">Оновлено</th>
+                  <th style="width: 100px;">Дія</th>
+                {% endif %}
+              </tr>
+            </thead>
+            <tbody>
+              {% for c in corrections %}
+                <tr>
+                  <td>{{ c.id }}</td>
+                  <td>{{ c.date.strftime('%d.%m.%Y') if c.date else '' }}</td>
+                  <td><small>{{ c.nszu_record_id }}</small></td>
+                  <td>{{ c.doctor }}</td>
+                  <td>
+                    {% if c.status == 'Оплачено' %}
+                      <span class="badge bg-success">{{ c.status }}</span>
+                    {% elif c.status == 'Опрацьовано' %}
+                      <span class="badge bg-warning">{{ c.status }}</span>
+                    {% elif c.status == 'В обробці' %}
+                      <span class="badge bg-secondary">{{ c.status }}</span>
+                    {% elif c.status == 'Не підлягає оплаті' %}
+                      <span class="badge bg-danger">{{ c.status }}</span>
+                    {% else %}
+                      <span class="badge bg-secondary">{{ c.status }}</span>
+                    {% endif %}
+                  </td>
+                  <td>{{ c.detail[:200] if c.detail else '' }}{% if c.detail and c.detail|length > 200 %}...{% endif %}</td>
+                  <td>{{ c.comment[:150] if c.comment else '' }}{% if c.comment and c.comment|length > 150 %}...{% endif %}</td>
+                  <td>{{ '{:.2f}'.format(c.fakt_summ) if c.fakt_summ else '0.00' }}</td>
+                  {% if current_user.role in ['editor', 'admin'] %}
+                    <td>{{ c.updater.username if c.updater else (c.creator.username if c.creator else '') }}</td>
+                    <td>{{ c.updated_at.strftime('%d.%m.%Y %H:%M') if c.updated_at else (c.created_at.strftime('%d.%m.%Y %H:%M') if c.created_at else '') }}</td>
+                    <td>
+                      <div class="btn-group btn-group-sm" role="group">
+                        <a href="{{ url_for('nszu_edit', correction_id=c.id) }}" class="btn btn-outline-primary" title="Редагувати">
+                          <i class="bi bi-pencil"></i>
+                        </a>
+                        {% if current_user.role == 'admin' %}
+                          <button type="button" class="btn btn-outline-danger" title="Видалити"
+                                  onclick="confirmDelete({{ c.id }}, '{{ c.nszu_record_id }}', '{{ c.doctor }}', '{{ c.date.strftime('%d.%m.%Y') if c.date else '' }}')">
+                            <i class="bi bi-trash"></i>
+                          </button>
+                        {% endif %}
+                      </div>
+                      {% if current_user.role == 'admin' %}
+                        <form id="delete-form-{{ c.id }}" method="POST" action="{{ url_for('nszu_delete', correction_id=c.id) }}" style="display: none;">
+                        </form>
+                      {% endif %}
+                    </td>
+                  {% endif %}
+                </tr>
+              {% endfor %}
+            </tbody>
+          </table>
+        </div>
+      </div>
+    </div>
+
+    <!-- Pagination -->
+    {% if pagination.pages > 1 %}
+      <nav aria-label="Page navigation" class="mt-3">
+        <ul class="pagination justify-content-center">
+          <li class="page-item {% if not pagination.has_prev %}disabled{% endif %}">
+            <a class="page-link" href="{{ url_for('nszu_list', page=pagination.prev_num, per_page=pagination.per_page, month_year='%04d-%02d'|format(selected_year, selected_month), status=selected_status, doctor=selected_doctor, nszu_record_id=nszu_record_id_q) if pagination.has_prev else '#' }}">Попередня</a>
+          </li>
+
+          {% for page_num in pagination.iter_pages(left_edge=1, right_edge=1, left_current=2, right_current=2) %}
+            {% if page_num %}
+              <li class="page-item {% if page_num == pagination.page %}active{% endif %}">
+                <a class="page-link" href="{{ url_for('nszu_list', page=page_num, per_page=pagination.per_page, month_year='%04d-%02d'|format(selected_year, selected_month), status=selected_status, doctor=selected_doctor, nszu_record_id=nszu_record_id_q) }}">{{ page_num }}</a>
+              </li>
+            {% else %}
+              <li class="page-item disabled"><span class="page-link">…</span></li>
+            {% endif %}
+          {% endfor %}
+
+          <li class="page-item {% if not pagination.has_next %}disabled{% endif %}">
+            <a class="page-link" href="{{ url_for('nszu_list', page=pagination.next_num, per_page=pagination.per_page, month_year='%04d-%02d'|format(selected_year, selected_month), status=selected_status, doctor=selected_doctor, nszu_record_id=nszu_record_id_q) if pagination.has_next else '#' }}">Наступна</a>
+          </li>
+        </ul>
+      </nav>
+    {% endif %}
+
+  {% else %}
+    <div class="alert alert-info">
+      <i class="bi bi-info-circle me-2"></i>Записів не знайдено.
+      {% if current_user.role in ['editor', 'admin'] %}
+        <a href="#" data-bs-toggle="modal" data-bs-target="#addRecordModal">Додати перший запис</a>
+      {% endif %}
+    </div>
+  {% endif %}
+
+  <!-- Modal for adding new record -->
+  {% if current_user.role in ['editor', 'admin'] %}
+  <div class="modal fade" id="addRecordModal" tabindex="-1" aria-labelledby="addRecordModalLabel" aria-hidden="true">
+    <div class="modal-dialog modal-lg">
+      <div class="modal-content">
+        <div class="modal-header">
+          <h5 class="modal-title" id="addRecordModalLabel">
+            <i class="bi bi-plus-circle me-2"></i>Додати перевірку НСЗУ
+          </h5>
+          <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+        </div>
+        <form method="post" action="{{ url_for('nszu_add') }}" id="addRecordForm">
+          <div class="modal-body">
+            <div class="row g-3">
+              <div class="col-md-6">
+                <label class="form-label">Дата <span class="text-danger">*</span></label>
+                <input class="form-control" name="date" type="date" required>
+              </div>
+
+              <div class="col-md-6">
+                <label class="form-label">НСЗУ ID <span class="text-danger">*</span></label>
+                <input class="form-control" name="nszu_record_id" maxlength="100" placeholder="UUID запису з НСЗУ" required>
+              </div>
+
+              <div class="col-md-6">
+                <label class="form-label">Лікар <span class="text-danger">*</span> {% if doctors %}({{ doctors|length }} у списку){% endif %}</label>
+                <input class="form-control" name="doctor" list="doctors-list-modal" autocomplete="off" maxlength="200" required>
+                <datalist id="doctors-list-modal">
+                  {% for d in doctors %}
+                    <option value="{{ d }}">
+                  {% endfor %}
+                </datalist>
+              </div>
+
+              <div class="col-md-6">
+                <label class="form-label">Статус</label>
+                <select class="form-select" name="status">
+                  {% for s in statuses %}
+                    <option value="{{ s }}" {% if s == 'В обробці' %}selected{% endif %}>{{ s }}</option>
+                  {% endfor %}
+                </select>
+              </div>
+
+              <div class="col-12">
+                <label class="form-label">Деталі</label>
+                <textarea class="form-control" name="detail" rows="3" placeholder="Опис проблеми або причини"></textarea>
+              </div>
+
+              <div class="col-md-6">
+                <label class="form-label">Фактична сума</label>
+                <input class="form-control" name="fakt_summ" type="text" placeholder="0.00 або -">
+                <small class="form-text text-muted">Можна вводити з комою або крапкою (наприклад: 1234,56 або 1234.56)</small>
+              </div>
+
+              <div class="col-12">
+                <label class="form-label">Коментар</label>
+                <textarea class="form-control" name="comment" rows="2"></textarea>
+              </div>
+            </div>
+          </div>
+          <div class="modal-footer">
+            <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Скасувати</button>
+            <button type="submit" class="btn btn-success">
+              <i class="bi bi-plus-circle me-1"></i>Додати
+            </button>
+          </div>
+        </form>
+      </div>
+    </div>
+  </div>
+  {% endif %}
+
+{% endblock %}
+
+{% block scripts %}
+<script>
+  // Auto-fill current date when modal opens
+  document.addEventListener('DOMContentLoaded', function() {
+    const addModal = document.getElementById('addRecordModal');
+    if (addModal) {
+      addModal.addEventListener('show.bs.modal', function() {
+        const dateInput = this.querySelector('input[name="date"]');
+        if (dateInput && !dateInput.value) {
+          // Set current date in YYYY-MM-DD format
+          const today = new Date();
+          const year = today.getFullYear();
+          const month = String(today.getMonth() + 1).padStart(2, '0');
+          const day = String(today.getDate()).padStart(2, '0');
+          dateInput.value = `${year}-${month}-${day}`;
+        }
+      });
+    }
+  });
+
+  // Enhanced delete confirmation dialog
+  function confirmDelete(id, nszuId, doctor, date) {
+    const message = `Ви впевнені, що хочете видалити цей запис?\n\n` +
+                    `ID: ${id}\n` +
+                    `НСЗУ ID: ${nszuId}\n` +
+                    `Лікар: ${doctor}\n` +
+                    `Дата: ${date}\n\n` +
+                    `Цю дію неможливо буде скасувати!`;
+
+    if (confirm(message)) {
+      document.getElementById('delete-form-' + id).submit();
+    }
+  }
+</script>
+{% endblock %}
