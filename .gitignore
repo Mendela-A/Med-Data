@@ -35,8 +35,10 @@ logs/
 app.db
 *.db
 backups/
+
 # Tests
 .pytest_cache/
+tests/__pycache__/
 
 # Docker
 .dockerignore
@@ -44,20 +46,35 @@ backups/
 # Others
 *.bak
 
-#Certs
+# Certs
 static/certs/*.key
 static/certs/*.pem
 static/certs/*.pfx
 static/certs/*.p12
 
-
-
-#Docs
+# Docs
 *.xlsx
 *.txt
 
-#export data
+# Export data
 import_records.py
 test_performance.py
 migrate_add_updater.py
 add_departments.py
+
+# Claude Code персональні налаштування
+.claude/settings.local.json
+
+# Merge backup files
+*.backup_before_merge_*
+commit_id_before_merge.txt
+backup-*-before-*
+
+# Excel temporary files
+~$*.xlsx
+~$*.xls
+~$*.xlsm
+
+# Migration cache
+migrations/__pycache__/
+migrations/versions/__pycache__/
