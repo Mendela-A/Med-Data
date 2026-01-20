@@ -11,6 +11,7 @@
       <h1 class="h3 mb-2">Перевірка НСЗУ</h1>
       <div class="d-flex gap-2 flex-wrap align-items-center">
         <span class="badge bg-primary">Всього: {{ count }}</span>
+        <span class="badge bg-info">{{ current_month }}</span>
       </div>
     </div>
     {% if current_user.role in ['editor', 'admin'] %}
@@ -27,7 +28,13 @@
       <h5 class="card-title mb-3">Фільтри</h5>
       <form method="get">
         <div class="row g-3 mb-3">
-          <div class="col-sm-6 col-md-4 col-xl-3">
+          <div class="col-sm-6 col-md-4 col-xl-2">
+            <label class="form-label small mb-1"><i class="bi bi-calendar-month me-1"></i>Місяць</label>
+            <input type="month" class="form-control form-control-sm" name="month_year"
+                   value="{{ '%04d-%02d'|format(selected_year, selected_month) }}" min="2020-01">
+          </div>
+
+          <div class="col-sm-6 col-md-4 col-xl-2">
             <label class="form-label small mb-1"><i class="bi bi-flag me-1"></i>Статус</label>
             <select class="form-select form-select-sm" name="status">
               <option value="">Всі</option>
@@ -38,7 +45,7 @@
             </select>
           </div>
 
-          <div class="col-sm-6 col-md-4 col-xl-3">
+          <div class="col-sm-6 col-md-4 col-xl-2">
             <label class="form-label small mb-1"><i class="bi bi-person me-1"></i>Лікар</label>
             <select class="form-select form-select-sm" name="doctor">
               <option value="">Всі</option>
@@ -56,7 +63,7 @@
             </div>
           </div>
 
-          <div class="col-sm-6 col-md-4 col-xl-3">
+          <div class="col-sm-6 col-md-4 col-xl-2">
             <label class="form-label small mb-1"><i class="bi bi-list-ol me-1"></i>На сторінку</label>
             <select class="form-select form-select-sm" name="per_page">
               <option value="25" {% if pagination.per_page == 25 %}selected{% endif %}>25</option>
@@ -67,15 +74,13 @@
           </div>
         </div>
 
-        <div class="d-flex flex-wrap align-items-center gap-3 pt-2 border-top">
-          <div class="ms-auto">
-            <button class="btn btn-primary btn-sm" type="submit">
-              <i class="bi bi-funnel me-1"></i>Застосувати
-            </button>
-            <a class="btn btn-outline-secondary btn-sm ms-2" href="{{ url_for('nszu_list') }}">
-              <i class="bi bi-x-circle me-1"></i>Скинути
-            </a>
-          </div>
+        <div class="d-flex flex-wrap align-items-center gap-2 pt-2 border-top">
+          <button class="btn btn-primary btn-sm" type="submit">
+            <i class="bi bi-funnel me-1"></i>Застосувати
+          </button>
+          <a class="btn btn-outline-secondary btn-sm" href="{{ url_for('nszu_list') }}">
+            <i class="bi bi-arrow-clockwise me-1"></i>Поточний місяць
+          </a>
         </div>
       </form>
     </div>
@@ -210,13 +215,13 @@
       <nav aria-label="Page navigation" class="mt-3">
         <ul class="pagination justify-content-center">
           <li class="page-item {% if not pagination.has_prev %}disabled{% endif %}">
-            <a class="page-link" href="{{ url_for('nszu_list', page=pagination.prev_num, per_page=pagination.per_page, status=selected_status, doctor=selected_doctor, nszu_record_id=nszu_record_id_q) if pagination.has_prev else '#' }}">Попередня</a>
+            <a class="page-link" href="{{ url_for('nszu_list', page=pagination.prev_num, per_page=pagination.per_page, month_year='%04d-%02d'|format(selected_year, selected_month), status=selected_status, doctor=selected_doctor, nszu_record_id=nszu_record_id_q) if pagination.has_prev else '#' }}">Попередня</a>
           </li>
 
           {% for page_num in pagination.iter_pages(left_edge=1, right_edge=1, left_current=2, right_current=2) %}
             {% if page_num %}
               <li class="page-item {% if page_num == pagination.page %}active{% endif %}">
-                <a class="page-link" href="{{ url_for('nszu_list', page=page_num, per_page=pagination.per_page, status=selected_status, doctor=selected_doctor, nszu_record_id=nszu_record_id_q) }}">{{ page_num }}</a>
+                <a class="page-link" href="{{ url_for('nszu_list', page=page_num, per_page=pagination.per_page, month_year='%04d-%02d'|format(selected_year, selected_month), status=selected_status, doctor=selected_doctor, nszu_record_id=nszu_record_id_q) }}">{{ page_num }}</a>
               </li>
             {% else %}
               <li class="page-item disabled"><span class="page-link">…</span></li>
@@ -224,7 +229,7 @@
           {% endfor %}
 
           <li class="page-item {% if not pagination.has_next %}disabled{% endif %}">
-            <a class="page-link" href="{{ url_for('nszu_list', page=pagination.next_num, per_page=pagination.per_page, status=selected_status, doctor=selected_doctor, nszu_record_id=nszu_record_id_q) if pagination.has_next else '#' }}">Наступна</a>
+            <a class="page-link" href="{{ url_for('nszu_list', page=pagination.next_num, per_page=pagination.per_page, month_year='%04d-%02d'|format(selected_year, selected_month), status=selected_status, doctor=selected_doctor, nszu_record_id=nszu_record_id_q) if pagination.has_next else '#' }}">Наступна</a>
           </li>
         </ul>
       </nav>

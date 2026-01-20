@@ -1016,14 +1016,36 @@ def create_app(config_class=Config):
     @role_required('editor', 'viewer')
     def nszu_list():
         """List all NSZU corrections with filters"""
+        from datetime import datetime
         q = NSZUCorrection.query
+
+        # Month filter - default to current month
+        month_year_str = request.args.get('month_year', '').strip()
+        if month_year_str:
+            try:
+                year, month = map(int, month_year_str.split('-'))
+            except (ValueError, AttributeError):
+                year = datetime.now().year
+                month = datetime.now().month
+        else:
+            year = datetime.now().year
+            month = datetime.now().month
+
+        # Filter by month
+        from calendar import monthrange
+        start_date = datetime(year, month, 1).date()
+        last_day = monthrange(year, month)[1]
+        end_date = datetime(year, month, last_day).date()
 
         # Filtering
         selected_status = request.args.get('status', '').strip()
         selected_doctor = request.args.get('doctor', '').strip()
         nszu_record_id_q = request.args.get('nszu_record_id', '').strip()
 
-        conditions = []
+        conditions = [
+            NSZUCorrection.date >= start_date,
+            NSZUCorrection.date <= end_date
+        ]
         if selected_status:
             conditions.append(NSZUCorrection.status == selected_status)
         if selected_doctor:
@@ -1031,8 +1053,7 @@ def create_app(config_class=Config):
         if nszu_record_id_q:
             conditions.append(NSZUCorrection.nszu_record_id.contains(nszu_record_id_q))
 
-        if conditions:
-            q = q.filter(*conditions)
+        q = q.filter(*conditions)
 
         # Get distinct values for filters
         statuses = [s[0] for s in db.session.query(NSZUCorrection.status).distinct().filter(NSZUCorrection.status != None).order_by(NSZUCorrection.status).all()]
@@ -1058,10 +1079,21 @@ def create_app(config_class=Config):
             NSZUCorrection.status,
             func.count(NSZUCorrection.id).label('count'),
             func.sum(NSZUCorrection.fakt_summ).label('total_sum')
-        ).filter(*conditions if conditions else []).group_by(NSZUCorrection.status).all()
+        ).filter(*conditions).group_by(NSZUCorrection.status).all()
 
         status_stats = {stat.status: {'count': stat.count, 'sum': float(stat.total_sum or 0)} for stat in filtered_stats}
         total_filtered_sum = sum(stat['sum'] for stat in status_stats.values())
+
+        # Format current month for display
+        import locale
+        try:
+            locale.setlocale(locale.LC_TIME, 'uk_UA.UTF-8')
+        except locale.Error:
+            try:
+                locale.setlocale(locale.LC_TIME, 'Ukrainian_Ukraine.1251')
+            except locale.Error:
+                pass
+        current_month = datetime(year, month, 1).strftime('%B %Y')
 
         return render_template('nszu_list.html',
                              corrections=corrections,
@@ -1073,7 +1105,10 @@ def create_app(config_class=Config):
                              nszu_record_id_q=nszu_record_id_q,
                              count=count,
                              status_stats=status_stats,
-                             total_filtered_sum=total_filtered_sum)
+                             total_filtered_sum=total_filtered_sum,
+                             selected_year=year,
+                             selected_month=month,
+                             current_month=current_month)
 
     @app.route('/nszu/add', methods=['GET', 'POST'])
     @role_required('editor')
