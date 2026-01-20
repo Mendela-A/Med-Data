@@ -135,7 +135,8 @@
                           <i class="bi bi-pencil"></i>
                         </a>
                         {% if current_user.role == 'admin' %}
-                          <button type="button" class="btn btn-outline-danger" title="Видалити" onclick="if(confirm('Видалити запис #{{ c.id }}?')) document.getElementById('delete-form-{{ c.id }}').submit();">
+                          <button type="button" class="btn btn-outline-danger" title="Видалити"
+                                  onclick="confirmDelete({{ c.id }}, '{{ c.nszu_record_id }}', '{{ c.doctor }}', '{{ c.date.strftime('%d.%m.%Y') if c.date else '' }}')">
                             <i class="bi bi-trash"></i>
                           </button>
                         {% endif %}
@@ -260,4 +261,40 @@
   </div>
   {% endif %}
 
+{% endblock %}
+
+{% block scripts %}
+<script>
+  // Auto-fill current date when modal opens
+  document.addEventListener('DOMContentLoaded', function() {
+    const addModal = document.getElementById('addRecordModal');
+    if (addModal) {
+      addModal.addEventListener('show.bs.modal', function() {
+        const dateInput = this.querySelector('input[name="date"]');
+        if (dateInput && !dateInput.value) {
+          // Set current date in YYYY-MM-DD format
+          const today = new Date();
+          const year = today.getFullYear();
+          const month = String(today.getMonth() + 1).padStart(2, '0');
+          const day = String(today.getDate()).padStart(2, '0');
+          dateInput.value = `${year}-${month}-${day}`;
+        }
+      });
+    }
+  });
+
+  // Enhanced delete confirmation dialog
+  function confirmDelete(id, nszuId, doctor, date) {
+    const message = `Ви впевнені, що хочете видалити цей запис?\n\n` +
+                    `ID: ${id}\n` +
+                    `НСЗУ ID: ${nszuId}\n` +
+                    `Лікар: ${doctor}\n` +
+                    `Дата: ${date}\n\n` +
+                    `Цю дію неможливо буде скасувати!`;
+
+    if (confirm(message)) {
+      document.getElementById('delete-form-' + id).submit();
+    }
+  }
+</script>
 {% endblock %}
