@@ -65,6 +65,21 @@
         </button>
       </div>
     </div>
+    {% if current_user.role in ['editor', 'admin'] %}
+    <div class="btn-group">
+      <button type="button" class="btn btn-primary" onclick="quickExportRecords()">
+        <i class="bi bi-download me-1"></i>Експорт
+      </button>
+      <button type="button" class="btn btn-primary dropdown-toggle dropdown-toggle-split" data-bs-toggle="dropdown" aria-expanded="false">
+        <span class="visually-hidden">Більше</span>
+      </button>
+      <ul class="dropdown-menu">
+        <li><a class="dropdown-item" href="#" onclick="quickExportRecords(); return false;"><i class="bi bi-file-earmark-excel me-2"></i>Експортувати поточний фільтр</a></li>
+        <li><hr class="dropdown-divider"></li>
+        <li><a class="dropdown-item" href="#" data-bs-toggle="modal" data-bs-target="#exportRecordsModal"><i class="bi bi-calendar-range me-2"></i>Експортувати за період...</a></li>
+      </ul>
+    </div>
+    {% endif %}
   </div>
 
 
@@ -567,6 +582,81 @@
       </div>
     </div>
   </div>
+
+  <!-- Export Records Modal -->
+  <div class="modal fade" id="exportRecordsModal" tabindex="-1" aria-labelledby="exportRecordsModalLabel" aria-hidden="true">
+    <div class="modal-dialog">
+      <div class="modal-content">
+        <div class="modal-header">
+          <h5 class="modal-title" id="exportRecordsModalLabel">
+            <i class="bi bi-file-earmark-excel me-2"></i>Експорт записів у Excel
+          </h5>
+          <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+        </div>
+        <form method="post" action="{{ url_for('export') }}" id="exportRecordsForm">
+          <div class="modal-body">
+            <div class="row g-3">
+              <div class="col-md-6">
+                <label class="form-label">Дата з <span class="text-danger">*</span></label>
+                <input class="form-control" name="from_date" type="date" id="export_records_from_date" required>
+              </div>
+
+              <div class="col-md-6">
+                <label class="form-label">Дата по <span class="text-danger">*</span></label>
+                <input class="form-control" name="to_date" type="date" id="export_records_to_date" required>
+              </div>
+
+              <div class="col-12">
+                <label class="form-label">Статус виписки (опціонально)</label>
+                <select class="form-select" name="discharge_status" id="export_discharge_status">
+                  <option value="">Всі</option>
+                  <option value="Виписаний">Виписаний</option>
+                  <option value="Опрацьовується">Опрацьовується</option>
+                  <option value="Порушені вимоги">Порушені вимоги</option>
+                </select>
+              </div>
+
+              <div class="col-12">
+                <label class="form-label">Відділення (опціонально)</label>
+                <select class="form-select" name="discharge_department" id="export_discharge_department">
+                  <option value="">Всі</option>
+                  {% for d in departments %}
+                    <option value="{{ d }}">{{ d }}</option>
+                  {% endfor %}
+                </select>
+              </div>
+
+              <div class="col-12">
+                <label class="form-label">Лікар (опціонально)</label>
+                <input class="form-control" name="treating_physician" list="export-physicians-list" id="export_treating_physician" autocomplete="off">
+                <datalist id="export-physicians-list">
+                  {% for p in physicians %}
+                    <option value="{{ p }}">
+                  {% endfor %}
+                </datalist>
+              </div>
+
+              <div class="col-md-6">
+                <label class="form-label">Історія (опціонально)</label>
+                <input class="form-control" name="history" id="export_history" maxlength="6" placeholder="Пошук за історією">
+              </div>
+
+              <div class="col-md-6">
+                <label class="form-label">ПІБ (опціонально)</label>
+                <input class="form-control" name="full_name" id="export_full_name" placeholder="Пошук за ПІБ">
+              </div>
+            </div>
+          </div>
+          <div class="modal-footer">
+            <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Скасувати</button>
+            <button type="submit" class="btn btn-primary">
+              <i class="bi bi-download me-1"></i>Експортувати
+            </button>
+          </div>
+        </form>
+      </div>
+    </div>
+  </div>
   {% endif %}
 {% endblock %}
 
@@ -923,6 +1013,104 @@
       });
     }
   })();
+</script>
+{% endif %}
+
+{% if current_user.role in ['editor', 'admin'] %}
+<script>
+  // Quick export with current filters
+  function quickExportRecords() {
+    const form = document.createElement('form');
+    form.method = 'POST';
+    form.action = '{{ url_for("export") }}';
+
+    // Get current month filter values
+    const monthFilter = document.querySelector('input[name="month_filter"]');
+    let fromDate, toDate;
+
+    if (monthFilter && monthFilter.value) {
+      const [year, month] = monthFilter.value.split('-');
+      const lastDay = new Date(year, month, 0).getDate();
+      fromDate = `${year}-${month}-01`;
+      toDate = `${year}-${month}-${lastDay.toString().padStart(2, '0')}`;
+    } else {
+      // Use current month if no filter
+      const today = new Date();
+      const year = today.getFullYear();
+      const month = String(today.getMonth() + 1).padStart(2, '0');
+      const lastDay = new Date(year, today.getMonth() + 1, 0).getDate();
+      fromDate = `${year}-${month}-01`;
+      toDate = `${year}-${month}-${lastDay.toString().padStart(2, '0')}`;
+    }
+
+    // Get current filter values
+    const dischargeStatus = document.querySelector('select[name="discharge_status"]')?.value || '';
+    const treatingPhysician = document.querySelector('select[name="treating_physician"]')?.value || '';
+    const dischargeDepartment = document.querySelector('select[name="discharge_department"]')?.value || '';
+    const history = document.querySelector('input[name="history"]')?.value || '';
+    const fullName = document.querySelector('input[name="full_name"]')?.value || '';
+
+    // Add form fields
+    const fields = {
+      'from_date': fromDate,
+      'to_date': toDate,
+      'discharge_status': dischargeStatus,
+      'treating_physician': treatingPhysician,
+      'discharge_department': dischargeDepartment,
+      'history': history,
+      'full_name': fullName
+    };
+
+    for (const [name, value] of Object.entries(fields)) {
+      const input = document.createElement('input');
+      input.type = 'hidden';
+      input.name = name;
+      input.value = value;
+      form.appendChild(input);
+    }
+
+    document.body.appendChild(form);
+    form.submit();
+  }
+
+  // Auto-fill dates and filters in export modal
+  document.addEventListener('DOMContentLoaded', function() {
+    const exportModal = document.getElementById('exportRecordsModal');
+    if (exportModal) {
+      exportModal.addEventListener('show.bs.modal', function() {
+        // Get current month filter
+        const monthFilter = document.querySelector('input[name="month_filter"]');
+        let year, month;
+
+        if (monthFilter && monthFilter.value) {
+          [year, month] = monthFilter.value.split('-');
+        } else {
+          const today = new Date();
+          year = today.getFullYear();
+          month = String(today.getMonth() + 1).padStart(2, '0');
+        }
+
+        const lastDay = new Date(year, month, 0).getDate();
+
+        // Set dates
+        document.getElementById('export_records_from_date').value = `${year}-${month}-01`;
+        document.getElementById('export_records_to_date').value = `${year}-${month}-${lastDay.toString().padStart(2, '0')}`;
+
+        // Set filters
+        const dischargeStatus = document.querySelector('select[name="discharge_status"]')?.value || '';
+        const treatingPhysician = document.querySelector('select[name="treating_physician"]')?.value || '';
+        const dischargeDepartment = document.querySelector('select[name="discharge_department"]')?.value || '';
+        const history = document.querySelector('input[name="history"]')?.value || '';
+        const fullName = document.querySelector('input[name="full_name"]')?.value || '';
+
+        document.getElementById('export_discharge_status').value = dischargeStatus;
+        document.getElementById('export_treating_physician').value = treatingPhysician;
+        document.getElementById('export_discharge_department').value = dischargeDepartment;
+        document.getElementById('export_history').value = history;
+        document.getElementById('export_full_name').value = fullName;
+      });
+    }
+  });
 </script>
 {% endif %}
 {% endblock %}

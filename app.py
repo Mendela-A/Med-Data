@@ -290,7 +290,7 @@ def create_app(config_class=Config):
     @app.route('/export', methods=['POST'])
     @role_required('editor')
     def export():
-        # editors and admins can export records within a date range (by date_of_discharge)
+        """Export records to Excel with filters support"""
         from datetime import datetime
         from io import BytesIO
         try:
@@ -309,12 +309,31 @@ def create_app(config_class=Config):
             flash('Дата "з" не може бути пізніше дати "по"', 'warning')
             return redirect(url_for('index'))
 
-        # Build query - only date range filter
-        q = Record.query.filter(
+        # Get optional filters
+        discharge_status = request.form.get('discharge_status', '').strip()
+        treating_physician = request.form.get('treating_physician', '').strip()
+        discharge_department = request.form.get('discharge_department', '').strip()
+        history_q = request.form.get('history', '').strip()
+        full_name_q = request.form.get('full_name', '').strip()
+
+        # Build query with filters
+        conditions = [
             Record.date_of_discharge != None,
             Record.date_of_discharge >= from_d,
             Record.date_of_discharge <= to_d,
-        )
+        ]
+        if discharge_status:
+            conditions.append(Record.discharge_status == discharge_status)
+        if treating_physician:
+            conditions.append(Record.treating_physician == treating_physician)
+        if discharge_department:
+            conditions.append(Record.discharge_department == discharge_department)
+        if history_q:
+            conditions.append(Record.history.contains(history_q))
+        if full_name_q:
+            conditions.append(Record.full_name.contains(full_name_q))
+
+        q = Record.query.filter(*conditions)
 
         # Count total records first (fast, uses indexes)
         total_count = q.count()
@@ -326,7 +345,7 @@ def create_app(config_class=Config):
         # create excel with openpyxl
         try:
             from openpyxl import Workbook
-            from openpyxl.styles import Font
+            from openpyxl.styles import Font, Alignment, numbers
             from openpyxl.utils import get_column_letter
         except Exception:
             flash('Для експорту потрібен пакет openpyxl. Будь ласка, встановіть його.', 'danger')
@@ -340,7 +359,7 @@ def create_app(config_class=Config):
             ws.title = 'Vipiski'
 
         # headers: include all columns from the Record model
-        headers = ['ID','Дата виписки','ПІБ','Відділення','Лікар','Історія','К днів','Статус виписки','Дата смерті','Коментар','Створив','Створено']
+        headers = ['ID','Дата виписки','ПІБ','Відділення','Лікар','Історія','К днів','Статус виписки','Дата смерті','Коментар','Створив','Створено','Оновив','Оновлено']
 
         # Cache user mapping for fast lookups (avoid N+1)
         user_map = {u.id: u.username for u in User.query.all()}
@@ -357,10 +376,11 @@ def create_app(config_class=Config):
             ws.append(styled_headers)
         else:
             ws.append(headers)
-            # Style headers bold
+            # Style headers bold and centered
             bold = Font(bold=True)
             for cell in ws[1]:
                 cell.font = bold
+                cell.alignment = Alignment(horizontal='center', vertical='center')
 
         # Batch processing: load records in chunks of 1000
         BATCH_SIZE = 1000
@@ -389,6 +409,8 @@ def create_app(config_class=Config):
                     r.comment or '',
                     user_map.get(r.created_by, r.created_by or ''),
                     r.created_at.strftime('%d.%m.%Y %H:%M') if r.created_at else '',
+                    user_map.get(r.updated_by, r.updated_by or '') if r.updated_by else '',
+                    r.updated_at.strftime('%d.%m.%Y %H:%M') if r.updated_at else '',
                 ]
                 ws.append(row)
 
@@ -405,6 +427,13 @@ def create_app(config_class=Config):
             # Clear session to free memory
             db.session.expire_all()
 
+        # Format "К днів" column as integer (only in normal mode, not write_only)
+        if not use_write_only:
+            for row in range(2, ws.max_row + 1):
+                cell = ws.cell(row=row, column=7)  # К днів column
+                if cell.value and cell.value != '':
+                    cell.number_format = numbers.FORMAT_NUMBER
+
         # Auto width columns (only in normal mode, not write_only)
         if not use_write_only:
             for i, width in enumerate(col_widths, 1):
@@ -415,14 +444,23 @@ def create_app(config_class=Config):
         wb.save(bio)
         bio.seek(0)
 
+        # Build filename with filters info
+        filename_parts = ['vipiski', f'{from_d.year}-{from_d.month:02d}']
+        if discharge_status:
+            filename_parts.append(discharge_status.replace(' ', '-'))
+        if discharge_department:
+            filename_parts.append(discharge_department.replace(' ', '-')[:20])
+        filename_parts.append(datetime.now().strftime('%d-%m-%Y'))
+        filename = f"{'_'.join(filename_parts)}.xlsx"
+
         # audit export
         try:
-            log_action(current_user.id, 'export', 'export', None, f'from={from_d} to={to_d} discharge_status={discharge_status} treating_physician={treating_physician} discharge_department={discharge_department} history={history_q} full_name={full_name_q} count={total_count}')
+            log_details = f'from={from_d} to={to_d} discharge_status={discharge_status} treating_physician={treating_physician} discharge_department={discharge_department} history={history_q} full_name={full_name_q} count={total_count}'
+            log_action(current_user.id, 'export', 'export', None, log_details)
         except Exception:
             app.logger.exception('Failed to write audit log for export')
-        app.logger.info(f'Export by {getattr(current_user, "username", "unknown")}: from {from_d} to {to_d} count={total_count} write_only={use_write_only}')
+        app.logger.info(f'Export by {getattr(current_user, "username", "unknown")}: {log_details} write_only={use_write_only}')
 
-        filename = f"vipiski_{datetime.now().strftime('%d-%m-%Y')}.xlsx"
         return send_file(bio, as_attachment=True, download_name=filename, mimetype='application/vnd.openxmlformats-officedocument.spreadsheetml.sheet')
 
     @app.route('/register', methods=['GET', 'POST'])
