@@ -1283,7 +1283,7 @@ def create_app(config_class=Config):
     @app.route('/nszu/export', methods=['POST'])
     @role_required('editor')
     def nszu_export():
-        """Export NSZU corrections to Excel"""
+        """Export NSZU corrections to Excel with filters support"""
         from datetime import datetime
         from io import BytesIO
 
@@ -1303,11 +1303,24 @@ def create_app(config_class=Config):
             flash('Дата "з" не може бути пізніше дати "по"', 'warning')
             return redirect(url_for('nszu_list'))
 
-        # Build query
-        q = NSZUCorrection.query.filter(
+        # Get optional filters
+        status_filter = request.form.get('status', '').strip()
+        doctor_filter = request.form.get('doctor', '').strip()
+        nszu_id_filter = request.form.get('nszu_record_id', '').strip()
+
+        # Build query with filters
+        conditions = [
             NSZUCorrection.date >= from_d,
             NSZUCorrection.date <= to_d,
-        )
+        ]
+        if status_filter:
+            conditions.append(NSZUCorrection.status == status_filter)
+        if doctor_filter:
+            conditions.append(NSZUCorrection.doctor == doctor_filter)
+        if nszu_id_filter:
+            conditions.append(NSZUCorrection.nszu_record_id.contains(nszu_id_filter))
+
+        q = NSZUCorrection.query.filter(*conditions)
 
         total_count = q.count()
 
@@ -1318,7 +1331,8 @@ def create_app(config_class=Config):
         # Create Excel
         try:
             from openpyxl import Workbook
-            from openpyxl.styles import Font
+            from openpyxl.styles import Font, Alignment, numbers
+            from openpyxl.utils import get_column_letter
         except Exception:
             flash('Для експорту потрібен пакет openpyxl', 'danger')
             return redirect(url_for('nszu_list'))
@@ -1328,13 +1342,14 @@ def create_app(config_class=Config):
         ws.title = 'NSZU'
 
         # Headers
-        headers = ['ID', 'Дата', 'НСЗУ ID', 'Лікар', 'Статус', 'Деталі', 'Факт. сума', 'Коментар', 'Створив', 'Створено']
+        headers = ['ID', 'Дата', 'НСЗУ ID', 'Лікар', 'Статус', 'Деталі', 'Факт. сума', 'Коментар', 'Створив', 'Створено', 'Оновив', 'Оновлено']
         ws.append(headers)
 
         # Style headers
         bold = Font(bold=True)
         for cell in ws[1]:
             cell.font = bold
+            cell.alignment = Alignment(horizontal='center', vertical='center')
 
         # Get user mapping
         user_map = {u.id: u.username for u in User.query.all()}
@@ -1352,21 +1367,39 @@ def create_app(config_class=Config):
                 c.comment or '',
                 user_map.get(c.created_by, c.created_by or ''),
                 c.created_at.strftime('%d.%m.%Y %H:%M') if c.created_at else '',
+                user_map.get(c.updated_by, c.updated_by or '') if c.updated_by else '',
+                c.updated_at.strftime('%d.%m.%Y %H:%M') if c.updated_at else '',
             ]
             ws.append(row)
+
+        # Format sum column as number with 2 decimal places
+        for row in range(2, ws.max_row + 1):
+            ws.cell(row=row, column=7).number_format = numbers.FORMAT_NUMBER_00
+
+        # Auto-adjust column widths
+        for column_cells in ws.columns:
+            length = max(len(str(cell.value or '')) for cell in column_cells)
+            ws.column_dimensions[get_column_letter(column_cells[0].column)].width = min(length + 2, 50)
 
         bio = BytesIO()
         wb.save(bio)
         bio.seek(0)
 
+        # Build filename with filters info
+        filename_parts = ['nszu', f'{from_d.year}-{from_d.month:02d}']
+        if status_filter:
+            filename_parts.append(status_filter.replace(' ', '-'))
+        filename_parts.append(datetime.now().strftime('%d-%m-%Y'))
+        filename = f"{'_'.join(filename_parts)}.xlsx"
+
         try:
-            log_action(current_user.id, 'nszu.export', 'export', None, f'from={from_d} to={to_d} count={total_count}')
+            log_details = f'from={from_d} to={to_d} status={status_filter} doctor={doctor_filter} count={total_count}'
+            log_action(current_user.id, 'nszu.export', 'export', None, log_details)
         except Exception:
             app.logger.exception('Failed to write audit log for nszu.export')
 
-        app.logger.info(f'NSZU export by {current_user.username}: from {from_d} to {to_d} count={total_count}')
+        app.logger.info(f'NSZU export by {current_user.username}: {log_details}')
 
-        filename = f"nszu_{datetime.now().strftime('%d-%m-%Y')}.xlsx"
         return send_file(bio, as_attachment=True, download_name=filename, mimetype='application/vnd.openxmlformats-officedocument.spreadsheetml.sheet')
 
     # Statistics page

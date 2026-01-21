@@ -15,10 +15,23 @@
       </div>
     </div>
     {% if current_user.role in ['editor', 'admin'] %}
-    <div>
+    <div class="d-flex gap-2">
       <button type="button" class="btn btn-success" data-bs-toggle="modal" data-bs-target="#addRecordModal">
         <i class="bi bi-plus-circle me-1"></i>Додати запис
       </button>
+      <div class="btn-group">
+        <button type="button" class="btn btn-primary" onclick="quickExport()">
+          <i class="bi bi-download me-1"></i>Експорт
+        </button>
+        <button type="button" class="btn btn-primary dropdown-toggle dropdown-toggle-split" data-bs-toggle="dropdown" aria-expanded="false">
+          <span class="visually-hidden">Більше</span>
+        </button>
+        <ul class="dropdown-menu">
+          <li><a class="dropdown-item" href="#" onclick="quickExport(); return false;"><i class="bi bi-file-earmark-excel me-2"></i>Експортувати поточний фільтр</a></li>
+          <li><hr class="dropdown-divider"></li>
+          <li><a class="dropdown-item" href="#" data-bs-toggle="modal" data-bs-target="#exportModal"><i class="bi bi-calendar-range me-2"></i>Експортувати за період...</a></li>
+        </ul>
+      </div>
     </div>
     {% endif %}
   </div>
@@ -314,26 +327,129 @@
       </div>
     </div>
   </div>
+
+  <!-- Export Modal -->
+  <div class="modal fade" id="exportModal" tabindex="-1" aria-labelledby="exportModalLabel" aria-hidden="true">
+    <div class="modal-dialog">
+      <div class="modal-content">
+        <div class="modal-header">
+          <h5 class="modal-title" id="exportModalLabel">
+            <i class="bi bi-file-earmark-excel me-2"></i>Експорт у Excel
+          </h5>
+          <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+        </div>
+        <form method="post" action="{{ url_for('nszu_export') }}" id="exportForm">
+          <div class="modal-body">
+            <div class="row g-3">
+              <div class="col-md-6">
+                <label class="form-label">Дата з <span class="text-danger">*</span></label>
+                <input class="form-control" name="from_date" type="date" id="export_from_date" required>
+              </div>
+
+              <div class="col-md-6">
+                <label class="form-label">Дата по <span class="text-danger">*</span></label>
+                <input class="form-control" name="to_date" type="date" id="export_to_date" required>
+              </div>
+
+              <div class="col-12">
+                <label class="form-label">Статус (опціонально)</label>
+                <select class="form-select" name="status" id="export_status">
+                  <option value="">Всі</option>
+                  <option value="В обробці">В обробці</option>
+                  <option value="Опрацьовано">Опрацьовано</option>
+                  <option value="Оплачено">Оплачено</option>
+                  <option value="Не підлягає оплаті">Не підлягає оплаті</option>
+                </select>
+              </div>
+
+              <div class="col-12">
+                <label class="form-label">Лікар (опціонально)</label>
+                <input class="form-control" name="doctor" list="export-doctors-list" id="export_doctor" autocomplete="off">
+                <datalist id="export-doctors-list">
+                  {% for d in doctors %}
+                    <option value="{{ d }}">
+                  {% endfor %}
+                </datalist>
+              </div>
+            </div>
+          </div>
+          <div class="modal-footer">
+            <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Скасувати</button>
+            <button type="submit" class="btn btn-primary">
+              <i class="bi bi-download me-1"></i>Експортувати
+            </button>
+          </div>
+        </form>
+      </div>
+    </div>
+  </div>
   {% endif %}
 
 {% endblock %}
 
 {% block scripts %}
 <script>
-  // Auto-fill current date when modal opens
+  // Quick export with current filters
+  function quickExport() {
+    const form = document.createElement('form');
+    form.method = 'POST';
+    form.action = '{{ url_for("nszu_export") }}';
+
+    // Get current month filter values
+    const monthYear = '{{ "%04d-%02d"|format(selected_year, selected_month) }}';
+    const [year, month] = monthYear.split('-');
+    const lastDay = new Date(year, month, 0).getDate();
+
+    // Add form fields
+    const fields = {
+      'from_date': `${year}-${month}-01`,
+      'to_date': `${year}-${month}-${lastDay}`,
+      'status': '{{ selected_status }}',
+      'doctor': '{{ selected_doctor }}',
+      'nszu_record_id': '{{ nszu_record_id_q }}'
+    };
+
+    for (const [name, value] of Object.entries(fields)) {
+      const input = document.createElement('input');
+      input.type = 'hidden';
+      input.name = name;
+      input.value = value;
+      form.appendChild(input);
+    }
+
+    document.body.appendChild(form);
+    form.submit();
+  }
+
+  // Auto-fill dates in modals
   document.addEventListener('DOMContentLoaded', function() {
+    // Add Record Modal
     const addModal = document.getElementById('addRecordModal');
     if (addModal) {
       addModal.addEventListener('show.bs.modal', function() {
         const dateInput = this.querySelector('input[name="date"]');
         if (dateInput && !dateInput.value) {
-          // Set current date in YYYY-MM-DD format
           const today = new Date();
           const year = today.getFullYear();
           const month = String(today.getMonth() + 1).padStart(2, '0');
           const day = String(today.getDate()).padStart(2, '0');
           dateInput.value = `${year}-${month}-${day}`;
         }
+      });
+    }
+
+    // Export Modal
+    const exportModal = document.getElementById('exportModal');
+    if (exportModal) {
+      exportModal.addEventListener('show.bs.modal', function() {
+        const monthYear = '{{ "%04d-%02d"|format(selected_year, selected_month) }}';
+        const [year, month] = monthYear.split('-');
+        const lastDay = new Date(year, month, 0).getDate();
+
+        document.getElementById('export_from_date').value = `${year}-${month}-01`;
+        document.getElementById('export_to_date').value = `${year}-${month}-${lastDay}`;
+        document.getElementById('export_status').value = '{{ selected_status }}';
+        document.getElementById('export_doctor').value = '{{ selected_doctor }}';
       });
     }
   });
