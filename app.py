@@ -963,7 +963,7 @@ def create_app(config_class=Config):
                 u.set_password(password)
 
             # Update role
-            if role in ['operator', 'editor', 'admin']:
+            if role in ['operator', 'editor', 'admin', 'viewer']:
                 u.role = role
 
             db.session.commit()
