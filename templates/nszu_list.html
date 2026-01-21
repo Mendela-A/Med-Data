@@ -39,7 +39,6 @@
             <select class="form-select form-select-sm" name="status">
               <option value="">Всі</option>
               <option value="В обробці" {% if selected_status == 'В обробці' %}selected{% endif %}>В обробці</option>
-              <option value="В роботі" {% if selected_status == 'В роботі' %}selected{% endif %}>В роботі</option>
               <option value="Опрацьовано" {% if selected_status == 'Опрацьовано' %}selected{% endif %}>Опрацьовано</option>
               <option value="Оплачено" {% if selected_status == 'Оплачено' %}selected{% endif %}>Оплачено</option>
               <option value="Не підлягає оплаті" {% if selected_status == 'Не підлягає оплаті' %}selected{% endif %}>Не підлягає оплаті</option>
@@ -101,13 +100,6 @@
           <span class="badge bg-secondary" style="font-size: 0.9rem; padding: 0.4rem 0.7rem;">
             В обробці: {{ status_stats['В обробці']['count'] }}
             <small class="opacity-75">({{ '{:,.2f}'.format(status_stats['В обробці']['sum']) }} грн)</small>
-          </span>
-          {% endif %}
-
-          {% if status_stats.get('В роботі') %}
-          <span class="badge bg-info" style="font-size: 0.9rem; padding: 0.4rem 0.7rem;">
-            В роботі: {{ status_stats['В роботі']['count'] }}
-            <small class="opacity-75">({{ '{:,.2f}'.format(status_stats['В роботі']['sum']) }} грн)</small>
           </span>
           {% endif %}
 
@@ -180,8 +172,6 @@
                       <span class="badge bg-warning text-dark">{{ c.status }}</span>
                     {% elif c.status == 'В обробці' %}
                       <span class="badge bg-secondary">{{ c.status }}</span>
-                    {% elif c.status == 'В роботі' %}
-                      <span class="badge bg-info">{{ c.status }}</span>
                     {% elif c.status == 'Не підлягає оплаті' %}
                       <span class="badge bg-danger">{{ c.status }}</span>
                     {% else %}

@@ -1056,7 +1056,7 @@ def create_app(config_class=Config):
         q = q.filter(*conditions)
 
         # Get distinct values for filters
-        statuses = ['В обробці', 'В роботі', 'Опрацьовано', 'Оплачено', 'Не підлягає оплаті']
+        statuses = ['В обробці', 'Опрацьовано', 'Оплачено', 'Не підлягає оплаті']
         doctors = [d[0] for d in db.session.query(NSZUCorrection.doctor).distinct().filter(NSZUCorrection.doctor != None).order_by(NSZUCorrection.doctor).all()]
 
         # Pagination
@@ -1183,7 +1183,7 @@ def create_app(config_class=Config):
         # GET - render form
         # Get distinct doctors for autocomplete
         doctors = [d[0] for d in db.session.query(NSZUCorrection.doctor).distinct().filter(NSZUCorrection.doctor != None).order_by(NSZUCorrection.doctor).all()]
-        statuses = ['В обробці', 'В роботі', 'Опрацьовано', 'Оплачено', 'Не підлягає оплаті']
+        statuses = ['В обробці', 'Опрацьовано', 'Оплачено', 'Не підлягає оплаті']
 
         return render_template('nszu_add.html', doctors=doctors, statuses=statuses)
 
@@ -1257,7 +1257,7 @@ def create_app(config_class=Config):
 
         # GET - render form
         doctors = [d[0] for d in db.session.query(NSZUCorrection.doctor).distinct().filter(NSZUCorrection.doctor != None).order_by(NSZUCorrection.doctor).all()]
-        statuses = ['В обробці', 'В роботі', 'Опрацьовано', 'Оплачено', 'Не підлягає оплаті']
+        statuses = ['В обробці', 'Опрацьовано', 'Оплачено', 'Не підлягає оплаті']
 
         return render_template('nszu_edit.html', correction=correction, doctors=doctors, statuses=statuses)
 
