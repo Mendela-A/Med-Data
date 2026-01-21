@@ -431,13 +431,14 @@
 
               <div class="col-md-6">
                 <label for="date_of_death" class="form-label">
-                  Дата смерті
+                  <input type="checkbox" id="death-checkbox" class="form-check-input me-1">
+                  <span style="color: #c82333;">Дата смерті</span>
                   <i class="bi bi-info-circle text-muted"
                      data-bs-toggle="tooltip"
                      data-bs-placement="right"
                      data-bs-title="Якщо вказано дату смерті, запис буде рахуватися як 'Померло' в статистиці"></i>
                 </label>
-                <input type="date" class="form-control" id="date_of_death" name="date_of_death">
+                <input type="date" class="form-control" id="date_of_death" name="date_of_death" disabled>
               </div>
 
               <div class="col-12">
@@ -611,6 +612,14 @@
       errorAlert.classList.remove('show');
       counterDiv.style.display = 'none';
       recordCount = 0;
+      // Reset death date checkbox and field
+      const deathCheckbox = document.getElementById('death-checkbox');
+      const deathDateInput = document.getElementById('date_of_death');
+      if (deathCheckbox && deathDateInput) {
+        deathCheckbox.checked = false;
+        deathDateInput.disabled = true;
+        deathDateInput.value = '';
+      }
     });
 
     // Focus on first input when modal opens
@@ -619,8 +628,42 @@
       const tooltips = modal.querySelectorAll('[data-bs-toggle="tooltip"]');
       tooltips.forEach(el => new bootstrap.Tooltip(el));
 
+      // Auto-fill yesterday's date for discharge date
+      const dateInput = document.getElementById('date_of_discharge');
+      if (dateInput && !dateInput.value) {
+        const yesterday = new Date();
+        yesterday.setDate(yesterday.getDate() - 1);
+        const year = yesterday.getFullYear();
+        const month = String(yesterday.getMonth() + 1).padStart(2, '0');
+        const day = String(yesterday.getDate()).padStart(2, '0');
+        dateInput.value = `${year}-${month}-${day}`;
+      }
+
       document.getElementById('full_name').focus();
     });
+
+    // Handle death date checkbox
+    const deathCheckbox = document.getElementById('death-checkbox');
+    const deathDateInput = document.getElementById('date_of_death');
+
+    if (deathCheckbox && deathDateInput) {
+      deathCheckbox.addEventListener('change', function() {
+        if (this.checked) {
+          deathDateInput.disabled = false;
+          deathDateInput.focus();
+        } else {
+          deathDateInput.disabled = true;
+          deathDateInput.value = '';
+        }
+      });
+
+      // Clear date if checkbox is unchecked on form submit
+      form.addEventListener('submit', function() {
+        if (!deathCheckbox.checked) {
+          deathDateInput.value = '';
+        }
+      });
+    }
 
     function showSuccess(message) {
       successMessage.textContent = message;
