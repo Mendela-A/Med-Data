@@ -7,6 +7,7 @@ from models import db, User, Record, bcrypt, log_action, Department, NSZUCorrect
 from flask_login import LoginManager, login_user, logout_user, login_required, current_user
 from sqlalchemy.orm import joinedload
 from sqlalchemy import func
+from utils import parse_date, parse_integer, parse_numeric
 
 login_manager = LoginManager()
 login_manager.login_view = 'login'
@@ -53,18 +54,9 @@ def create_app(config_class=Config):
         'CACHE_DEFAULT_TIMEOUT': 900  # 15 minutes default
     })
 
-    # Database maintenance: run ANALYZE periodically to update query planner statistics
-    @app.before_request
-    def optimize_database():
-        """Periodically optimize database statistics for better query planning"""
-        import random
-        # Run ANALYZE with 1% probability on each request (roughly once per 100 requests)
-        if random.random() < 0.01:
-            try:
-                db.session.execute(db.text("ANALYZE"))
-                db.session.commit()
-            except Exception:
-                pass  # Silent fail - optimization is not critical
+    # Database maintenance: ANALYZE moved to separate CLI script (analyze_db.py)
+    # Running ANALYZE on each request was causing 1% latency overhead
+    # Use: python analyze_db.py (run once per day via cron)
 
     # Ensure data directory exists when using a local sqlite file
     db_uri = app.config.get('SQLALCHEMY_DATABASE_URI', '')
@@ -185,7 +177,7 @@ def create_app(config_class=Config):
                 end = datetime(now.year, now.month + 1, 1)
 
         # base query (by default for current month, unless show_all)
-        q = Record.query.options(joinedload(Record.creator))
+        q = Record.query.options(joinedload(Record.creator), joinedload(Record.updater))
         if not show_all:
             # show records discharged in the current month by date_of_discharge
             q = q.filter(
@@ -653,33 +645,20 @@ def create_app(config_class=Config):
 
             # validate date format: accept DD.MM.YYYY or YYYY-MM-DD (HTML date input)
             from datetime import datetime
-            date_of_discharge = None
-            for fmt in ('%d.%m.%Y', '%Y-%m-%d'):
-                try:
-                    date_of_discharge = datetime.strptime(date_str, fmt).date()
-                    break
-                except ValueError:
-                    continue
+            date_of_discharge = parse_date(date_str)
             if date_of_discharge is None:
                 flash('Дата виписки повинна бути у форматі ДД.ММ.РРРР або РРРР-ММ-ДД', 'warning')
                 return redirect(url_for('add_record'))
 
             # validate k_days integer
-            try:
-                k_days_int = int(k_days)
-            except ValueError:
+            k_days_int = parse_integer(k_days)
+            if k_days_int is None:
                 flash('"К днів" повинно бути цілим числом', 'warning')
                 return redirect(url_for('add_record'))
 
             date_of_death = None
             if date_of_death_str:
-                date_of_death = None
-                for fmt in ('%d.%m.%Y', '%Y-%m-%d'):
-                    try:
-                        date_of_death = datetime.strptime(date_of_death_str, fmt).date()
-                        break
-                    except ValueError:
-                        continue
+                date_of_death = parse_date(date_of_death_str)
                 if date_of_death is None:
                     flash('Дата смерті повинна бути у форматі ДД.ММ.РРРР або РРРР-ММ-ДД', 'warning')
                     return redirect(url_for('add_record'))
@@ -753,31 +732,19 @@ def create_app(config_class=Config):
             return jsonify({'success': False, 'error': 'Будь ласка, заповніть усі обов\'язкові поля'}), 400
 
         # Parse date_of_discharge
-        date_of_discharge = None
-        for fmt in ('%d.%m.%Y', '%Y-%m-%d'):
-            try:
-                date_of_discharge = datetime.strptime(date_str, fmt).date()
-                break
-            except ValueError:
-                continue
+        date_of_discharge = parse_date(date_str)
         if date_of_discharge is None:
             return jsonify({'success': False, 'error': 'Невірний формат дати виписки'}), 400
 
         # Validate k_days
-        try:
-            k_days_int = int(k_days)
-        except ValueError:
+        k_days_int = parse_integer(k_days)
+        if k_days_int is None:
             return jsonify({'success': False, 'error': '"К днів" повинно бути цілим числом'}), 400
 
         # Parse date_of_death if provided
         date_of_death = None
         if date_of_death_str:
-            for fmt in ('%d.%m.%Y', '%Y-%m-%d'):
-                try:
-                    date_of_death = datetime.strptime(date_of_death_str, fmt).date()
-                    break
-                except ValueError:
-                    continue
+            date_of_death = parse_date(date_of_death_str)
             if date_of_death is None:
                 return jsonify({'success': False, 'error': 'Невірний формат дати смерті'}), 400
 
@@ -852,31 +819,19 @@ def create_app(config_class=Config):
             return jsonify({'success': False, 'error': 'Будь ласка, заповніть усі обов\'язкові поля'}), 400
 
         # Parse date_of_discharge
-        date_of_discharge = None
-        for fmt in ('%d.%m.%Y', '%Y-%m-%d'):
-            try:
-                date_of_discharge = datetime.strptime(date_str, fmt).date()
-                break
-            except ValueError:
-                continue
+        date_of_discharge = parse_date(date_str)
         if date_of_discharge is None:
             return jsonify({'success': False, 'error': 'Невірний формат дати виписки'}), 400
 
         # Validate k_days
-        try:
-            k_days_int = int(k_days)
-        except ValueError:
+        k_days_int = parse_integer(k_days)
+        if k_days_int is None:
             return jsonify({'success': False, 'error': '"К днів" повинно бути цілим числом'}), 400
 
         # Parse date_of_death if provided
         date_of_death = None
         if date_of_death_str:
-            for fmt in ('%d.%m.%Y', '%Y-%m-%d'):
-                try:
-                    date_of_death = datetime.strptime(date_of_death_str, fmt).date()
-                    break
-                except ValueError:
-                    continue
+            date_of_death = parse_date(date_of_death_str)
             if date_of_death is None:
                 return jsonify({'success': False, 'error': 'Невірний формат дати смерті'}), 400
 
@@ -946,20 +901,13 @@ def create_app(config_class=Config):
                 return redirect(url_for('edit_record', record_id=record_id))
 
             from datetime import datetime
-            date_of_discharge = None
-            for fmt in ('%d.%m.%Y', '%Y-%m-%d'):
-                try:
-                    date_of_discharge = datetime.strptime(date_str, fmt).date()
-                    break
-                except ValueError:
-                    continue
+            date_of_discharge = parse_date(date_str)
             if date_of_discharge is None:
                 flash('Дата виписки повинна бути у форматі ДД.ММ.РРРР або РРРР-ММ-ДД', 'warning')
                 return redirect(url_for('edit_record', record_id=record_id))
 
-            try:
-                k_days_int = int(k_days)
-            except ValueError:
+            k_days_int = parse_integer(k_days)
+            if k_days_int is None:
                 flash('"К днів" повинно бути цілим числом', 'warning')
                 return redirect(url_for('edit_record', record_id=record_id))
 
@@ -967,13 +915,7 @@ def create_app(config_class=Config):
             date_of_death = None
 
             if date_of_death_str:
-                date_of_death = None
-                for fmt in ('%d.%m.%Y', '%Y-%m-%d'):
-                    try:
-                        date_of_death = datetime.strptime(date_of_death_str, fmt).date()
-                        break
-                    except ValueError:
-                        continue
+                date_of_death = parse_date(date_of_death_str)
                 if date_of_death is None:
                     flash('Дата смерті повинна бути у форматі ДД.ММ.РРРР або РРРР-ММ-ДД', 'warning')
                     return redirect(url_for('edit_record', record_id=record_id))
@@ -1360,26 +1302,15 @@ def create_app(config_class=Config):
 
             # Parse date
             from datetime import datetime
-            date_obj = None
-            for fmt in ('%d.%m.%Y', '%Y-%m-%d'):
-                try:
-                    date_obj = datetime.strptime(date_str, fmt).date()
-                    break
-                except ValueError:
-                    continue
-
+            date_obj = parse_date(date_str)
             if date_obj is None:
                 flash('Дата повинна бути у форматі ДД.ММ.РРРР або РРРР-ММ-ДД', 'warning')
                 return redirect(url_for('nszu_add'))
 
             # Parse fakt_summ
-            fakt_summ = None
             if fakt_summ_str and fakt_summ_str != '-':
-                try:
-                    # Replace comma with dot for decimal parsing
-                    fakt_summ_str = fakt_summ_str.replace(',', '.')
-                    fakt_summ = float(fakt_summ_str)
-                except ValueError:
+                fakt_summ = parse_numeric(fakt_summ_str, default=0.0)
+                if fakt_summ is None:
                     flash('Фактична сума повинна бути числом', 'warning')
                     return redirect(url_for('nszu_add'))
             else:
@@ -1438,25 +1369,14 @@ def create_app(config_class=Config):
             return jsonify({'success': False, 'error': 'Будь ласка, заповніть усі обов\'язкові поля (дата, НСЗУ ID, лікар)'}), 400
 
         # Parse date
-        date_obj = None
-        for fmt in ('%d.%m.%Y', '%Y-%m-%d'):
-            try:
-                date_obj = datetime.strptime(date_str, fmt).date()
-                break
-            except ValueError:
-                continue
-
+        date_obj = parse_date(date_str)
         if date_obj is None:
             return jsonify({'success': False, 'error': 'Дата повинна бути у форматі ДД.ММ.РРРР або РРРР-ММ-ДД'}), 400
 
         # Parse fakt_summ
-        fakt_summ = None
         if fakt_summ_str and fakt_summ_str != '-':
-            try:
-                # Replace comma with dot for decimal parsing
-                fakt_summ_str = fakt_summ_str.replace(',', '.')
-                fakt_summ = float(fakt_summ_str)
-            except ValueError:
+            fakt_summ = parse_numeric(fakt_summ_str, default=0.0)
+            if fakt_summ is None:
                 return jsonify({'success': False, 'error': 'Фактична сума повинна бути числом'}), 400
         else:
             fakt_summ = 0.00
@@ -1517,25 +1437,15 @@ def create_app(config_class=Config):
 
             # Parse date
             from datetime import datetime
-            date_obj = None
-            for fmt in ('%d.%m.%Y', '%Y-%m-%d'):
-                try:
-                    date_obj = datetime.strptime(date_str, fmt).date()
-                    break
-                except ValueError:
-                    continue
-
+            date_obj = parse_date(date_str)
             if date_obj is None:
                 flash('Дата повинна бути у форматі ДД.ММ.РРРР або РРРР-ММ-ДД', 'warning')
                 return redirect(url_for('nszu_edit', correction_id=correction_id))
 
             # Parse fakt_summ
-            fakt_summ = None
             if fakt_summ_str and fakt_summ_str != '-':
-                try:
-                    fakt_summ_str = fakt_summ_str.replace(',', '.')
-                    fakt_summ = float(fakt_summ_str)
-                except ValueError:
+                fakt_summ = parse_numeric(fakt_summ_str, default=0.0)
+                if fakt_summ is None:
                     flash('Фактична сума повинна бути числом', 'warning')
                     return redirect(url_for('nszu_edit', correction_id=correction_id))
             else:
@@ -1839,78 +1749,44 @@ def create_app(config_class=Config):
             func.date(Record.date_of_discharge)
         ).order_by('date').all()
 
-        # 2. Status distribution by department
-        departments = db.session.query(Record.discharge_department).distinct().all()
-        dept_list = sorted([d[0] for d in departments if d[0]])
+        # 2. Status distribution by department (OPTIMIZED: Single GROUP BY query)
+        dept_stats = db.session.query(
+            Record.discharge_department,
+            func.sum(case((Record.date_of_death.isnot(None), 1), else_=0)).label('deceased'),
+            func.sum(case(((Record.discharge_status == 'Виписаний') & (Record.date_of_death.is_(None)), 1), else_=0)).label('discharged'),
+            func.sum(case(((Record.discharge_status == 'Опрацьовується') & (Record.date_of_death.is_(None)), 1), else_=0)).label('processing')
+        ).filter(
+            Record.discharge_department.isnot(None),
+            Record.date_of_discharge.isnot(None),
+            Record.date_of_discharge >= first_day.date(),
+            Record.date_of_discharge < last_day.date()
+        ).group_by(Record.discharge_department).all()
 
         status_by_dept = {}
-        for dept in dept_list:
-            # Померлих рахуємо по date_of_death (є дата смерті)
-            deceased_count = db.session.query(func.count(Record.id)).filter(
-                Record.discharge_department == dept,
-                Record.date_of_discharge != None,
-                Record.date_of_discharge >= first_day.date(),
-                Record.date_of_discharge < last_day.date(),
-                Record.date_of_death.isnot(None)
-            ).scalar()
-
-            # Виписаних - статус "Виписаний" БЕЗ дати смерті
-            discharged_count = db.session.query(func.count(Record.id)).filter(
-                Record.discharge_department == dept,
-                Record.date_of_discharge != None,
-                Record.date_of_discharge >= first_day.date(),
-                Record.date_of_discharge < last_day.date(),
-                Record.discharge_status == 'Виписаний',
-                Record.date_of_death.is_(None)
-            ).scalar()
-
-            # Опрацьовується - статус "Опрацьовується" БЕЗ дати смерті
-            processing_count = db.session.query(func.count(Record.id)).filter(
-                Record.discharge_department == dept,
-                Record.date_of_discharge != None,
-                Record.date_of_discharge >= first_day.date(),
-                Record.date_of_discharge < last_day.date(),
-                Record.discharge_status == 'Опрацьовується',
-                Record.date_of_death.is_(None)
-            ).scalar()
-
+        for dept, deceased, discharged, processing in dept_stats:
             status_by_dept[dept] = {
-                'Помер': deceased_count or 0,
-                'Виписаний': discharged_count or 0,
-                'Опрацьовується': processing_count or 0
+                'Помер': deceased or 0,
+                'Виписаний': discharged or 0,
+                'Опрацьовується': processing or 0
             }
 
-        # 3. Overall status distribution for current month
-        # Померлих рахуємо по date_of_death
-        total_deceased = db.session.query(func.count(Record.id)).filter(
-            Record.date_of_discharge != None,
-            Record.date_of_discharge >= first_day.date(),
-            Record.date_of_discharge < last_day.date(),
-            Record.date_of_death.isnot(None)
-        ).scalar()
+        dept_list = sorted(status_by_dept.keys())
 
-        # Виписаних - статус "Виписаний" БЕЗ дати смерті
-        total_discharged = db.session.query(func.count(Record.id)).filter(
-            Record.date_of_discharge != None,
+        # 3. Overall status distribution for current month (OPTIMIZED: Single query)
+        current_stats = db.session.query(
+            func.sum(case((Record.date_of_death.isnot(None), 1), else_=0)).label('deceased'),
+            func.sum(case(((Record.discharge_status == 'Виписаний') & (Record.date_of_death.is_(None)), 1), else_=0)).label('discharged'),
+            func.sum(case(((Record.discharge_status == 'Опрацьовується') & (Record.date_of_death.is_(None)), 1), else_=0)).label('processing')
+        ).filter(
+            Record.date_of_discharge.isnot(None),
             Record.date_of_discharge >= first_day.date(),
-            Record.date_of_discharge < last_day.date(),
-            Record.discharge_status == 'Виписаний',
-            Record.date_of_death.is_(None)
-        ).scalar()
-
-        # Опрацьовується - статус "Опрацьовується" БЕЗ дати смерті
-        total_processing = db.session.query(func.count(Record.id)).filter(
-            Record.date_of_discharge != None,
-            Record.date_of_discharge >= first_day.date(),
-            Record.date_of_discharge < last_day.date(),
-            Record.discharge_status == 'Опрацьовується',
-            Record.date_of_death.is_(None)
-        ).scalar()
+            Record.date_of_discharge < last_day.date()
+        ).first()
 
         status_distribution = {
-            'Помер': total_deceased or 0,
-            'Виписаний': total_discharged or 0,
-            'Опрацьовується': total_processing or 0
+            'Помер': current_stats.deceased or 0,
+            'Виписаний': current_stats.discharged or 0,
+            'Опрацьовується': current_stats.processing or 0
         }
 
         # Calculate total records for selected month
@@ -1930,30 +1806,20 @@ def create_app(config_class=Config):
         else:
             prev_last_day = datetime(prev_year, prev_month + 1, 1)
 
-        # Previous month statistics
-        prev_deceased = db.session.query(func.count(Record.id)).filter(
-            Record.date_of_discharge != None,
+        # Previous month statistics (OPTIMIZED: Single query)
+        prev_stats = db.session.query(
+            func.sum(case((Record.date_of_death.isnot(None), 1), else_=0)).label('deceased'),
+            func.sum(case(((Record.discharge_status == 'Виписаний') & (Record.date_of_death.is_(None)), 1), else_=0)).label('discharged'),
+            func.sum(case(((Record.discharge_status == 'Опрацьовується') & (Record.date_of_death.is_(None)), 1), else_=0)).label('processing')
+        ).filter(
+            Record.date_of_discharge.isnot(None),
             Record.date_of_discharge >= prev_first_day.date(),
-            Record.date_of_discharge < prev_last_day.date(),
-            Record.date_of_death.isnot(None)
-        ).scalar() or 0
+            Record.date_of_discharge < prev_last_day.date()
+        ).first()
 
-        prev_discharged = db.session.query(func.count(Record.id)).filter(
-            Record.date_of_discharge != None,
-            Record.date_of_discharge >= prev_first_day.date(),
-            Record.date_of_discharge < prev_last_day.date(),
-            Record.discharge_status == 'Виписаний',
-            Record.date_of_death.is_(None)
-        ).scalar() or 0
-
-        prev_processing = db.session.query(func.count(Record.id)).filter(
-            Record.date_of_discharge != None,
-            Record.date_of_discharge >= prev_first_day.date(),
-            Record.date_of_discharge < prev_last_day.date(),
-            Record.discharge_status == 'Опрацьовується',
-            Record.date_of_death.is_(None)
-        ).scalar() or 0
-
+        prev_deceased = prev_stats.deceased or 0
+        prev_discharged = prev_stats.discharged or 0
+        prev_processing = prev_stats.processing or 0
         prev_total = prev_deceased + prev_discharged + prev_processing
 
         # Calculate trends
