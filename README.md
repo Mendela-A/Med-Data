@@ -56,6 +56,8 @@ Date: 15.01.2026 14:30:52
 
 ### Automatic Backups (cron)
 
+**Метод 1: Використання Flask CLI (рекомендовано)**
+
 Add to host crontab for daily backups at 3:00 AM:
 
 ```bash
@@ -66,16 +68,60 @@ crontab -e
 0 3 * * * docker exec flask_app flask backup-db >> /var/log/flask_backup.log 2>&1
 ```
 
-Or create a backup script:
+**Метод 2: Прямий бекап через sqlite3 (альтернатива)**
+
+Створіть скрипт `/usr/local/bin/backup-vipiski.sh`:
 
 ```bash
 #!/bin/bash
-# backup.sh
-BACKUP_DIR="/path/to/backups"
-TIMESTAMP=$(date +%Y%m%d_%H%M%S)
+# Backup script for Flask Vipiski app
 
-docker exec flask_app flask backup-db -o /app/data/backup_${TIMESTAMP}.db
-docker cp flask_app:/app/data/backup_${TIMESTAMP}.db ${BACKUP_DIR}/
+CONTAINER_NAME="flask_app"
+BACKUP_DIR="/var/backups/vipiski"
+TIMESTAMP=$(date +%F_%H-%M)
+BACKUP_FILE="app_${TIMESTAMP}.db"
+
+# Create backup directory if not exists
+mkdir -p "$BACKUP_DIR"
+
+# Backup database using sqlite3
+docker exec "$CONTAINER_NAME" sqlite3 /app/data/app.db ".backup '/app/data/$BACKUP_FILE'"
+
+# Copy backup to host
+docker cp "${CONTAINER_NAME}:/app/data/${BACKUP_FILE}" "${BACKUP_DIR}/${BACKUP_FILE}"
+
+# Remove temporary backup from container
+docker exec "$CONTAINER_NAME" rm -f "/app/data/${BACKUP_FILE}"
+
+# Log result
+if [ $? -eq 0 ]; then
+    echo "$(date '+%Y-%m-%d %H:%M:%S') - Backup successful: ${BACKUP_DIR}/${BACKUP_FILE}"
+else
+    echo "$(date '+%Y-%m-%d %H:%M:%S') - Backup FAILED" >&2
+    exit 1
+fi
+```
+
+Налаштування:
+
+```bash
+# 1. Створіть скрипт
+sudo nano /usr/local/bin/backup-vipiski.sh
+# (вставте код вище)
+
+# 2. Зробіть виконуваним
+sudo chmod +x /usr/local/bin/backup-vipiski.sh
+
+# 3. Тестовий запуск
+sudo /usr/local/bin/backup-vipiski.sh
+
+# 4. Додайте в crontab для щоденного бекапу о 3:00
+sudo crontab -e
+# Додайте рядок:
+0 3 * * * /usr/local/bin/backup-vipiski.sh >> /var/log/vipiski-backup.log 2>&1
+
+# 5. Перевірка бекапів
+ls -lh /var/backups/vipiski/
 ```
 
 ## Database (SQLite + WAL)
