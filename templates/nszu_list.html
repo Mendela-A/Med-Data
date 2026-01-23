@@ -282,6 +282,24 @@
         </div>
         <form method="post" action="{{ url_for('nszu_add') }}" id="addRecordForm">
           <div class="modal-body">
+            <!-- Success Alert -->
+            <div class="alert alert-success alert-dismissible fade" role="alert" id="addRecordSuccess" style="display: none;">
+              <i class="bi bi-check-circle me-2"></i>
+              <span id="successMessage"></span>
+            </div>
+
+            <!-- Error Alert -->
+            <div class="alert alert-danger alert-dismissible fade" role="alert" id="addRecordError" style="display: none;">
+              <i class="bi bi-exclamation-triangle me-2"></i>
+              <span id="errorMessage"></span>
+            </div>
+
+            <!-- Counter -->
+            <div class="alert alert-info" id="recordCounter" style="display: none;">
+              <i class="bi bi-info-circle me-2"></i>
+              Додано записів: <strong><span id="counterValue">0</span></strong>
+            </div>
+
             <div class="row g-3">
               <div class="col-md-6">
                 <label class="form-label">Дата <span class="text-danger">*</span></label>
@@ -327,13 +345,21 @@
                 <label class="form-label">Коментар</label>
                 <textarea class="form-control" name="comment" rows="2"></textarea>
               </div>
+
+              <div class="col-12">
+                <div class="form-check">
+                  <input class="form-check-input" type="checkbox" id="keepDoctor" checked>
+                  <label class="form-check-label" for="keepDoctor">
+                    Зберігати лікаря для наступних записів
+                  </label>
+                </div>
+              </div>
             </div>
           </div>
           <div class="modal-footer">
             <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Скасувати</button>
-            <button type="submit" class="btn btn-success">
-              <i class="bi bi-plus-circle me-1"></i>Додати
-            </button>
+            <button type="button" class="btn btn-outline-success" id="saveAndClose">Зберегти і завершити</button>
+            <button type="button" class="btn btn-success" id="saveAndAddAnother">Зберегти і додати ще →</button>
           </div>
         </form>
       </div>
@@ -509,22 +535,181 @@
     });
   }
 
-  // Auto-fill dates in modals
-  document.addEventListener('DOMContentLoaded', function() {
-    // Add Record Modal
-    const addModal = document.getElementById('addRecordModal');
-    if (addModal) {
-      addModal.addEventListener('show.bs.modal', function() {
-        const dateInput = this.querySelector('input[name="date"]');
-        if (dateInput && !dateInput.value) {
-          const today = new Date();
-          const year = today.getFullYear();
-          const month = String(today.getMonth() + 1).padStart(2, '0');
-          const day = String(today.getDate()).padStart(2, '0');
-          dateInput.value = `${year}-${month}-${day}`;
+  // Add Record Modal AJAX functionality
+  (function() {
+    const modal = document.getElementById('addRecordModal');
+    const form = document.getElementById('addRecordForm');
+    const successAlert = document.getElementById('addRecordSuccess');
+    const errorAlert = document.getElementById('addRecordError');
+    const successMessage = document.getElementById('successMessage');
+    const errorMessage = document.getElementById('errorMessage');
+    const counterDiv = document.getElementById('recordCounter');
+    const counterValue = document.getElementById('counterValue');
+    const keepDoctorCheckbox = document.getElementById('keepDoctor');
+
+    // Exit if modal doesn't exist
+    if (!modal || !form) {
+      return;
+    }
+
+    let recordCount = 0;
+
+    // Load keep doctor preference from localStorage
+    const keepDoctorPref = localStorage.getItem('keepDoctor');
+    if (keepDoctorPref !== null) {
+      keepDoctorCheckbox.checked = keepDoctorPref === 'true';
+    }
+
+    // Save preference when changed
+    keepDoctorCheckbox.addEventListener('change', function() {
+      localStorage.setItem('keepDoctor', this.checked);
+    });
+
+    // Reset form and counter when modal is closed completely
+    modal.addEventListener('hidden.bs.modal', function() {
+      form.reset();
+      successAlert.style.display = 'none';
+      successAlert.classList.remove('show');
+      errorAlert.style.display = 'none';
+      errorAlert.classList.remove('show');
+      counterDiv.style.display = 'none';
+      recordCount = 0;
+    });
+
+    // Auto-fill today's date when modal is shown
+    modal.addEventListener('shown.bs.modal', function() {
+      const dateInput = form.querySelector('input[name="date"]');
+      if (dateInput && !dateInput.value) {
+        const today = new Date();
+        const year = today.getFullYear();
+        const month = String(today.getMonth() + 1).padStart(2, '0');
+        const day = String(today.getDate()).padStart(2, '0');
+        dateInput.value = `${year}-${month}-${day}`;
+      }
+
+      form.querySelector('input[name="date"]').focus();
+    });
+
+    function showSuccess(message) {
+      errorAlert.style.display = 'none';
+      errorAlert.classList.remove('show');
+      successMessage.textContent = message;
+      successAlert.style.display = 'block';
+      successAlert.classList.add('show');
+    }
+
+    function showError(message) {
+      successAlert.style.display = 'none';
+      successAlert.classList.remove('show');
+      errorMessage.textContent = message;
+      errorAlert.style.display = 'block';
+      errorAlert.classList.add('show');
+    }
+
+    function updateCounter() {
+      recordCount++;
+      counterValue.textContent = recordCount;
+      counterDiv.style.display = 'block';
+    }
+
+    function clearForm(keepFields) {
+      const doctor = form.querySelector('input[name="doctor"]').value;
+
+      form.reset();
+
+      // Restore doctor if needed
+      if (keepFields && keepDoctorCheckbox.checked) {
+        form.querySelector('input[name="doctor"]').value = doctor;
+      }
+
+      // Auto-fill today's date
+      const dateInput = form.querySelector('input[name="date"]');
+      if (dateInput) {
+        const today = new Date();
+        const year = today.getFullYear();
+        const month = String(today.getMonth() + 1).padStart(2, '0');
+        const day = String(today.getDate()).padStart(2, '0');
+        dateInput.value = `${year}-${month}-${day}`;
+      }
+
+      // Focus on first input
+      form.querySelector('input[name="date"]').focus();
+    }
+
+    function submitForm(closeAfter) {
+      const formData = new FormData(form);
+
+      // Show loading state
+      const saveBtn = closeAfter ? document.getElementById('saveAndClose') : document.getElementById('saveAndAddAnother');
+      const originalText = saveBtn.innerHTML;
+      saveBtn.innerHTML = '<span class="spinner-border spinner-border-sm me-2"></span>Збереження...';
+      saveBtn.disabled = true;
+
+      fetch('{{ url_for("api_nszu_add") }}', {
+        method: 'POST',
+        body: formData,
+        headers: {
+          'X-Requested-With': 'XMLHttpRequest'
+        }
+      })
+      .then(response => response.json())
+      .then(data => {
+        saveBtn.innerHTML = originalText;
+        saveBtn.disabled = false;
+
+        if (data.success) {
+          showSuccess(data.message);
+          updateCounter();
+
+          if (closeAfter) {
+            // Close modal and reload page after short delay
+            setTimeout(function() {
+              bootstrap.Modal.getInstance(modal).hide();
+              location.reload();
+            }, 1000);
+          } else {
+            // Clear form but keep some fields
+            clearForm(true);
+          }
+        } else {
+          showError(data.error || 'Помилка при збереженні запису');
+        }
+      })
+      .catch(error => {
+        saveBtn.innerHTML = originalText;
+        saveBtn.disabled = false;
+        showError('Помилка з\'єднання з сервером');
+        console.error('Error:', error);
+      });
+    }
+
+    // Save and close button
+    const saveAndCloseBtn = document.getElementById('saveAndClose');
+    if (saveAndCloseBtn) {
+      saveAndCloseBtn.addEventListener('click', function() {
+        if (form.checkValidity()) {
+          submitForm(true);
+        } else {
+          form.reportValidity();
         }
       });
     }
+
+    // Save and add another button
+    const saveAndAddAnotherBtn = document.getElementById('saveAndAddAnother');
+    if (saveAndAddAnotherBtn) {
+      saveAndAddAnotherBtn.addEventListener('click', function() {
+        if (form.checkValidity()) {
+          submitForm(false);
+        } else {
+          form.reportValidity();
+        }
+      });
+    }
+  })();
+
+  // Auto-fill dates in modals
+  document.addEventListener('DOMContentLoaded', function() {
 
     // Export Modal
     const exportModal = document.getElementById('exportModal');

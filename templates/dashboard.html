@@ -801,6 +801,17 @@
         form.querySelector('#treating_physician').value = physician;
       }
 
+      // Auto-fill yesterday's date for discharge date
+      const dateInput = document.getElementById('date_of_discharge');
+      if (dateInput) {
+        const yesterday = new Date();
+        yesterday.setDate(yesterday.getDate() - 1);
+        const year = yesterday.getFullYear();
+        const month = String(yesterday.getMonth() + 1).padStart(2, '0');
+        const day = String(yesterday.getDate()).padStart(2, '0');
+        dateInput.value = `${year}-${month}-${day}`;
+      }
+
       // Focus on first input
       document.getElementById('full_name').focus();
     }

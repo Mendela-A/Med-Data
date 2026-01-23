@@ -1336,6 +1336,84 @@ def create_app(config_class=Config):
 
         return render_template('nszu_add.html', doctors=doctors, statuses=statuses)
 
+    @app.route('/api/nszu/add', methods=['POST'])
+    @role_required('editor')
+    def api_nszu_add():
+        """AJAX endpoint for adding NSZU corrections with support for 'save and add another'"""
+        from datetime import datetime
+
+        app.logger.info(f'API nszu_add called by {current_user.username}')
+
+        date_str = request.form.get('date', '').strip()
+        nszu_record_id = request.form.get('nszu_record_id', '').strip()
+        doctor = request.form.get('doctor', '').strip()
+        status = request.form.get('status', 'В обробці').strip()
+        detail = request.form.get('detail', '').strip()
+        fakt_summ_str = request.form.get('fakt_summ', '').strip()
+        comment = request.form.get('comment', '').strip()
+
+        # Validate required fields
+        if not all([date_str, nszu_record_id, doctor]):
+            return jsonify({'success': False, 'error': 'Будь ласка, заповніть усі обов\'язкові поля (дата, НСЗУ ID, лікар)'}), 400
+
+        # Parse date
+        date_obj = None
+        for fmt in ('%d.%m.%Y', '%Y-%m-%d'):
+            try:
+                date_obj = datetime.strptime(date_str, fmt).date()
+                break
+            except ValueError:
+                continue
+
+        if date_obj is None:
+            return jsonify({'success': False, 'error': 'Дата повинна бути у форматі ДД.ММ.РРРР або РРРР-ММ-ДД'}), 400
+
+        # Parse fakt_summ
+        fakt_summ = None
+        if fakt_summ_str and fakt_summ_str != '-':
+            try:
+                # Replace comma with dot for decimal parsing
+                fakt_summ_str = fakt_summ_str.replace(',', '.')
+                fakt_summ = float(fakt_summ_str)
+            except ValueError:
+                return jsonify({'success': False, 'error': 'Фактична сума повинна бути числом'}), 400
+        else:
+            fakt_summ = 0.00
+
+        # Create correction
+        correction = NSZUCorrection(
+            date=date_obj,
+            nszu_record_id=nszu_record_id,
+            doctor=doctor,
+            status=status,
+            detail=detail or None,
+            fakt_summ=fakt_summ,
+            comment=comment or None,
+            created_by=current_user.id,
+            updated_by=current_user.id
+        )
+
+        try:
+            db.session.add(correction)
+            db.session.commit()
+
+            try:
+                log_action(current_user.id, 'nszu.create', 'nszu_correction', correction.id, f'nszu_record_id={nszu_record_id}')
+            except Exception:
+                app.logger.exception('Failed to write audit log for nszu.create')
+
+            app.logger.info(f'NSZU correction created: {correction.id} by {current_user.username}')
+            return jsonify({
+                'success': True,
+                'message': f'Запис перевірки НСЗУ #{correction.id} успішно додано',
+                'correction_id': correction.id
+            }), 201
+
+        except Exception as e:
+            db.session.rollback()
+            app.logger.exception('Error creating NSZU correction')
+            return jsonify({'success': False, 'error': 'Помилка при збереженні запису'}), 500
+
     @app.route('/nszu/<int:correction_id>/edit', methods=['GET', 'POST'])
     @role_required('editor')
     def nszu_edit(correction_id):
