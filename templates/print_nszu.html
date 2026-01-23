@@ -6,10 +6,10 @@
     <style>
         @page {
             size: A4 landscape;
-            margin: 1.5cm 1cm;
+            margin: 1.2cm 1cm;
             @bottom-right {
                 content: "Стор. " counter(page) " з " counter(pages);
-                font-size: 9pt;
+                font-size: 8pt;
                 color: #666;
             }
         }
@@ -28,10 +28,21 @@
         }
 
         .header {
+            position: relative;
             text-align: center;
-            margin-bottom: 15px;
-            padding-bottom: 10px;
-            border-bottom: 2px solid: #0066cc;
+            margin-bottom: 10px;
+            padding-bottom: 8px;
+            padding-left: 80px;
+            border-bottom: 2px solid #0066cc;
+            min-height: 60px;
+        }
+
+        .header .logo {
+            position: absolute;
+            left: 0;
+            top: 0;
+            height: 55px;
+            width: auto;
         }
 
         .header h1 {
@@ -48,9 +59,9 @@
         .info-block {
             display: flex;
             justify-content: space-between;
-            margin-bottom: 15px;
-            font-size: 9pt;
-            padding: 8px;
+            margin-bottom: 10px;
+            font-size: 8pt;
+            padding: 6px;
             background-color: #f8f9fa;
             border-radius: 4px;
         }
@@ -67,8 +78,9 @@
         table {
             width: 100%;
             border-collapse: collapse;
-            margin-bottom: 15px;
-            font-size: 9pt;
+            margin-bottom: 10px;
+            font-size: 8pt;
+            line-height: 1.2;
         }
 
         thead {
@@ -77,14 +89,14 @@
         }
 
         th {
-            padding: 8px 5px;
+            padding: 6px 4px;
             text-align: left;
             font-weight: bold;
             border: 1px solid #0066cc;
         }
 
         td {
-            padding: 6px 5px;
+            padding: 4px 4px;
             border: 1px solid #ddd;
             vertical-align: top;
         }
@@ -99,9 +111,9 @@
 
         .status-badge {
             display: inline-block;
-            padding: 2px 6px;
-            border-radius: 3px;
-            font-size: 8pt;
+            padding: 1px 4px;
+            border-radius: 2px;
+            font-size: 7pt;
             font-weight: bold;
         }
 
@@ -130,15 +142,15 @@
         }
 
         .summary {
-            margin-top: 15px;
-            padding: 10px;
+            margin-top: 10px;
+            padding: 8px;
             background-color: #f8f9fa;
             border-left: 4px solid #0066cc;
-            font-size: 10pt;
+            font-size: 8pt;
         }
 
         .summary-item {
-            margin-bottom: 5px;
+            margin-bottom: 3px;
         }
 
         .col-narrow { width: 3%; }
@@ -162,7 +174,8 @@
 </head>
 <body>
     <div class="header">
-        <h1>Звіт по коригуванням НСЗУ</h1>
+        <img src="file:///app/static/pic/logo.png" alt="Logo" class="logo">
+        <h1>Звіт щодо коригувань НСЗУ</h1>
         <div class="subtitle">Сервіс виписок</div>
     </div>
 
