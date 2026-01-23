@@ -1133,6 +1133,22 @@ def create_app(config_class=Config):
                 pass
         current_month = datetime(year, month, 1).strftime('%B %Y')
 
+        # Calculate navigation months
+        now = datetime.now()
+        current_month_str = f'{now.year:04d}-{now.month:02d}'
+
+        # Previous month
+        if month == 1:
+            prev_month_str = f'{year-1:04d}-12'
+        else:
+            prev_month_str = f'{year:04d}-{month-1:02d}'
+
+        # Next month
+        if month == 12:
+            next_month_str = f'{year+1:04d}-01'
+        else:
+            next_month_str = f'{year:04d}-{month+1:02d}'
+
         return render_template('nszu_list.html',
                              corrections=corrections,
                              pagination=pagination,
@@ -1146,7 +1162,10 @@ def create_app(config_class=Config):
                              total_filtered_sum=total_filtered_sum,
                              selected_year=year,
                              selected_month=month,
-                             current_month=current_month)
+                             current_month=current_month,
+                             current_month_str=current_month_str,
+                             prev_month_str=prev_month_str,
+                             next_month_str=next_month_str)
 
     @app.route('/nszu/add', methods=['GET', 'POST'])
     @role_required('editor')

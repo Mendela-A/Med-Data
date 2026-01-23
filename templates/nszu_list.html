@@ -91,9 +91,17 @@
           <button class="btn btn-primary btn-sm" type="submit">
             <i class="bi bi-funnel me-1"></i>Застосувати
           </button>
-          <a class="btn btn-outline-secondary btn-sm" href="{{ url_for('nszu_list') }}">
-            <i class="bi bi-arrow-clockwise me-1"></i>Поточний місяць
-          </a>
+          <div class="btn-group" role="group">
+            <a class="btn btn-outline-secondary btn-sm" href="{{ url_for('nszu_list', month_year=prev_month_str) }}" title="Попередній місяць">
+              <i class="bi bi-chevron-left"></i>
+            </a>
+            <a class="btn btn-outline-secondary btn-sm" href="{{ url_for('nszu_list', month_year=current_month_str) }}">
+              <i class="bi bi-arrow-clockwise me-1"></i>Поточний місяць
+            </a>
+            <a class="btn btn-outline-secondary btn-sm" href="{{ url_for('nszu_list', month_year=next_month_str) }}" title="Наступний місяць">
+              <i class="bi bi-chevron-right"></i>
+            </a>
+          </div>
         </div>
       </form>
     </div>
