@@ -86,20 +86,23 @@ mkdir -p "$BACKUP_DIR"
 
 # Backup database using sqlite3
 docker exec "$CONTAINER_NAME" sqlite3 /app/data/app.db ".backup '/app/data/$BACKUP_FILE'"
+if [ $? -ne 0 ]; then
+    echo "$(date '+%Y-%m-%d %H:%M:%S') - Backup FAILED: sqlite3 backup error" >&2
+    exit 1
+fi
 
 # Copy backup to host
 docker cp "${CONTAINER_NAME}:/app/data/${BACKUP_FILE}" "${BACKUP_DIR}/${BACKUP_FILE}"
+if [ $? -ne 0 ]; then
+    echo "$(date '+%Y-%m-%d %H:%M:%S') - Backup FAILED: docker cp error" >&2
+    exit 1
+fi
 
 # Remove temporary backup from container
 docker exec "$CONTAINER_NAME" rm -f "/app/data/${BACKUP_FILE}"
 
-# Log result
-if [ $? -eq 0 ]; then
-    echo "$(date '+%Y-%m-%d %H:%M:%S') - Backup successful: ${BACKUP_DIR}/${BACKUP_FILE}"
-else
-    echo "$(date '+%Y-%m-%d %H:%M:%S') - Backup FAILED" >&2
-    exit 1
-fi
+# Log success
+echo "$(date '+%Y-%m-%d %H:%M:%S') - Backup successful: ${BACKUP_DIR}/${BACKUP_FILE}"
 ```
 
 Налаштування:
