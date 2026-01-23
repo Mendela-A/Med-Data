@@ -223,13 +223,43 @@ def create_app(config_class=Config):
         physicians = get_distinct_physicians()
         departments = get_distinct_departments()
 
+        # Sorting
+        sort_by = request.args.get('sort_by', 'date_of_discharge')
+        sort_order = request.args.get('sort_order', 'desc')
+
+        # Map sort columns to model fields
+        sort_columns = {
+            'id': Record.id,
+            'date_of_discharge': Record.date_of_discharge,
+            'full_name': Record.full_name,
+            'discharge_department': Record.discharge_department,
+            'treating_physician': Record.treating_physician,
+            'history': Record.history,
+            'k_days': Record.k_days,
+            'discharge_status': Record.discharge_status,
+            'date_of_death': Record.date_of_death
+        }
+
+        # Apply sorting
+        if sort_by in sort_columns:
+            sort_column = sort_columns[sort_by]
+            if sort_order == 'asc':
+                q = q.order_by(sort_column.asc())
+            else:
+                q = q.order_by(sort_column.desc())
+            # Secondary sort by created_at for consistency
+            q = q.order_by(Record.created_at.desc())
+        else:
+            # Default sorting
+            q = q.order_by(Record.date_of_discharge.desc(), Record.created_at.desc())
+
         # Pagination
         page = request.args.get('page', 1, type=int)
         per_page = request.args.get('per_page', 100, type=int)  # Default 100 records per page
         per_page = min(per_page, 200)  # Max 200 per page to prevent abuse
 
         # Get paginated results
-        pagination = q.order_by(Record.date_of_discharge.desc(), Record.created_at.desc()).paginate(
+        pagination = q.paginate(
             page=page,
             per_page=per_page,
             error_out=False
@@ -285,7 +315,29 @@ def create_app(config_class=Config):
         # Format month for HTML5 input (YYYY-MM)
         month_filter_value = f"{selected_year}-{selected_month:02d}" if selected_year and selected_month else ""
 
-        return render_template('dashboard.html', records=records, pagination=pagination, statuses=statuses, physicians=physicians, departments=departments, selected_status=selected_status, selected_physician=selected_physician, selected_department=selected_department, history_q=history_q, full_name_q=full_name_q, count=count, month_filter_value=month_filter_value, selected_year=selected_year, selected_month=selected_month, show_all=show_all, has_death_date=has_death_date, count_discharged=count_discharged, count_processing=count_processing, count_violations=count_violations, count_deceased=count_deceased)
+        return render_template('dashboard.html',
+            records=records,
+            pagination=pagination,
+            statuses=statuses,
+            physicians=physicians,
+            departments=departments,
+            selected_status=selected_status,
+            selected_physician=selected_physician,
+            selected_department=selected_department,
+            history_q=history_q,
+            full_name_q=full_name_q,
+            count=count,
+            month_filter_value=month_filter_value,
+            selected_year=selected_year,
+            selected_month=selected_month,
+            show_all=show_all,
+            has_death_date=has_death_date,
+            count_discharged=count_discharged,
+            count_processing=count_processing,
+            count_violations=count_violations,
+            count_deceased=count_deceased,
+            sort_by=sort_by,
+            sort_order=sort_order)
 
     @app.route('/export', methods=['POST'])
     @role_required('editor')
@@ -1189,12 +1241,39 @@ def create_app(config_class=Config):
         statuses = ['В обробці', 'Опрацьовано', 'Оплачено', 'Не підлягає оплаті']
         doctors = [d[0] for d in db.session.query(NSZUCorrection.doctor).distinct().filter(NSZUCorrection.doctor != None).order_by(NSZUCorrection.doctor).all()]
 
+        # Sorting
+        sort_by = request.args.get('sort_by', 'date')
+        sort_order = request.args.get('sort_order', 'desc')
+
+        # Map sort columns to model fields
+        sort_columns = {
+            'id': NSZUCorrection.id,
+            'date': NSZUCorrection.date,
+            'nszu_record_id': NSZUCorrection.nszu_record_id,
+            'doctor': NSZUCorrection.doctor,
+            'status': NSZUCorrection.status,
+            'fakt_summ': NSZUCorrection.fakt_summ
+        }
+
+        # Apply sorting
+        if sort_by in sort_columns:
+            sort_column = sort_columns[sort_by]
+            if sort_order == 'asc':
+                q = q.order_by(sort_column.asc())
+            else:
+                q = q.order_by(sort_column.desc())
+            # Secondary sort by created_at for consistency
+            q = q.order_by(NSZUCorrection.created_at.desc())
+        else:
+            # Default sorting
+            q = q.order_by(NSZUCorrection.date.desc(), NSZUCorrection.created_at.desc())
+
         # Pagination
         page = request.args.get('page', 1, type=int)
         per_page = request.args.get('per_page', 100, type=int)
         per_page = min(per_page, 200)
 
-        pagination = q.order_by(NSZUCorrection.created_at.desc()).paginate(
+        pagination = q.paginate(
             page=page,
             per_page=per_page,
             error_out=False
@@ -1257,7 +1336,9 @@ def create_app(config_class=Config):
                              current_month=current_month,
                              current_month_str=current_month_str,
                              prev_month_str=prev_month_str,
-                             next_month_str=next_month_str)
+                             next_month_str=next_month_str,
+                             sort_by=sort_by,
+                             sort_order=sort_order)
 
     @app.route('/nszu/add', methods=['GET', 'POST'])
     @role_required('editor')

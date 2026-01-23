@@ -1,6 +1,33 @@
 {% extends "base.html" %}
 {% block title %}Перевірка НСЗУ{% endblock %}
 {% block container_class %}container-fluid px-4{% endblock %}
+
+{# Macro for sortable column headers #}
+{% macro sort_th(column, label, width='') %}
+  {% set current_args = request.args.copy() %}
+  {% if sort_by == column %}
+    {% if sort_order == 'asc' %}
+      {% set new_order = 'desc' %}
+      {% set icon = 'bi-arrow-up' %}
+    {% else %}
+      {% set new_order = 'asc' %}
+      {% set icon = 'bi-arrow-down' %}
+    {% endif %}
+  {% else %}
+    {% set new_order = 'desc' %}
+    {% set icon = '' %}
+  {% endif %}
+  {% set _ = current_args.update({'sort_by': column, 'sort_order': new_order}) %}
+  <th {% if width %}style="width: {{ width }};"{% endif %}>
+    <a href="{{ url_for('nszu_list', **current_args) }}" class="text-decoration-none text-dark d-flex align-items-center gap-1" style="cursor: pointer;">
+      <span>{{ label }}</span>
+      {% if icon %}
+        <i class="{{ icon }}" style="font-size: 0.8em;"></i>
+      {% endif %}
+    </a>
+  </th>
+{% endmacro %}
+
 {% block content %}
   {% block breadcrumbs %}
     <li class="breadcrumb-item active" aria-current="page">Перевірка НСЗУ</li>
@@ -168,14 +195,14 @@
           <table class="table table-striped table-hover mb-0">
             <thead class="table-light">
               <tr>
-                <th style="width: 50px;">ID</th>
-                <th style="width: 100px;">Дата</th>
-                <th style="width: 120px;">НСЗУ ID</th>
-                <th style="width: 150px;">Лікар</th>
-                <th style="width: 120px;">Статус</th>
+                {{ sort_th('id', 'ID', '50px') }}
+                {{ sort_th('date', 'Дата', '100px') }}
+                {{ sort_th('nszu_record_id', 'НСЗУ ID', '120px') }}
+                {{ sort_th('doctor', 'Лікар', '150px') }}
+                {{ sort_th('status', 'Статус', '120px') }}
                 <th style="width: 25%;">Деталі</th>
                 <th style="width: 20%;">Коментар</th>
-                <th style="width: 100px;">Факт. сума</th>
+                {{ sort_th('fakt_summ', 'Факт. сума', '100px') }}
                 {% if current_user.role in ['editor', 'admin'] %}
                   <th style="width: 100px;">Оновив</th>
                   <th style="width: 130px;">Оновлено</th>
