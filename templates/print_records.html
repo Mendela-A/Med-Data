@@ -1,0 +1,283 @@
+<!DOCTYPE html>
+<html lang="uk">
+<head>
+    <meta charset="UTF-8">
+    <title>Звіт по записам</title>
+    <style>
+        @page {
+            size: A4 landscape;
+            margin: 1.5cm 1cm;
+            @bottom-right {
+                content: "Стор. " counter(page) " з " counter(pages);
+                font-size: 9pt;
+                color: #666;
+            }
+        }
+
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: 'DejaVu Sans', Arial, sans-serif;
+            font-size: 10pt;
+            line-height: 1.3;
+            color: #333;
+        }
+
+        .header {
+            text-align: center;
+            margin-bottom: 15px;
+            padding-bottom: 10px;
+            border-bottom: 2px solid #0066cc;
+        }
+
+        .header h1 {
+            font-size: 16pt;
+            margin-bottom: 5px;
+            color: #0066cc;
+        }
+
+        .header .subtitle {
+            font-size: 11pt;
+            color: #666;
+        }
+
+        .info-block {
+            display: flex;
+            justify-content: space-between;
+            margin-bottom: 15px;
+            font-size: 9pt;
+            padding: 8px;
+            background-color: #f8f9fa;
+            border-radius: 4px;
+        }
+
+        .info-item {
+            margin-right: 15px;
+        }
+
+        .info-label {
+            font-weight: bold;
+            color: #555;
+        }
+
+        table {
+            width: 100%;
+            border-collapse: collapse;
+            margin-bottom: 15px;
+            font-size: 9pt;
+        }
+
+        thead {
+            background-color: #0066cc;
+            color: white;
+        }
+
+        th {
+            padding: 8px 5px;
+            text-align: left;
+            font-weight: bold;
+            border: 1px solid #0066cc;
+        }
+
+        td {
+            padding: 6px 5px;
+            border: 1px solid #ddd;
+            vertical-align: top;
+        }
+
+        tbody tr:nth-child(even) {
+            background-color: #f8f9fa;
+        }
+
+        tbody tr:hover {
+            background-color: #e9ecef;
+        }
+
+        .status-badge {
+            display: inline-block;
+            padding: 2px 6px;
+            border-radius: 3px;
+            font-size: 8pt;
+            font-weight: bold;
+        }
+
+        .status-discharged {
+            background-color: #d4edda;
+            color: #155724;
+        }
+
+        .status-processing {
+            background-color: #fff3cd;
+            color: #856404;
+        }
+
+        .status-violation {
+            background-color: #f8d7da;
+            color: #721c24;
+        }
+
+        .deceased {
+            background-color: #343a40;
+            color: white;
+            font-weight: bold;
+        }
+
+        .footer {
+            margin-top: 20px;
+            padding-top: 10px;
+            border-top: 1px solid #ddd;
+            font-size: 8pt;
+            color: #666;
+            text-align: center;
+        }
+
+        .summary {
+            margin-top: 15px;
+            padding: 10px;
+            background-color: #f8f9fa;
+            border-left: 4px solid #0066cc;
+            font-size: 10pt;
+        }
+
+        .summary-item {
+            margin-bottom: 5px;
+        }
+
+        .col-narrow { width: 3%; }
+        .col-date { width: 7%; }
+        .col-name { width: 15%; }
+        .col-department { width: 12%; }
+        .col-doctor { width: 12%; }
+        .col-history { width: 6%; }
+        .col-days { width: 5%; }
+        .col-status { width: 10%; }
+        .col-death { width: 7%; }
+        .col-comment { width: 15%; }
+        .col-user { width: 8%; }
+
+        /* Page break control */
+        tr {
+            page-break-inside: avoid;
+        }
+
+        thead {
+            display: table-header-group;
+        }
+    </style>
+</head>
+<body>
+    <div class="header">
+        <h1>Звіт по виписаним пацієнтам</h1>
+        <div class="subtitle">Сервіс виписок</div>
+    </div>
+
+    <div class="info-block">
+        <div>
+            <div class="info-item">
+                <span class="info-label">Період:</span> {{ from_date.strftime('%d.%m.%Y') }} - {{ to_date.strftime('%d.%m.%Y') }}
+            </div>
+            {% if discharge_status %}
+            <div class="info-item">
+                <span class="info-label">Статус:</span> {{ discharge_status }}
+            </div>
+            {% endif %}
+            {% if treating_physician %}
+            <div class="info-item">
+                <span class="info-label">Лікар:</span> {{ treating_physician }}
+            </div>
+            {% endif %}
+            {% if discharge_department %}
+            <div class="info-item">
+                <span class="info-label">Відділення:</span> {{ discharge_department }}
+            </div>
+            {% endif %}
+        </div>
+        <div style="text-align: right;">
+            <div class="info-item">
+                <span class="info-label">Сформував:</span> {{ generated_by }}
+            </div>
+            <div class="info-item">
+                <span class="info-label">Дата формування:</span> {{ generated_at.strftime('%d.%m.%Y %H:%M') }}
+            </div>
+        </div>
+    </div>
+
+    <table>
+        <thead>
+            <tr>
+                <th class="col-narrow">№</th>
+                <th class="col-date">Дата виписки</th>
+                <th class="col-name">ПІБ</th>
+                <th class="col-department">Відділення</th>
+                <th class="col-doctor">Лікар</th>
+                <th class="col-history">Історія</th>
+                <th class="col-days">К днів</th>
+                <th class="col-status">Статус</th>
+                <th class="col-death">Дата смерті</th>
+                <th class="col-comment">Коментар</th>
+            </tr>
+        </thead>
+        <tbody>
+            {% for r in records %}
+            <tr {% if r.date_of_death %}class="deceased"{% endif %}>
+                <td class="col-narrow">{{ loop.index }}</td>
+                <td class="col-date">{{ r.date_of_discharge.strftime('%d.%m.%Y') if r.date_of_discharge else '' }}</td>
+                <td class="col-name">{{ r.full_name }}</td>
+                <td class="col-department">{{ r.discharge_department or '' }}</td>
+                <td class="col-doctor">{{ r.treating_physician or '' }}</td>
+                <td class="col-history">{{ r.history or '' }}</td>
+                <td class="col-days">{{ r.k_days if r.k_days is not none else '' }}</td>
+                <td class="col-status">
+                    {% if not r.date_of_death %}
+                        {% if r.discharge_status == 'Виписаний' %}
+                            <span class="status-badge status-discharged">{{ r.discharge_status }}</span>
+                        {% elif r.discharge_status == 'Опрацьовується' %}
+                            <span class="status-badge status-processing">{{ r.discharge_status }}</span>
+                        {% elif r.discharge_status == 'Порушені вимоги' %}
+                            <span class="status-badge status-violation">{{ r.discharge_status }}</span>
+                        {% else %}
+                            {{ r.discharge_status or '' }}
+                        {% endif %}
+                    {% else %}
+                        <span class="status-badge deceased">Померло</span>
+                    {% endif %}
+                </td>
+                <td class="col-death">{{ r.date_of_death.strftime('%d.%m.%Y') if r.date_of_death else '' }}</td>
+                <td class="col-comment">{{ r.comment[:100] if r.comment else '' }}</td>
+            </tr>
+            {% endfor %}
+        </tbody>
+    </table>
+
+    <div class="summary">
+        <div class="summary-item"><strong>Всього записів:</strong> {{ records|length }}</div>
+        <div class="summary-item">
+            <strong>Розподіл за статусами:</strong>
+            {% set ns = namespace(discharged=0, processing=0, violation=0, deceased=0) %}
+            {% for r in records %}
+                {% if r.date_of_death %}
+                    {% set ns.deceased = ns.deceased + 1 %}
+                {% elif r.discharge_status == 'Виписаний' %}
+                    {% set ns.discharged = ns.discharged + 1 %}
+                {% elif r.discharge_status == 'Опрацьовується' %}
+                    {% set ns.processing = ns.processing + 1 %}
+                {% elif r.discharge_status == 'Порушені вимоги' %}
+                    {% set ns.violation = ns.violation + 1 %}
+                {% endif %}
+            {% endfor %}
+            Виписаних: {{ ns.discharged }},
+            Опрацьовується: {{ ns.processing }},
+            Порушені вимоги: {{ ns.violation }},
+            Померло: {{ ns.deceased }}
+        </div>
+    </div>
+
+    <div class="footer">
+        Документ сформовано автоматично системою "Сервіс виписок"
+    </div>
+</body>
+</html>

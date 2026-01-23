@@ -6,6 +6,9 @@
     <li class="breadcrumb-item active" aria-current="page">Перевірка НСЗУ</li>
   {% endblock %}
 
+  <!-- Toast container for print notifications -->
+  <div id="printToastContainer" class="toast-container position-fixed top-0 end-0 p-3" style="z-index: 9999;"></div>
+
   <div class="d-flex justify-content-between align-items-center mb-3">
     <div>
       <h1 class="h3 mb-2">Перевірка НСЗУ</h1>
@@ -21,15 +24,16 @@
       </button>
       <div class="btn-group">
         <button type="button" class="btn btn-primary" onclick="quickExport()">
-          <i class="bi bi-download me-1"></i>Експорт
+          <i class="bi bi-file-earmark-arrow-down me-1"></i>Звіти
         </button>
         <button type="button" class="btn btn-primary dropdown-toggle dropdown-toggle-split" data-bs-toggle="dropdown" aria-expanded="false">
           <span class="visually-hidden">Більше</span>
         </button>
         <ul class="dropdown-menu">
-          <li><a class="dropdown-item" href="#" onclick="quickExport(); return false;"><i class="bi bi-file-earmark-excel me-2"></i>Експортувати поточний фільтр</a></li>
+          <li><a class="dropdown-item" href="#" onclick="quickExport(); return false;"><i class="bi bi-file-earmark-excel me-2"></i>Експортувати в Excel</a></li>
+          <li><a class="dropdown-item" href="#" onclick="printNszu(); return false;"><i class="bi bi-printer me-2"></i>Друк (PDF)</a></li>
           <li><hr class="dropdown-divider"></li>
-          <li><a class="dropdown-item" href="#" data-bs-toggle="modal" data-bs-target="#exportModal"><i class="bi bi-calendar-range me-2"></i>Експортувати за період...</a></li>
+          <li><a class="dropdown-item" href="#" data-bs-toggle="modal" data-bs-target="#exportModal"><i class="bi bi-calendar-range me-2"></i>Детальний експорт...</a></li>
         </ul>
       </div>
     </div>
@@ -427,6 +431,82 @@
 
     document.body.appendChild(form);
     form.submit();
+  }
+
+  // Quick print with current filters
+  function printNszu() {
+    // Show loading toast
+    showPrintToast('Формування PDF документу...', 'info');
+
+    const form = document.createElement('form');
+    form.method = 'POST';
+    form.action = '{{ url_for("print_nszu") }}';
+    form.target = '_blank';  // Open PDF in new tab
+
+    // Get current month filter values
+    const monthYear = '{{ "%04d-%02d"|format(selected_year, selected_month) }}';
+    const [year, month] = monthYear.split('-');
+    const lastDay = new Date(year, month, 0).getDate();
+
+    // Add form fields
+    const fields = {
+      'from_date': `${year}-${month}-01`,
+      'to_date': `${year}-${month}-${lastDay}`,
+      'status': '{{ selected_status }}',
+      'doctor': '{{ selected_doctor }}',
+      'nszu_record_id': '{{ nszu_record_id_q }}'
+    };
+
+    for (const [name, value] of Object.entries(fields)) {
+      const input = document.createElement('input');
+      input.type = 'hidden';
+      input.name = name;
+      input.value = value;
+      form.appendChild(input);
+    }
+
+    document.body.appendChild(form);
+    form.submit();
+    document.body.removeChild(form);
+
+    // Show success message after a short delay
+    setTimeout(() => {
+      showPrintToast('PDF документ відкрито в новій вкладці', 'success');
+    }, 1500);
+  }
+
+  // Show toast notification for print
+  function showPrintToast(message, type) {
+    const toastContainer = document.getElementById('printToastContainer');
+    if (!toastContainer) return;
+
+    const toastId = 'toast-' + Date.now();
+    const bgClass = type === 'success' ? 'bg-success' : type === 'info' ? 'bg-info' : 'bg-warning';
+
+    const toastHtml = `
+      <div id="${toastId}" class="toast align-items-center text-white ${bgClass} border-0" role="alert" aria-live="assertive" aria-atomic="true">
+        <div class="d-flex">
+          <div class="toast-body">
+            <i class="bi bi-${type === 'success' ? 'check-circle' : type === 'info' ? 'hourglass-split' : 'exclamation-circle'} me-2"></i>
+            ${message}
+          </div>
+          <button type="button" class="btn-close btn-close-white me-2 m-auto" data-bs-dismiss="toast" aria-label="Close"></button>
+        </div>
+      </div>
+    `;
+
+    toastContainer.insertAdjacentHTML('beforeend', toastHtml);
+    const toastElement = document.getElementById(toastId);
+    const toast = new bootstrap.Toast(toastElement, {
+      autohide: true,
+      delay: type === 'info' ? 2000 : 3000
+    });
+    toast.show();
+
+    // Remove toast element after it's hidden
+    toastElement.addEventListener('hidden.bs.toast', function() {
+      toastElement.remove();
+    });
   }
 
   // Auto-fill dates in modals

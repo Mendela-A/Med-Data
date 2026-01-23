@@ -463,6 +463,98 @@ def create_app(config_class=Config):
 
         return send_file(bio, as_attachment=True, download_name=filename, mimetype='application/vnd.openxmlformats-officedocument.spreadsheetml.sheet')
 
+    @app.route('/records/print', methods=['POST'])
+    @role_required('editor')
+    def print_records():
+        """Generate PDF print for records with filters"""
+        from datetime import datetime
+        from io import BytesIO
+
+        try:
+            from_str = request.form.get('from_date', '').strip()
+            to_str = request.form.get('to_date', '').strip()
+            if not from_str or not to_str:
+                flash('Будь ласка, вкажіть обидві дати для друку', 'warning')
+                return redirect(url_for('index'))
+            from_d = datetime.strptime(from_str, '%Y-%m-%d').date()
+            to_d = datetime.strptime(to_str, '%Y-%m-%d').date()
+        except ValueError:
+            flash('Невірний формат дати', 'warning')
+            return redirect(url_for('index'))
+
+        if from_d > to_d:
+            flash('Дата "з" не може бути пізніше дати "по"', 'warning')
+            return redirect(url_for('index'))
+
+        # Get optional filters
+        discharge_status = request.form.get('discharge_status', '').strip()
+        treating_physician = request.form.get('treating_physician', '').strip()
+        discharge_department = request.form.get('discharge_department', '').strip()
+        history_q = request.form.get('history', '').strip()
+        full_name_q = request.form.get('full_name', '').strip()
+
+        # Build query with filters
+        conditions = [
+            Record.date_of_discharge != None,
+            Record.date_of_discharge >= from_d,
+            Record.date_of_discharge <= to_d,
+        ]
+        if discharge_status:
+            conditions.append(Record.discharge_status == discharge_status)
+        if treating_physician:
+            conditions.append(Record.treating_physician == treating_physician)
+        if discharge_department:
+            conditions.append(Record.discharge_department == discharge_department)
+        if history_q:
+            conditions.append(Record.history.contains(history_q))
+        if full_name_q:
+            conditions.append(Record.full_name.contains(full_name_q))
+
+        q = Record.query.filter(*conditions)
+        records = q.order_by(Record.date_of_discharge.desc()).all()
+
+        if not records:
+            flash('Записів не знайдено для друку', 'warning')
+            return redirect(url_for('index'))
+
+        # Get user mapping
+        user_map = {u.id: u.username for u in User.query.all()}
+
+        # Render HTML template for print
+        html_string = render_template('print_records.html',
+                                     records=records,
+                                     from_date=from_d,
+                                     to_date=to_d,
+                                     discharge_status=discharge_status,
+                                     treating_physician=treating_physician,
+                                     discharge_department=discharge_department,
+                                     user_map=user_map,
+                                     generated_by=current_user.username,
+                                     generated_at=datetime.now())
+
+        # Generate PDF
+        try:
+            from weasyprint import HTML, CSS
+        except ImportError:
+            flash('Для друку потрібен пакет WeasyPrint', 'danger')
+            return redirect(url_for('index'))
+
+        pdf = HTML(string=html_string).write_pdf()
+
+        # Create BytesIO object
+        bio = BytesIO(pdf)
+        bio.seek(0)
+
+        # Log action
+        try:
+            log_details = f'from={from_d} to={to_d} status={discharge_status} count={len(records)}'
+            log_action(current_user.id, 'records.print', 'print', None, log_details)
+        except Exception:
+            app.logger.exception('Failed to write audit log for records.print')
+
+        filename = f"vipiski_print_{datetime.now().strftime('%d-%m-%Y')}.pdf"
+        return send_file(bio, as_attachment=True, download_name=filename, mimetype='application/pdf')
+
     @app.route('/register', methods=['GET', 'POST'])
     def register():
         # Public registration is disabled. Only administrators can create new users via the admin UI.
@@ -1458,6 +1550,80 @@ def create_app(config_class=Config):
         app.logger.info(f'NSZU export by {current_user.username}: {log_details}')
 
         return send_file(bio, as_attachment=True, download_name=filename, mimetype='application/vnd.openxmlformats-officedocument.spreadsheetml.sheet')
+
+    @app.route('/nszu/print', methods=['POST'])
+    @role_required('editor')
+    def print_nszu():
+        """Generate PDF print for NSZU corrections with filters"""
+        from datetime import datetime
+        from io import BytesIO
+
+        try:
+            from_str = request.form.get('from_date', '').strip()
+            to_str = request.form.get('to_date', '').strip()
+            if not from_str or not to_str:
+                flash('Будь ласка, вкажіть обидві дати для друку', 'warning')
+                return redirect(url_for('nszu_list'))
+            from_d = datetime.strptime(from_str, '%Y-%m-%d').date()
+            to_d = datetime.strptime(to_str, '%Y-%m-%d').date()
+        except ValueError:
+            flash('Невірний формат дати для друку', 'warning')
+            return redirect(url_for('nszu_list'))
+
+        if from_d > to_d:
+            flash('Дата "з" не може бути пізніше дати "по"', 'warning')
+            return redirect(url_for('nszu_list'))
+
+        # Get optional filters
+        status_filter = request.form.get('status', '').strip()
+        doctor_filter = request.form.get('doctor', '').strip()
+        nszu_id_filter = request.form.get('nszu_record_id', '').strip()
+
+        # Build query with filters
+        conditions = [
+            NSZUCorrection.date >= from_d,
+            NSZUCorrection.date <= to_d,
+        ]
+        if status_filter:
+            conditions.append(NSZUCorrection.status == status_filter)
+        if doctor_filter:
+            conditions.append(NSZUCorrection.doctor == doctor_filter)
+        if nszu_id_filter:
+            conditions.append(NSZUCorrection.nszu_record_id.contains(nszu_id_filter))
+
+        q = NSZUCorrection.query.filter(*conditions)
+        corrections = q.order_by(NSZUCorrection.date.desc()).all()
+
+        if not corrections:
+            flash('Записів не знайдено для обраного діапазону дат', 'warning')
+            return redirect(url_for('nszu_list'))
+
+        # Render HTML template
+        html_string = render_template('print_nszu.html',
+                                     corrections=corrections,
+                                     from_date=from_d,
+                                     to_date=to_d,
+                                     status_filter=status_filter,
+                                     doctor_filter=doctor_filter,
+                                     nszu_id_filter=nszu_id_filter,
+                                     generated_by=current_user.username,
+                                     generated_at=datetime.now())
+
+        # Generate PDF with WeasyPrint
+        try:
+            from weasyprint import HTML
+            pdf = HTML(string=html_string).write_pdf()
+        except Exception as e:
+            app.logger.error(f'PDF generation error: {e}')
+            flash('Помилка при генерації PDF', 'danger')
+            return redirect(url_for('nszu_list'))
+
+        # Return PDF file
+        bio = BytesIO(pdf)
+        bio.seek(0)
+        filename = f"nszu_print_{datetime.now().strftime('%d-%m-%Y')}.pdf"
+
+        return send_file(bio, as_attachment=True, download_name=filename, mimetype='application/pdf')
 
     # Statistics page
     @app.route('/admin/statistics')
