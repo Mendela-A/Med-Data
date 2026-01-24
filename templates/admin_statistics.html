@@ -47,7 +47,7 @@
 <div class="row mb-4 g-3">
   <!-- Total -->
   <div class="col-md-3 col-sm-6">
-    <a href="{{ url_for('index', month_filter='%04d-%02d'|format(selected_year, selected_month), from_stats='1') }}"
+    <a href="{{ url_for('records.index', month_filter='%04d-%02d'|format(selected_year, selected_month), from_stats='1') }}"
        class="text-decoration-none stat-card-link">
       <div class="card stat-card h-100 border-0 shadow-sm">
         <div class="card-body">
@@ -85,7 +85,7 @@
 
   <!-- Processing -->
   <div class="col-md-3 col-sm-6">
-    <a href="{{ url_for('index', month_filter='%04d-%02d'|format(selected_year, selected_month), discharge_status='Опрацьовується', from_stats='1') }}"
+    <a href="{{ url_for('records.index', month_filter='%04d-%02d'|format(selected_year, selected_month), discharge_status='Опрацьовується', from_stats='1') }}"
        class="text-decoration-none stat-card-link">
       <div class="card stat-card h-100 border-0 shadow-sm">
         <div class="card-body">
@@ -126,7 +126,7 @@
 
   <!-- Discharged -->
   <div class="col-md-3 col-sm-6">
-    <a href="{{ url_for('index', month_filter='%04d-%02d'|format(selected_year, selected_month), discharge_status='Виписаний', from_stats='1') }}"
+    <a href="{{ url_for('records.index', month_filter='%04d-%02d'|format(selected_year, selected_month), discharge_status='Виписаний', from_stats='1') }}"
        class="text-decoration-none stat-card-link">
       <div class="card stat-card h-100 border-0 shadow-sm">
         <div class="card-body">
@@ -167,7 +167,7 @@
 
   <!-- Deceased -->
   <div class="col-md-3 col-sm-6">
-    <a href="{{ url_for('index', month_filter='%04d-%02d'|format(selected_year, selected_month), has_death_date='1', from_stats='1') }}"
+    <a href="{{ url_for('records.index', month_filter='%04d-%02d'|format(selected_year, selected_month), has_death_date='1', from_stats='1') }}"
        class="text-decoration-none stat-card-link">
       <div class="card stat-card h-100 border-0 shadow-sm">
         <div class="card-body">
@@ -269,7 +269,7 @@
           {% for dept in dept_list %}
           <tr>
             <td>
-              <a href="{{ url_for('index', month_filter='%04d-%02d'|format(selected_year, selected_month), discharge_department=dept, from_stats='1') }}"
+              <a href="{{ url_for('records.index', month_filter='%04d-%02d'|format(selected_year, selected_month), discharge_department=dept, from_stats='1') }}"
                  class="text-decoration-none text-dark fw-bold"
                  title="Переглянути всі записи для {{ dept }}">
                 {{ dept }}
@@ -278,7 +278,7 @@
             <td>
               {% set dept_total = status_by_dept[dept]['Опрацьовується'] + status_by_dept[dept]['Виписаний'] + status_by_dept[dept]['Помер'] %}
               {% set proc_pct = (status_by_dept[dept]['Опрацьовується'] / dept_total * 100) if dept_total > 0 else 0 %}
-              <a href="{{ url_for('index', month_filter='%04d-%02d'|format(selected_year, selected_month), discharge_department=dept, discharge_status='Опрацьовується', from_stats='1') }}"
+              <a href="{{ url_for('records.index', month_filter='%04d-%02d'|format(selected_year, selected_month), discharge_department=dept, discharge_status='Опрацьовується', from_stats='1') }}"
                  class="text-decoration-none">
                 <div class="d-flex align-items-center">
                   <span class="badge bg-warning me-2">{{ status_by_dept[dept]['Опрацьовується'] }}</span>
@@ -290,7 +290,7 @@
             </td>
             <td>
               {% set disch_pct = (status_by_dept[dept]['Виписаний'] / dept_total * 100) if dept_total > 0 else 0 %}
-              <a href="{{ url_for('index', month_filter='%04d-%02d'|format(selected_year, selected_month), discharge_department=dept, discharge_status='Виписаний', from_stats='1') }}"
+              <a href="{{ url_for('records.index', month_filter='%04d-%02d'|format(selected_year, selected_month), discharge_department=dept, discharge_status='Виписаний', from_stats='1') }}"
                  class="text-decoration-none">
                 <div class="d-flex align-items-center">
                   <span class="badge bg-success me-2">{{ status_by_dept[dept]['Виписаний'] }}</span>
@@ -302,7 +302,7 @@
             </td>
             <td>
               {% set dec_pct = (status_by_dept[dept]['Помер'] / dept_total * 100) if dept_total > 0 else 0 %}
-              <a href="{{ url_for('index', month_filter='%04d-%02d'|format(selected_year, selected_month), discharge_department=dept, has_death_date='1', from_stats='1') }}"
+              <a href="{{ url_for('records.index', month_filter='%04d-%02d'|format(selected_year, selected_month), discharge_department=dept, has_death_date='1', from_stats='1') }}"
                  class="text-decoration-none">
                 <div class="d-flex align-items-center">
                   <span class="badge bg-danger me-2">{{ status_by_dept[dept]['Помер'] }}</span>
@@ -321,28 +321,28 @@
         <tfoot class="table-light">
           <tr>
             <th>
-              <a href="{{ url_for('index', month_filter='%04d-%02d'|format(selected_year, selected_month), from_stats='1') }}"
+              <a href="{{ url_for('records.index', month_filter='%04d-%02d'|format(selected_year, selected_month), from_stats='1') }}"
                  class="text-decoration-none text-dark"
                  title="Переглянути всі записи">
                 Всього
               </a>
             </th>
             <th class="text-center">
-              <a href="{{ url_for('index', month_filter='%04d-%02d'|format(selected_year, selected_month), discharge_status='Опрацьовується', from_stats='1') }}"
+              <a href="{{ url_for('records.index', month_filter='%04d-%02d'|format(selected_year, selected_month), discharge_status='Опрацьовується', from_stats='1') }}"
                  class="text-decoration-none"
                  title="Переглянути всі записи що опрацьовуються">
                 <span class="badge bg-warning badge-clickable">{{ status_distribution['Опрацьовується'] }}</span>
               </a>
             </th>
             <th class="text-center">
-              <a href="{{ url_for('index', month_filter='%04d-%02d'|format(selected_year, selected_month), discharge_status='Виписаний', from_stats='1') }}"
+              <a href="{{ url_for('records.index', month_filter='%04d-%02d'|format(selected_year, selected_month), discharge_status='Виписаний', from_stats='1') }}"
                  class="text-decoration-none"
                  title="Переглянути всі виписані записи">
                 <span class="badge bg-success badge-clickable">{{ status_distribution['Виписаний'] }}</span>
               </a>
             </th>
             <th class="text-center">
-              <a href="{{ url_for('index', month_filter='%04d-%02d'|format(selected_year, selected_month), has_death_date='1', from_stats='1') }}"
+              <a href="{{ url_for('records.index', month_filter='%04d-%02d'|format(selected_year, selected_month), has_death_date='1', from_stats='1') }}"
                  class="text-decoration-none"
                  title="Переглянути всі записи померлих">
                 <span class="badge bg-danger badge-clickable">{{ status_distribution['Помер'] }}</span>

@@ -1,7 +1,7 @@
 {% extends "base.html" %}
 {% block title %}Додати запис{% endblock %}
 {% block breadcrumbs %}
-  <li class="breadcrumb-item"><a href="{{ url_for('index') }}">Записи</a></li>
+  <li class="breadcrumb-item"><a href="{{ url_for('records.index') }}">Записи</a></li>
   <li class="breadcrumb-item active" aria-current="page">Додати</li>
 {% endblock %}
 
@@ -68,7 +68,7 @@
 
     <div class="col-12">
       <button class="btn btn-primary" type="submit">Додати</button>
-      <a class="btn btn-secondary ms-2" href="{{ url_for('index') }}">Скасувати</a>
+      <a class="btn btn-secondary ms-2" href="{{ url_for('records.index') }}">Скасувати</a>
     </div>
   </form>
 {% endblock %}

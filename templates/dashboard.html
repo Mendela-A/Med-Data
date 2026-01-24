@@ -17,7 +17,7 @@
     {% set icon = '' %}
   {% endif %}
   <th>
-    <a href="{{ url_for('index', month_filter=month_filter_value, all_months='1' if show_all else '', discharge_status=selected_status, treating_physician=selected_physician, discharge_department=selected_department, history=history_q, full_name=full_name_q, has_death_date='1' if has_death_date else '', per_page=pagination.per_page, sort_by=column, sort_order=new_order) }}" class="text-decoration-none text-dark d-flex align-items-center gap-1" style="cursor: pointer;">
+    <a href="{{ url_for('records.index', month_filter=month_filter_value, all_months='1' if show_all else '', discharge_status=selected_status, treating_physician=selected_physician, discharge_department=selected_department, history=history_q, full_name=full_name_q, has_death_date='1' if has_death_date else '', per_page=pagination.per_page, sort_by=column, sort_order=new_order) }}" class="text-decoration-none text-dark d-flex align-items-center gap-1" style="cursor: pointer;">
       <span>{{ label }}</span>
       {% if icon %}
         <i class="{{ icon }}" style="font-size: 0.8em;"></i>
@@ -168,7 +168,7 @@
             <button class="btn btn-primary btn-sm" type="submit">
               <i class="bi bi-funnel me-1"></i>Застосувати
             </button>
-            <a class="btn btn-outline-secondary btn-sm ms-2" href="{{ url_for('index') }}">
+            <a class="btn btn-outline-secondary btn-sm ms-2" href="{{ url_for('records.index') }}">
               <i class="bi bi-arrow-clockwise me-1"></i>Скинути
             </a>
           </div>
@@ -280,7 +280,7 @@
                     <i class="bi bi-pencil"></i>Змінити
                   </button>
                   {% if current_user.role == 'admin' %}
-                    <form method="post" action="{{ url_for('delete_record', record_id=r.id) }}" class="d-inline" onsubmit="return confirm('Ви справді хочете видалити запис #{{ r.id }}?');">
+                    <form method="post" action="{{ url_for('records.delete_record', record_id=r.id) }}" class="d-inline" onsubmit="return confirm('Ви справді хочете видалити запис #{{ r.id }}?');">
                       <input type="hidden" name="discharge_status" value="{{ selected_status }}">
                       <input type="hidden" name="treating_physician" value="{{ selected_physician }}">
                       <input type="hidden" name="discharge_department" value="{{ selected_department }}">
@@ -309,7 +309,7 @@
       <ul class="pagination justify-content-center">
         <!-- Previous button -->
         <li class="page-item {% if not pagination.has_prev %}disabled{% endif %}">
-          <a class="page-link" href="{{ url_for('index', page=pagination.prev_num, discharge_status=selected_status, treating_physician=selected_physician, discharge_department=selected_department, history=history_q, full_name=full_name_q, month_filter=month_filter_value, all_months='1' if show_all else '', has_death_date='1' if has_death_date else '') }}"
+          <a class="page-link" href="{{ url_for('records.index', page=pagination.prev_num, discharge_status=selected_status, treating_physician=selected_physician, discharge_department=selected_department, history=history_q, full_name=full_name_q, month_filter=month_filter_value, all_months='1' if show_all else '', has_death_date='1' if has_death_date else '') }}"
              {% if not pagination.has_prev %}tabindex="-1" aria-disabled="true"{% endif %}>
             <i class="bi bi-chevron-left"></i> Попередня
           </a>
@@ -321,7 +321,7 @@
 
         {% if start_page > 1 %}
           <li class="page-item">
-            <a class="page-link" href="{{ url_for('index', page=1, discharge_status=selected_status, treating_physician=selected_physician, discharge_department=selected_department, history=history_q, full_name=full_name_q, month_filter=month_filter_value, all_months='1' if show_all else '', has_death_date='1' if has_death_date else '') }}">1</a>
+            <a class="page-link" href="{{ url_for('records.index', page=1, discharge_status=selected_status, treating_physician=selected_physician, discharge_department=selected_department, history=history_q, full_name=full_name_q, month_filter=month_filter_value, all_months='1' if show_all else '', has_death_date='1' if has_death_date else '') }}">1</a>
           </li>
           {% if start_page > 2 %}
             <li class="page-item disabled"><span class="page-link">...</span></li>
@@ -330,7 +330,7 @@
 
         {% for page_num in range(start_page, end_page + 1) %}
           <li class="page-item {% if page_num == pagination.page %}active{% endif %}">
-            <a class="page-link" href="{{ url_for('index', page=page_num, discharge_status=selected_status, treating_physician=selected_physician, discharge_department=selected_department, history=history_q, full_name=full_name_q, month_filter=month_filter_value, all_months='1' if show_all else '', has_death_date='1' if has_death_date else '') }}">
+            <a class="page-link" href="{{ url_for('records.index', page=page_num, discharge_status=selected_status, treating_physician=selected_physician, discharge_department=selected_department, history=history_q, full_name=full_name_q, month_filter=month_filter_value, all_months='1' if show_all else '', has_death_date='1' if has_death_date else '') }}">
               {{ page_num }}
             </a>
           </li>
@@ -341,13 +341,13 @@
             <li class="page-item disabled"><span class="page-link">...</span></li>
           {% endif %}
           <li class="page-item">
-            <a class="page-link" href="{{ url_for('index', page=pagination.pages, discharge_status=selected_status, treating_physician=selected_physician, discharge_department=selected_department, history=history_q, full_name=full_name_q, month_filter=month_filter_value, all_months='1' if show_all else '', has_death_date='1' if has_death_date else '') }}">{{ pagination.pages }}</a>
+            <a class="page-link" href="{{ url_for('records.index', page=pagination.pages, discharge_status=selected_status, treating_physician=selected_physician, discharge_department=selected_department, history=history_q, full_name=full_name_q, month_filter=month_filter_value, all_months='1' if show_all else '', has_death_date='1' if has_death_date else '') }}">{{ pagination.pages }}</a>
           </li>
         {% endif %}
 
         <!-- Next button -->
         <li class="page-item {% if not pagination.has_next %}disabled{% endif %}">
-          <a class="page-link" href="{{ url_for('index', page=pagination.next_num, discharge_status=selected_status, treating_physician=selected_physician, discharge_department=selected_department, history=history_q, full_name=full_name_q, month_filter=month_filter_value, all_months='1' if show_all else '', has_death_date='1' if has_death_date else '') }}"
+          <a class="page-link" href="{{ url_for('records.index', page=pagination.next_num, discharge_status=selected_status, treating_physician=selected_physician, discharge_department=selected_department, history=history_q, full_name=full_name_q, month_filter=month_filter_value, all_months='1' if show_all else '', has_death_date='1' if has_death_date else '') }}"
              {% if not pagination.has_next %}tabindex="-1" aria-disabled="true"{% endif %}>
             Наступна <i class="bi bi-chevron-right"></i>
           </a>
@@ -636,7 +636,7 @@
           </h5>
           <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
         </div>
-        <form method="post" action="{{ url_for('export') }}" id="exportRecordsForm">
+        <form method="post" action="{{ url_for('records.export') }}" id="exportRecordsForm">
           <div class="modal-body">
             <div class="row g-3">
               <div class="col-md-6">
