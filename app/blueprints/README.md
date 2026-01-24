@@ -84,11 +84,12 @@ app/
 - [x] Тестування (8 admin routes працюють в Docker)
 - [x] Commit
 
-### Фаза 3: NSZU Blueprint
+### Фаза 3: NSZU Blueprint ✅ COMPLETED
 - [x] Створити структуру
-- [ ] Перенести всі NSZU routes
-- [ ] Тестування
-- [ ] Commit
+- [x] Перенести всі NSZU routes (7 routes)
+- [x] Оновити url_for() в templates
+- [x] Тестування (7 routes працюють в Docker)
+- [x] Commit
 
 ### Фаза 4: Records Blueprint (найскладніший)
 - [x] Створити структуру
