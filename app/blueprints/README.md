@@ -72,13 +72,14 @@ app/
 - [ ] Тестування (наступний крок)
 - [ ] Commit
 
-### Фаза 2: Admin Blueprint
+### Фаза 2: Admin Blueprint ✅ COMPLETED
 - [x] Створити структуру
-- [ ] Перенести user management routes
-- [ ] Перенести departments routes
-- [ ] Перенести statistics route
-- [ ] Перенести audit route
-- [ ] Тестування
+- [x] Перенести user management routes
+- [x] Перенести departments routes
+- [x] Перенести statistics route
+- [x] Оновити url_for() в templates
+- [ ] Перенести audit route (не існує ще в app.py)
+- [ ] Тестування (наступний крок)
 - [ ] Commit
 
 ### Фаза 3: NSZU Blueprint

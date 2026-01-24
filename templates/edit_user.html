@@ -1,7 +1,7 @@
 {% extends "base.html" %}
 {% block title %}Редагувати користувача{% endblock %}
 {% block breadcrumbs %}
-  <li class="breadcrumb-item"><a href="{{ url_for('admin_users') }}">Користувачі</a></li>
+  <li class="breadcrumb-item"><a href="{{ url_for('admin.admin_users') }}">Користувачі</a></li>
   <li class="breadcrumb-item active" aria-current="page">Редагувати користувача</li>
 {% endblock %}
 {% block content %}
@@ -38,7 +38,7 @@
 
     <div class="d-flex gap-2">
       <button type="submit" class="btn btn-primary">Зберегти зміни</button>
-      <a href="{{ url_for('admin_users') }}" class="btn btn-secondary">Скасувати</a>
+      <a href="{{ url_for('admin.admin_users') }}" class="btn btn-secondary">Скасувати</a>
     </div>
   </form>
 {% endblock %}

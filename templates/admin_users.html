@@ -10,7 +10,7 @@
   </div>
 
   <h2 class="mt-4">Створити користувача</h2>
-  <form method="post" action="{{ url_for('admin_create_user') }}" class="row gx-3 gy-2 align-items-end">
+  <form method="post" action="{{ url_for('admin.admin_create_user') }}" class="row gx-3 gy-2 align-items-end">
     <div class="col-sm-4">
       <label class="form-label">Ім'я користувача</label>
       <input class="form-control" name="username" required>
@@ -50,9 +50,9 @@
           <td>{{ u.username }}</td>
           <td>{{ u.role }}</td>
           <td>
-            <a href="{{ url_for('admin_edit_user', user_id=u.id) }}" class="btn btn-sm btn-primary">Редагувати</a>
+            <a href="{{ url_for('admin.admin_edit_user', user_id=u.id) }}" class="btn btn-sm btn-primary">Редагувати</a>
             {% if current_user.id != u.id %}
-              <form method="post" action="{{ url_for('admin_delete_user', user_id=u.id) }}" style="display:inline;">
+              <form method="post" action="{{ url_for('admin.admin_delete_user', user_id=u.id) }}" style="display:inline;">
                 <button class="btn-delete btn btn-sm btn-danger" type="submit" onclick="return confirm('Ви впевнені, що хочете видалити цього користувача?');">Видалити</button>
               </form>
             {% endif %}

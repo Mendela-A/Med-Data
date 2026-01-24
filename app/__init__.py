@@ -43,14 +43,15 @@ def create_app(config_class=None):
     from app.blueprints.auth import auth_bp
     app.register_blueprint(auth_bp)
 
+    # Admin blueprint (migrated)
+    from app.blueprints.admin import admin_bp
+    app.register_blueprint(admin_bp)
+
     # TODO: Поступово додавати blueprints при рефакторингу
     # from app.blueprints.records import records_bp
     # app.register_blueprint(records_bp)
 
     # from app.blueprints.nszu import nszu_bp
     # app.register_blueprint(nszu_bp)
-
-    # from app.blueprints.admin import admin_bp
-    # app.register_blueprint(admin_bp)
 
     return app

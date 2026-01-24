@@ -16,7 +16,7 @@
 <!-- Month Filter - Compact -->
 <div class="card mb-3">
   <div class="card-body py-2">
-    <form method="get" action="{{ url_for('admin_statistics') }}" id="monthFilterForm" class="d-flex align-items-center gap-2 flex-wrap">
+    <form method="get" action="{{ url_for('admin.admin_statistics') }}" id="monthFilterForm" class="d-flex align-items-center gap-2 flex-wrap">
       <label for="month_select" class="form-label mb-0 me-2">
         <i class="bi bi-calendar-month me-1"></i><strong>Місяць:</strong>
       </label>
@@ -31,7 +31,7 @@
       <button type="submit" class="btn btn-primary btn-sm">
         <i class="bi bi-search me-1"></i>Показати
       </button>
-      <a href="{{ url_for('admin_statistics') }}" class="btn btn-outline-secondary btn-sm">
+      <a href="{{ url_for('admin.admin_statistics') }}" class="btn btn-outline-secondary btn-sm">
         <i class="bi bi-arrow-clockwise me-1"></i>Поточний
       </a>
       <div class="ms-auto">
