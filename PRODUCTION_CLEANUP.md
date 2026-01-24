@@ -28,7 +28,6 @@ rm -rf logs/*.log
 # - optimize_database.py (оптимізація БД)
 
 # АБО перенести в окрему директорію:
-mkdir -p scripts/maintenance/
 mv add_indexes.py analyze_db.py optimize_database.py scripts/maintenance/
 ```
 
@@ -85,7 +84,8 @@ def health_check():
     return {'status': 'healthy', 'timestamp': datetime.utcnow()}, 200
 ```
 
-### 8. Gunicorn production config
+### 8. Gunicmkdir -p scripts/maintenance/
+orn production config
 ```python
 # gunicorn.conf.py
 import multiprocessing
