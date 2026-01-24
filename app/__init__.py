@@ -54,4 +54,22 @@ def create_app(config_class=None):
     # from app.blueprints.nszu import nszu_bp
     # app.register_blueprint(nszu_bp)
 
+    # Temporary root route until Records blueprint is migrated
+    from flask import redirect, url_for
+    from flask_login import login_required, current_user
+
+    @app.route('/')
+    @login_required
+    def index():
+        """Temporary redirect until Records blueprint is migrated"""
+        # TODO: Remove this when Records blueprint is migrated with dashboard
+        # Redirect based on role
+        if hasattr(current_user, 'role'):
+            if current_user.role == 'viewer':
+                return redirect(url_for('admin.admin_statistics'))
+            elif current_user.role == 'admin':
+                return redirect(url_for('admin.admin_users'))
+        # Default: redirect to statistics
+        return redirect(url_for('admin.admin_statistics'))
+
     return app
