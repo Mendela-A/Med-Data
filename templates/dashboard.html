@@ -864,7 +864,7 @@
       saveBtn.innerHTML = '<span class="spinner-border spinner-border-sm me-2"></span>Збереження...';
       saveBtn.disabled = true;
 
-      fetch('{{ url_for("api_add_record") }}', {
+      fetch('{{ url_for("records.api_add_record") }}', {
         method: 'POST',
         body: formData,
         headers: {
@@ -1076,7 +1076,7 @@
   function quickExportRecords() {
     const form = document.createElement('form');
     form.method = 'POST';
-    form.action = '{{ url_for("export") }}';
+    form.action = '{{ url_for("records.export") }}';
 
     // Get current month filter values
     const monthFilter = document.querySelector('input[name="month_filter"]');
@@ -1134,7 +1134,7 @@
 
     const form = document.createElement('form');
     form.method = 'POST';
-    form.action = '{{ url_for("print_records") }}';
+    form.action = '{{ url_for("records.print_records") }}';
     form.target = '_blank';  // Open PDF in new tab
 
     // Get current month filter values

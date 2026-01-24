@@ -463,7 +463,7 @@
   function quickExport() {
     const form = document.createElement('form');
     form.method = 'POST';
-    form.action = '{{ url_for("nszu_export") }}';
+    form.action = '{{ url_for("nszu.nszu_export") }}';
 
     // Get current month filter values
     const monthYear = '{{ "%04d-%02d"|format(selected_year, selected_month) }}';
@@ -498,7 +498,7 @@
 
     const form = document.createElement('form');
     form.method = 'POST';
-    form.action = '{{ url_for("print_nszu") }}';
+    form.action = '{{ url_for("nszu.print_nszu") }}';
     form.target = '_blank';  // Open PDF in new tab
 
     // Get current month filter values
@@ -677,7 +677,7 @@
       saveBtn.innerHTML = '<span class="spinner-border spinner-border-sm me-2"></span>Збереження...';
       saveBtn.disabled = true;
 
-      fetch('{{ url_for("api_nszu_add") }}', {
+      fetch('{{ url_for("nszu.api_nszu_add") }}', {
         method: 'POST',
         body: formData,
         headers: {
