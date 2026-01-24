@@ -9,9 +9,9 @@ from datetime import datetime
 from sqlalchemy import extract, case, func
 
 from app.extensions import db
-from models import User, Department, Audit, Record
+from models import User, Department, Audit, Record, log_action
 from decorators import role_required
-from utils import log_action, clear_dropdown_cache
+from utils import clear_dropdown_cache
 from . import admin_bp
 
 

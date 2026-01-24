@@ -8,11 +8,13 @@ Extensions are initialized here and then imported in __init__.py
 from flask_sqlalchemy import SQLAlchemy
 from flask_login import LoginManager
 from flask_migrate import Migrate
+from flask_caching import Cache
 
 # Initialize extensions (without app)
 db = SQLAlchemy()
 migrate = Migrate()
 login_manager = LoginManager()
+cache = Cache()
 
 
 def init_extensions(app):
@@ -25,6 +27,12 @@ def init_extensions(app):
     db.init_app(app)
     migrate.init_app(app, db)
     login_manager.init_app(app)
+
+    # Initialize cache with simple in-memory storage
+    cache.init_app(app, config={
+        'CACHE_TYPE': 'SimpleCache',
+        'CACHE_DEFAULT_TIMEOUT': 900  # 15 minutes default
+    })
 
     # Configure login manager
     login_manager.login_view = 'auth.login'
