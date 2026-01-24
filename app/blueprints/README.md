@@ -69,8 +69,8 @@ app/
 - [x] Створено app/extensions.py для управління розширеннями
 - [x] Зареєстровано auth_bp в app/__init__.py
 - [x] Створено run_blueprint.py для тестування
-- [ ] Тестування (наступний крок)
-- [ ] Commit
+- [x] Тестування (routes працюють: /login, /logout)
+- [x] Commit
 
 ### Фаза 2: Admin Blueprint ✅ COMPLETED
 - [x] Створити структуру
@@ -78,9 +78,11 @@ app/
 - [x] Перенести departments routes
 - [x] Перенести statistics route
 - [x] Оновити url_for() в templates
-- [ ] Перенести audit route (не існує ще в app.py)
-- [ ] Тестування (наступний крок)
-- [ ] Commit
+- [x] Створено decorators.py для role_required
+- [x] Оновлено utils.py з clear_dropdown_cache
+- [x] Додано cache в app/extensions.py
+- [x] Тестування (8 admin routes працюють в Docker)
+- [x] Commit
 
 ### Фаза 3: NSZU Blueprint
 - [x] Створити структуру
