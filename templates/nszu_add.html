@@ -1,7 +1,7 @@
 {% extends "base.html" %}
 {% block title %}Додати перевірку НСЗУ{% endblock %}
 {% block breadcrumbs %}
-  <li class="breadcrumb-item"><a href="{{ url_for('nszu_list') }}">Перевірка НСЗУ</a></li>
+  <li class="breadcrumb-item"><a href="{{ url_for('nszu.nszu_list') }}">Перевірка НСЗУ</a></li>
   <li class="breadcrumb-item active" aria-current="page">Додати</li>
 {% endblock %}
 
@@ -57,7 +57,7 @@
       <button class="btn btn-success" type="submit">
         <i class="bi bi-plus-circle me-1"></i>Додати
       </button>
-      <a class="btn btn-secondary ms-2" href="{{ url_for('nszu_list') }}">Скасувати</a>
+      <a class="btn btn-secondary ms-2" href="{{ url_for('nszu.nszu_list') }}">Скасувати</a>
     </div>
   </form>
 {% endblock %}

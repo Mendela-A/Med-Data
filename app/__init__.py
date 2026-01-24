@@ -47,12 +47,13 @@ def create_app(config_class=None):
     from app.blueprints.admin import admin_bp
     app.register_blueprint(admin_bp)
 
+    # NSZU blueprint (migrated)
+    from app.blueprints.nszu import nszu_bp
+    app.register_blueprint(nszu_bp)
+
     # TODO: Поступово додавати blueprints при рефакторингу
     # from app.blueprints.records import records_bp
     # app.register_blueprint(records_bp)
-
-    # from app.blueprints.nszu import nszu_bp
-    # app.register_blueprint(nszu_bp)
 
     # Temporary root route until Records blueprint is migrated
     from flask import redirect, url_for
