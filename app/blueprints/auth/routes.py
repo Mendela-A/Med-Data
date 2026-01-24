@@ -25,8 +25,7 @@ def login():
 
         if user and user.check_password(password):
             login_user(user)
-            # TODO: Change to 'records.index' when records blueprint is migrated
-            return redirect(url_for('index'))
+            return redirect(url_for('records.index'))
 
         flash('Невірне ім\'я користувача або пароль', 'danger')
         return redirect(url_for('auth.login'))
