@@ -4,7 +4,6 @@
 
 {# Macro for sortable column headers #}
 {% macro sort_th(column, label) %}
-  {% set current_args = request.args.copy() %}
   {% if sort_by == column %}
     {% if sort_order == 'asc' %}
       {% set new_order = 'desc' %}
@@ -14,12 +13,11 @@
       {% set icon = 'bi-arrow-down' %}
     {% endif %}
   {% else %}
-    {% set new_order = 'desc' %}
+    {% set new_order = 'asc' %}
     {% set icon = '' %}
   {% endif %}
-  {% set _ = current_args.update({'sort_by': column, 'sort_order': new_order}) %}
   <th>
-    <a href="{{ url_for('index', **current_args) }}" class="text-decoration-none text-dark d-flex align-items-center gap-1" style="cursor: pointer;">
+    <a href="{{ url_for('index', month_filter=month_filter_value, all_months='1' if show_all else '', discharge_status=selected_status, treating_physician=selected_physician, discharge_department=selected_department, history=history_q, full_name=full_name_q, has_death_date='1' if has_death_date else '', per_page=pagination.per_page, sort_by=column, sort_order=new_order) }}" class="text-decoration-none text-dark d-flex align-items-center gap-1" style="cursor: pointer;">
       <span>{{ label }}</span>
       {% if icon %}
         <i class="{{ icon }}" style="font-size: 0.8em;"></i>
@@ -95,7 +93,7 @@
         </button>
       </div>
     </div>
-    {% if current_user.role in ['editor', 'admin'] %}
+    {% if current_user.role in ['editor', 'admin', 'viewer'] %}
     <div class="btn-group">
       <button type="button" class="btn btn-primary" onclick="quickExportRecords()">
         <i class="bi bi-file-earmark-arrow-down me-1"></i>Звіти
@@ -625,8 +623,10 @@
       </div>
     </div>
   </div>
+  {% endif %}
 
   <!-- Export Records Modal -->
+  {% if current_user.role in ['editor', 'admin', 'viewer'] %}
   <div class="modal fade" id="exportRecordsModal" tabindex="-1" aria-labelledby="exportRecordsModalLabel" aria-hidden="true">
     <div class="modal-dialog">
       <div class="modal-content">
@@ -1070,7 +1070,7 @@
 </script>
 {% endif %}
 
-{% if current_user.role in ['editor', 'admin'] %}
+{% if current_user.role in ['editor', 'admin', 'viewer'] %}
 <script>
   // Quick export with current filters
   function quickExportRecords() {

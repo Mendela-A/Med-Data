@@ -127,6 +127,11 @@
             color: #856404;
         }
 
+        .status-paid {
+            background-color: #d1ecf1;
+            color: #0c5460;
+        }
+
         .status-violation {
             background-color: #f8d7da;
             color: #721c24;
@@ -231,18 +236,20 @@
                 <td class="col-nszu-id">{{ c.nszu_record_id or '' }}</td>
                 <td class="col-doctor">{{ c.doctor or '' }}</td>
                 <td class="col-status">
-                    {% if c.status == 'Опрацьовано' %}
+                    {% if c.status == 'Оплачено' %}
+                        <span class="status-badge status-paid">{{ c.status }}</span>
+                    {% elif c.status == 'Опрацьовано' %}
                         <span class="status-badge status-processed">{{ c.status }}</span>
-                    {% elif c.status == 'Опрацьовується' %}
+                    {% elif c.status == 'В обробці' %}
                         <span class="status-badge status-processing">{{ c.status }}</span>
-                    {% elif c.status == 'Порушення' %}
+                    {% elif c.status == 'Не підлягає оплаті' %}
                         <span class="status-badge status-violation">{{ c.status }}</span>
                     {% else %}
                         {{ c.status or '' }}
                     {% endif %}
                 </td>
-                <td class="col-details">{{ c.details[:80] if c.details else '' }}</td>
-                <td class="col-amount">{{ c.actual_sum if c.actual_sum is not none else '' }}</td>
+                <td class="col-details">{{ c.detail[:80] if c.detail else '' }}</td>
+                <td class="col-amount">{{ '{:,.2f}'.format(c.fakt_summ) if c.fakt_summ is not none else '' }}</td>
                 <td class="col-comment">{{ c.comment[:100] if c.comment else '' }}</td>
             </tr>
             {% endfor %}
@@ -253,19 +260,32 @@
         <div class="summary-item"><strong>Всього записів:</strong> {{ corrections|length }}</div>
         <div class="summary-item">
             <strong>Розподіл за статусами:</strong>
-            {% set ns = namespace(processed=0, processing=0, violation=0) %}
+            {% set ns = namespace(processing=0, processed=0, paid=0, rejected=0) %}
             {% for c in corrections %}
-                {% if c.status == 'Опрацьовано' %}
-                    {% set ns.processed = ns.processed + 1 %}
-                {% elif c.status == 'Опрацьовується' %}
+                {% if c.status == 'В обробці' %}
                     {% set ns.processing = ns.processing + 1 %}
-                {% elif c.status == 'Порушення' %}
-                    {% set ns.violation = ns.violation + 1 %}
+                {% elif c.status == 'Опрацьовано' %}
+                    {% set ns.processed = ns.processed + 1 %}
+                {% elif c.status == 'Оплачено' %}
+                    {% set ns.paid = ns.paid + 1 %}
+                {% elif c.status == 'Не підлягає оплаті' %}
+                    {% set ns.rejected = ns.rejected + 1 %}
                 {% endif %}
             {% endfor %}
+            В обробці: {{ ns.processing }},
             Опрацьовано: {{ ns.processed }},
-            Опрацьовується: {{ ns.processing }},
-            Порушення: {{ ns.violation }}
+            Оплачено: {{ ns.paid }},
+            Не підлягає оплаті: {{ ns.rejected }}
+        </div>
+        <div class="summary-item">
+            <strong>Загальна фактична сума:</strong>
+            {% set total_sum = namespace(value=0) %}
+            {% for c in corrections %}
+                {% if c.fakt_summ is not none %}
+                    {% set total_sum.value = total_sum.value + c.fakt_summ %}
+                {% endif %}
+            {% endfor %}
+            {{ '{:,.2f}'.format(total_sum.value) }} грн
         </div>
     </div>
 

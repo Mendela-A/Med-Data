@@ -332,7 +332,7 @@ def create_app(config_class=Config):
             sort_order=sort_order)
 
     @app.route('/export', methods=['POST'])
-    @role_required('editor')
+    @role_required('editor', 'viewer')
     def export():
         """Export records to Excel with filters support"""
         from datetime import datetime
@@ -508,7 +508,7 @@ def create_app(config_class=Config):
         return send_file(bio, as_attachment=True, download_name=filename, mimetype='application/vnd.openxmlformats-officedocument.spreadsheetml.sheet')
 
     @app.route('/records/print', methods=['POST'])
-    @role_required('editor')
+    @role_required('editor', 'viewer')
     def print_records():
         """Generate PDF print for records with filters"""
         from datetime import datetime
@@ -1499,7 +1499,7 @@ def create_app(config_class=Config):
         return redirect(url_for('nszu_list'))
 
     @app.route('/nszu/export', methods=['POST'])
-    @role_required('editor')
+    @role_required('editor', 'viewer')
     def nszu_export():
         """Export NSZU corrections to Excel with filters support"""
         from datetime import datetime
@@ -1621,7 +1621,7 @@ def create_app(config_class=Config):
         return send_file(bio, as_attachment=True, download_name=filename, mimetype='application/vnd.openxmlformats-officedocument.spreadsheetml.sheet')
 
     @app.route('/nszu/print', methods=['POST'])
-    @role_required('editor')
+    @role_required('editor', 'viewer')
     def print_nszu():
         """Generate PDF print for NSZU corrections with filters"""
         from datetime import datetime
