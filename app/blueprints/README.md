@@ -107,15 +107,47 @@ app/
 - [x] Тестування (8 routes працюють в Docker)
 - [x] Commit
 
-### Фаза 5: Cleanup
-- [ ] Видалити старий app.py
-- [ ] Оновити run.py
-- [ ] Оновити документацію
-- [ ] Final testing
+### Фаза 5: Cleanup ✅ COMPLETED
+- [x] Міграція CLI commands до app/__init__.py (5 commands)
+  - init-db, create-admin, create-user, backup-db, init-db-with-admin
+- [x] Архівовано монолітний app.py → app_legacy.py (1969 ліній)
+- [x] Тестування CLI commands в Docker
+- [x] Commit
+
+## ✅ Міграція завершена!
+
+**Підсумок:**
+- Монолітний app.py (1969 ліній) → Модульна Blueprint структура
+- 4 Blueprints створено: Auth, Admin, NSZU, Records
+- 23 routes мігровано (2 + 8 + 7 + 8 - 2 дублікати auth = 23)
+- 5 CLI commands мігровано
+- 10+ templates оновлено з новим namespace
+- Всі features працюють в Docker
+
+**Нова структура:**
+```
+app/
+├── __init__.py           # Application factory + CLI commands
+├── extensions.py         # Flask extensions (db, login_manager, cache, migrate)
+├── blueprints/
+│   ├── auth/            # Login/Logout routes
+│   ├── admin/           # User management, departments, statistics, audit
+│   ├── nszu/            # NSZU corrections management
+│   └── records/         # Main dashboard, CRUD operations
+models.py                # Database models
+decorators.py            # role_required decorator
+utils.py                 # Utility functions
+config.py                # Configuration
+```
 
 ## Примітки
 
-- Кожен blueprint має власний `url_prefix`
+- Кожен blueprint має власний `url_prefix`:
+  - auth: `/` (login, logout)
+  - admin: `/admin`
+  - nszu: `/nszu`
+  - records: `/` (dashboard та /records/* routes)
 - Використовуємо `url_for('blueprint.route_name')` замість `url_for('route_name')`
 - Всі blueprints реєструються в `app/__init__.py`
-- Зберігаємо зворотну сумісність під час міграції
+- Cached helper functions в records blueprint для оптимізації dropdown значень
+- Зберігається повна зворотна сумісність з існуючими URL
