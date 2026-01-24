@@ -91,11 +91,21 @@ app/
 - [x] Тестування (7 routes працюють в Docker)
 - [x] Commit
 
-### Фаза 4: Records Blueprint (найскладніший)
+### Фаза 4: Records Blueprint (найскладніший) ✅ COMPLETED
 - [x] Створити структуру
-- [ ] Перенести всі Records routes
-- [ ] Тестування
-- [ ] Commit
+- [x] Перенести всі Records routes (8 routes)
+  - index (dashboard) - /
+  - export - /export
+  - print_records - /records/print
+  - add_record - /records/add
+  - api_add_record - /api/records/add
+  - api_edit_record - /api/records/<id>/edit
+  - edit_record - /records/<id>/edit
+  - delete_record - /records/<id>/delete
+- [x] Додано cached helper functions (get_distinct_statuses, physicians, departments)
+- [x] Оновити url_for() в templates (5 files)
+- [x] Тестування (8 routes працюють в Docker)
+- [x] Commit
 
 ### Фаза 5: Cleanup
 - [ ] Видалити старий app.py
