@@ -1,20 +1,44 @@
 # app/blueprints/auth/routes.py
 """
 Authentication routes
-
-TODO: Перенести сюди роути з app.py:
-- @app.route('/login', methods=['GET', 'POST']) -> login()
-- @app.route('/logout') -> logout()
-- @app.route('/change_password', methods=['GET', 'POST']) -> change_password()
 """
 
 from flask import render_template, redirect, url_for, flash, request
-from flask_login import login_user, logout_user, login_required, current_user
-from werkzeug.security import check_password_hash, generate_password_hash
+from flask_login import login_user, logout_user, login_required
 
-from app import db
 from models import User
 from . import auth_bp
 
 
-# TODO: Перенести роути сюди при рефакторингу
+@auth_bp.route('/login', methods=['GET', 'POST'])
+def login():
+    """
+    Login page and authentication handler
+
+    GET: Display login form
+    POST: Authenticate user and redirect to dashboard
+    """
+    if request.method == 'POST':
+        username = request.form.get('username')
+        password = request.form.get('password')
+        user = User.query.filter_by(username=username).first()
+
+        if user and user.check_password(password):
+            login_user(user)
+            # TODO: Change to 'records.index' when records blueprint is migrated
+            return redirect(url_for('index'))
+
+        flash('Невірне ім\'я користувача або пароль', 'danger')
+        return redirect(url_for('auth.login'))
+
+    return render_template('login.html')
+
+
+@auth_bp.route('/logout')
+@login_required
+def logout():
+    """
+    Logout current user and redirect to login page
+    """
+    logout_user()
+    return redirect(url_for('auth.login'))

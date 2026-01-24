@@ -62,12 +62,14 @@ app/
 
 ## План міграції
 
-### Фаза 1: Auth Blueprint (найпростіший)
+### Фаза 1: Auth Blueprint (найпростіший) ✅ COMPLETED
 - [x] Створити структуру
-- [ ] Перенести login route
-- [ ] Перенести logout route
-- [ ] Перенести change_password route
-- [ ] Тестування
+- [x] Перенести login route
+- [x] Перенести logout route
+- [x] Створено app/extensions.py для управління розширеннями
+- [x] Зареєстровано auth_bp в app/__init__.py
+- [x] Створено run_blueprint.py для тестування
+- [ ] Тестування (наступний крок)
 - [ ] Commit
 
 ### Фаза 2: Admin Blueprint

@@ -5,13 +5,13 @@ Authentication Blueprint
 Відповідає за:
 - Login
 - Logout
-- Change Password
 - User session management
 """
 
 from flask import Blueprint
 
-auth_bp = Blueprint('auth', __name__, url_prefix='/auth')
+# No url_prefix to keep /login and /logout URLs the same
+auth_bp = Blueprint('auth', __name__)
 
 # Import routes after blueprint creation to avoid circular imports
 from . import routes

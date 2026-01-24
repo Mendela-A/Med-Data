@@ -5,14 +5,6 @@ Flask application factory для створення екземплярів до�
 """
 
 from flask import Flask
-from flask_sqlalchemy import SQLAlchemy
-from flask_login import LoginManager
-from flask_migrate import Migrate
-
-# Initialize extensions
-db = SQLAlchemy()
-migrate = Migrate()
-login_manager = LoginManager()
 
 
 def create_app(config_class=None):
@@ -35,15 +27,9 @@ def create_app(config_class=None):
         config_class = Config
     app.config.from_object(config_class)
 
-    # Initialize extensions with app
-    db.init_app(app)
-    migrate.init_app(app, db)
-    login_manager.init_app(app)
-
-    # Configure login manager
-    login_manager.login_view = 'auth.login'
-    login_manager.login_message = 'Будь ласка, увійдіть для доступу до цієї сторінки.'
-    login_manager.login_message_category = 'info'
+    # Initialize extensions
+    from app.extensions import init_extensions, login_manager
+    init_extensions(app)
 
     # User loader callback
     from models import User
@@ -53,10 +39,11 @@ def create_app(config_class=None):
         return User.query.get(int(user_id))
 
     # Register blueprints
-    # TODO: Поступово додавати blueprints при рефакторингу
-    # from app.blueprints.auth import auth_bp
-    # app.register_blueprint(auth_bp)
+    # Auth blueprint (migrated)
+    from app.blueprints.auth import auth_bp
+    app.register_blueprint(auth_bp)
 
+    # TODO: Поступово додавати blueprints при рефакторингу
     # from app.blueprints.records import records_bp
     # app.register_blueprint(records_bp)
 
