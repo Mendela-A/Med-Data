@@ -265,11 +265,19 @@ td .badge {
     margin: 0 2rem;
     max-width: calc(100% - 4rem);
   }
+
+  .navbar-medical {
+    max-width: calc(100% - 4rem);
+    margin: 0 2rem 1rem 2rem;
+  }
 }
 
 /* Navbar improvements */
 .navbar-medical {
   box-shadow: 0 2px 10px rgba(13, 148, 136, 0.15);
+  border-radius: 8px;
+  max-width: calc(100% - 2rem);
+  margin: 0 1rem 1rem 1rem;
 }
 
 .navbar-medical .nav-link {
