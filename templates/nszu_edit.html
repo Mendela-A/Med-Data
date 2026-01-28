@@ -1,7 +1,7 @@
 {% extends "base.html" %}
 {% block title %}Редагувати перевірку НСЗУ #{{ correction.id }}{% endblock %}
 {% block breadcrumbs %}
-  <li class="breadcrumb-item"><a href="{{ url_for('nszu_list') }}">Перевірка НСЗУ</a></li>
+  <li class="breadcrumb-item"><a href="{{ url_for('nszu.nszu_list') }}">Перевірка НСЗУ</a></li>
   <li class="breadcrumb-item active" aria-current="page">Редагувати #{{ correction.id }}</li>
 {% endblock %}
 
@@ -57,7 +57,7 @@
       <button class="btn btn-primary" type="submit">
         <i class="bi bi-check-circle me-1"></i>Зберегти
       </button>
-      <a class="btn btn-secondary ms-2" href="{{ url_for('nszu_list') }}">Скасувати</a>
+      <a class="btn btn-secondary ms-2" href="{{ url_for('nszu.nszu_list') }}">Скасувати</a>
     </div>
   </form>
 

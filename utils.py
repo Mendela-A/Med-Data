@@ -5,6 +5,23 @@ from datetime import datetime, date
 from typing import Optional
 
 
+def clear_dropdown_cache():
+    """
+    Clear all dropdown caches - call after adding/editing records.
+
+    Note: This is a simplified version for blueprint compatibility.
+    The full implementation with memoized cache clearing is in app.py.
+    For now, we clear the entire cache to ensure data consistency.
+    """
+    try:
+        from app.extensions import cache
+        cache.clear()
+    except Exception:
+        # If cache is not available, silently pass
+        # This allows blueprints to work even if cache is not initialized
+        pass
+
+
 def parse_date(date_str: str, default: Optional[date] = None) -> Optional[date]:
     """
     Parse date string in multiple formats.
