@@ -30,9 +30,9 @@
   <!-- Toast container for print notifications -->
   <div id="printToastContainer" class="toast-container position-fixed top-0 end-0 p-3" style="z-index: 9999;"></div>
 
-  <div class="d-flex justify-content-between align-items-center mb-3">
-    <div>
-      <h1 class="h3 mb-2">
+  <div class="d-flex justify-content-between align-items-center mb-3 flex-wrap gap-2">
+    <div class="d-flex gap-2 flex-wrap align-items-center">
+      <h1 class="h3 mb-0">
         {% if show_all %}
           Записи (усі періоди)
         {% elif selected_year and selected_month %}
@@ -41,53 +41,51 @@
           Записи (поточний місяць)
         {% endif %}
       </h1>
-      <div class="d-flex gap-2 flex-wrap align-items-center">
-        {% if request.args.get('from_stats') == '1' and current_user.role in ['admin', 'viewer'] %}
-        <a href="{{ url_for('admin.admin_statistics', month_year='%04d-%02d'|format(selected_year, selected_month) if selected_year and selected_month else '') }}"
-           class="btn btn-sm btn-outline-primary me-2">
-          <i class="bi bi-arrow-left me-1"></i>Повернутись до статистики
-        </a>
-        {% endif %}
-        <span class="badge bg-primary"
-              data-bs-toggle="tooltip"
-              data-bs-placement="top"
-              data-bs-title="Загальна кількість записів у вибірці (з урахуванням всіх фільтрів)">
-          Всього: {{ count }}
-        </span>
-        <span class="badge bg-success"
-              data-bs-toggle="tooltip"
-              data-bs-placement="top"
-              data-bs-title="Записи зі статусом 'Виписаний' без дати смерті">
-          Виписаних: {{ count_discharged }}
-        </span>
-        <span class="badge bg-warning text-dark"
-              data-bs-toggle="tooltip"
-              data-bs-placement="top"
-              data-bs-title="Записи зі статусом 'Опрацьовується' без дати смерті">
-          Опрацьовується: {{ count_processing }}
-        </span>
-        <span class="badge bg-danger"
-              data-bs-toggle="tooltip"
-              data-bs-placement="top"
-              data-bs-title="Записи зі статусом 'Порушені вимоги' без дати смерті">
-          Порушені вимоги: {{ count_violations }}
-        </span>
-        <span class="badge bg-dark"
-              data-bs-toggle="tooltip"
-              data-bs-placement="top"
-              data-bs-title="Всі записи з датою смерті (незалежно від статусу виписки)">
-          Померло: {{ count_deceased }}
-        </span>
-        <button type="button"
-                class="btn btn-sm btn-outline-secondary"
-                data-bs-toggle="popover"
-                data-bs-placement="bottom"
-                data-bs-html="true"
-                data-bs-title="<i class='bi bi-info-circle me-1'></i>Як рахується статистика?"
-                data-bs-content="<ul class='mb-0 ps-3'><li><strong>Померло</strong> — пріоритетна категорія: всі записи з датою смерті рахуються сюди, незалежно від статусу виписки</li><li><strong>Виписаних, Опрацьовується, Порушені вимоги</strong> — рахуються тільки записи БЕЗ дати смерті</li><li><strong>Всього</strong> = сума всіх категорій</li></ul>">
-          <i class="bi bi-question-circle"></i>
-        </button>
-      </div>
+      {% if request.args.get('from_stats') == '1' and current_user.role in ['admin', 'viewer'] %}
+      <a href="{{ url_for('admin.admin_statistics', month_year='%04d-%02d'|format(selected_year, selected_month) if selected_year and selected_month else '') }}"
+         class="btn btn-sm btn-outline-primary">
+        <i class="bi bi-arrow-left me-1"></i>Повернутись до статистики
+      </a>
+      {% endif %}
+      <span class="badge bg-primary"
+            data-bs-toggle="tooltip"
+            data-bs-placement="top"
+            data-bs-title="Загальна кількість записів у вибірці (з урахуванням всіх фільтрів)">
+        Всього: {{ count }}
+      </span>
+      <span class="badge bg-success"
+            data-bs-toggle="tooltip"
+            data-bs-placement="top"
+            data-bs-title="Записи зі статусом 'Виписаний' без дати смерті">
+        Виписаних: {{ count_discharged }}
+      </span>
+      <span class="badge bg-warning text-dark"
+            data-bs-toggle="tooltip"
+            data-bs-placement="top"
+            data-bs-title="Записи зі статусом 'Опрацьовується' без дати смерті">
+        Опрацьовується: {{ count_processing }}
+      </span>
+      <span class="badge bg-danger"
+            data-bs-toggle="tooltip"
+            data-bs-placement="top"
+            data-bs-title="Записи зі статусом 'Порушені вимоги' без дати смерті">
+        Порушені вимоги: {{ count_violations }}
+      </span>
+      <span class="badge bg-dark"
+            data-bs-toggle="tooltip"
+            data-bs-placement="top"
+            data-bs-title="Всі записи з датою смерті (незалежно від статусу виписки)">
+        Померло: {{ count_deceased }}
+      </span>
+      <button type="button"
+              class="btn btn-sm btn-outline-secondary"
+              data-bs-toggle="popover"
+              data-bs-placement="bottom"
+              data-bs-html="true"
+              data-bs-title="<i class='bi bi-info-circle me-1'></i>Як рахується статистика?"
+              data-bs-content="<ul class='mb-0 ps-3'><li><strong>Померло</strong> — пріоритетна категорія: всі записи з датою смерті рахуються сюди, незалежно від статусу виписки</li><li><strong>Виписаних, Опрацьовується, Порушені вимоги</strong> — рахуються тільки записи БЕЗ дати смерті</li><li><strong>Всього</strong> = сума всіх категорій</li></ul>">
+        <i class="bi bi-question-circle"></i>
+      </button>
     </div>
     {% if current_user.role in ['editor', 'admin', 'viewer'] %}
     <div class="btn-group">
@@ -114,12 +112,12 @@
       <form method="get">
         <div class="row g-3 mb-3">
           <div class="col-sm-6 col-md-4 col-xl-2">
-            <label class="form-label small mb-1">Місяць та рік</label>
+            <label class="form-label small mb-1"><i class="bi bi-calendar-month me-1"></i>Місяць</label>
             <input class="form-control form-control-sm" type="month" name="month_filter" value="{{ month_filter_value }}" id="month_filter">
           </div>
 
           <div class="col-sm-6 col-md-4 col-xl-2">
-            <label class="form-label small mb-1">Статус виписки</label>
+            <label class="form-label small mb-1"><i class="bi bi-flag me-1"></i>Статус виписки</label>
             <select class="form-select form-select-sm" name="discharge_status">
               <option value="">Всі</option>
               <option value="Виписаний" {% if selected_status == 'Виписаний' %}selected{% endif %}>Виписаний</option>
@@ -129,7 +127,7 @@
           </div>
 
           <div class="col-sm-6 col-md-4 col-xl-2">
-            <label class="form-label small mb-1">Відділення</label>
+            <label class="form-label small mb-1"><i class="bi bi-hospital me-1"></i>Відділення</label>
             <select class="form-select form-select-sm" name="discharge_department">
               <option value="">Всі</option>
               {% for d in departments %}
@@ -139,7 +137,7 @@
           </div>
 
           <div class="col-sm-6 col-md-4 col-xl-2">
-            <label class="form-label small mb-1">Лікуючий лікар</label>
+            <label class="form-label small mb-1"><i class="bi bi-person-badge me-1"></i>Лікуючий лікар</label>
             <select class="form-select form-select-sm" name="treating_physician">
               <option value="">Всі</option>
               {% for p in physicians %}
@@ -149,12 +147,12 @@
           </div>
 
           <div class="col-sm-6 col-md-4 col-xl-2">
-            <label class="form-label small mb-1">ПІБ</label>
+            <label class="form-label small mb-1"><i class="bi bi-person-lines-fill me-1"></i>ПІБ</label>
             <input class="form-control form-control-sm" name="full_name" placeholder="Пошук за ПІБ" value="{{ full_name_q }}">
           </div>
 
           <div class="col-sm-6 col-md-4 col-xl-2">
-            <label class="form-label small mb-1">Номер історії</label>
+            <label class="form-label small mb-1"><i class="bi bi-file-medical me-1"></i>Номер історії</label>
             <input class="form-control form-control-sm" name="history" placeholder="Введіть номер" value="{{ history_q }}">
           </div>
         </div>
@@ -177,7 +175,7 @@
             <label class="form-check-label" for="has_death_date">З датою смерті</label>
           </div>
           <div class="d-flex align-items-center gap-2 ms-auto">
-            <label class="form-label small mb-0">На сторінку:</label>
+            <label class="form-label small mb-0"><i class="bi bi-list-ol me-1"></i>На сторінку:</label>
             <select class="form-select form-select-sm" name="per_page" style="width: auto;">
               <option value="25" {% if pagination.per_page == 25 %}selected{% endif %}>25</option>
               <option value="50" {% if pagination.per_page == 50 %}selected{% endif %}>50</option>

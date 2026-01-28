@@ -178,6 +178,19 @@ def index():
             else:
                 q = q.order_by(col.desc())
 
+    # Calculate statistics counts BEFORE pagination
+    # Total count
+    count = q.count()
+
+    # Count deceased (priority: any record with date_of_death)
+    count_deceased = q.filter(Record.date_of_death != None).count()
+
+    # Other counts: EXCLUDE records with date_of_death
+    q_alive = q.filter(Record.date_of_death == None)
+    count_discharged = q_alive.filter(Record.discharge_status == 'Виписаний').count()
+    count_processing = q_alive.filter(Record.discharge_status == 'Опрацьовується').count()
+    count_violations = q_alive.filter(Record.discharge_status == 'Порушені вимоги').count()
+
     # Pagination
     page = request.args.get('page', 1, type=int)
     per_page = request.args.get('per_page', 25, type=int)
@@ -189,6 +202,9 @@ def index():
 
     # user mapping for created_by / updated_by
     user_map = {u.id: u.username for u in User.query.all()}
+
+    # Format month_filter_value for HTML5 month input (YYYY-MM)
+    month_filter_value = f"{selected_year:04d}-{selected_month:02d}" if selected_year and selected_month else ""
 
     return render_template('dashboard.html',
                           records=records,
@@ -205,9 +221,16 @@ def index():
                           show_all=show_all,
                           selected_month=selected_month,
                           selected_year=selected_year,
+                          month_filter_value=month_filter_value,
                           sort_by=sort_by,
                           sort_order=sort_order,
-                          user_map=user_map)
+                          user_map=user_map,
+                          count=count,
+                          count_discharged=count_discharged,
+                          count_processing=count_processing,
+                          count_violations=count_violations,
+                          count_deceased=count_deceased,
+                          active_filters_count=(1 if selected_status else 0) + (1 if selected_physician else 0) + (1 if selected_department else 0) + (1 if history_q else 0) + (1 if full_name_q else 0))
 
 
 @records_bp.route('/export', methods=['POST'])
