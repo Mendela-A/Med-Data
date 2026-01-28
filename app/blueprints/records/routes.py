@@ -193,9 +193,8 @@ def index():
 
     # Pagination
     page = request.args.get('page', 1, type=int)
-    per_page = request.args.get('per_page', 25, type=int)
-    # limit per_page to avoid excessive memory usage
-    per_page = min(max(per_page, 10), 100)
+    per_page = request.args.get('per_page', 100, type=int)
+    per_page = min(per_page, 200)
 
     pagination = q.paginate(page=page, per_page=per_page, error_out=False)
     records = pagination.items

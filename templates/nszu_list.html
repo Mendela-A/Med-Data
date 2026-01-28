@@ -27,20 +27,14 @@
 {% endmacro %}
 
 {% block content %}
-  {% block breadcrumbs %}
-    <li class="breadcrumb-item active" aria-current="page">Перевірка НСЗУ</li>
-  {% endblock %}
-
   <!-- Toast container for print notifications -->
   <div id="printToastContainer" class="toast-container position-fixed top-0 end-0 p-3" style="z-index: 9999;"></div>
 
-  <div class="d-flex justify-content-between align-items-center mb-3">
-    <div>
-      <h1 class="h3 mb-2">Перевірка НСЗУ</h1>
-      <div class="d-flex gap-2 flex-wrap align-items-center">
-        <span class="badge bg-primary">Всього: {{ count }}</span>
-        <span class="badge bg-info">{{ current_month }}</span>
-      </div>
+  <div class="d-flex justify-content-between align-items-center mb-3 flex-wrap gap-2">
+    <div class="d-flex gap-2 flex-wrap align-items-center">
+      <h1 class="h3 mb-0">Перевірка НСЗУ</h1>
+      <span class="badge bg-primary">Всього: {{ count }}</span>
+      <span class="badge bg-info">{{ current_month }}</span>
     </div>
     <div class="d-flex gap-2">
       {% if current_user.role in ['editor', 'admin'] %}
@@ -50,11 +44,8 @@
       {% endif %}
       {% if current_user.role in ['editor', 'admin', 'viewer'] %}
       <div class="btn-group">
-        <button type="button" class="btn btn-primary" onclick="quickExport()">
+        <button type="button" class="btn btn-primary dropdown-toggle" data-bs-toggle="dropdown" aria-expanded="false">
           <i class="bi bi-file-earmark-arrow-down me-1"></i>Звіти
-        </button>
-        <button type="button" class="btn btn-primary dropdown-toggle dropdown-toggle-split" data-bs-toggle="dropdown" aria-expanded="false">
-          <span class="visually-hidden">Більше</span>
         </button>
         <ul class="dropdown-menu">
           <li><a class="dropdown-item" href="#" onclick="quickExport(); return false;"><i class="bi bi-file-earmark-excel me-2"></i>Експортувати в Excel</a></li>
@@ -472,6 +463,7 @@
 
     // Add form fields
     const fields = {
+      'export_mode': 'range',
       'from_date': `${year}-${month}-01`,
       'to_date': `${year}-${month}-${lastDay}`,
       'status': '{{ selected_status }}',
@@ -508,6 +500,7 @@
 
     // Add form fields
     const fields = {
+      'export_mode': 'range',
       'from_date': `${year}-${month}-01`,
       'to_date': `${year}-${month}-${lastDay}`,
       'status': '{{ selected_status }}',

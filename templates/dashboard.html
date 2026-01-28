@@ -89,11 +89,8 @@
     </div>
     {% if current_user.role in ['editor', 'admin', 'viewer'] %}
     <div class="btn-group">
-      <button type="button" class="btn btn-primary" onclick="quickExportRecords()">
+      <button type="button" class="btn btn-primary dropdown-toggle" data-bs-toggle="dropdown" aria-expanded="false">
         <i class="bi bi-file-earmark-arrow-down me-1"></i>Звіти
-      </button>
-      <button type="button" class="btn btn-primary dropdown-toggle dropdown-toggle-split" data-bs-toggle="dropdown" aria-expanded="false">
-        <span class="visually-hidden">Більше</span>
       </button>
       <ul class="dropdown-menu">
         <li><a class="dropdown-item" href="#" onclick="quickExportRecords(); return false;"><i class="bi bi-file-earmark-excel me-2"></i>Експортувати в Excel</a></li>
@@ -1100,6 +1097,7 @@
 
     // Add form fields
     const fields = {
+      'export_mode': 'range',
       'from_date': fromDate,
       'to_date': toDate,
       'discharge_status': dischargeStatus,
@@ -1159,6 +1157,7 @@
 
     // Add form fields
     const fields = {
+      'export_mode': 'range',
       'from_date': fromDate,
       'to_date': toDate,
       'discharge_status': dischargeStatus,
