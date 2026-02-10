@@ -376,14 +376,14 @@ h1, h2, h3, h4, h5, h6,
 }
 
 .table thead th {
-  background-color: #f8fafb !important;
+  background-color: #f8fafb;
   color: var(--color-text);
   font-weight: 600;
   font-size: 0.82rem;
   text-transform: uppercase;
   letter-spacing: 0.03em;
   padding: 0.7rem 0.5rem;
-  border-bottom: 2px solid var(--color-border) !important;
+  border-bottom: 2px solid var(--color-border);
   border-top: none;
   white-space: nowrap;
 }
@@ -408,27 +408,12 @@ h1, h2, h3, h4, h5, h6,
   background-color: #fafcfd;
 }
 
-/* Specific column widths */
-.table th:nth-child(1),
-.table td:nth-child(1) { width: 50px; text-align: center; }
-.table th:nth-child(2),
-.table td:nth-child(2) { width: 90px; }
-.table th:nth-child(6),
-.table td:nth-child(6) { width: 80px; }
-.table th:nth-child(7),
-.table td:nth-child(7) { width: 60px; text-align: center; }
-.table th:nth-child(8),
-.table td:nth-child(8) { width: 110px; text-align: center; }
-.table th:nth-child(9),
-.table td:nth-child(9) { width: 90px; }
-.table th:nth-child(13),
-.table td:nth-child(13) { min-width: 100px; max-width: 120px; }
 
 /* Action cell */
 .action-cell {
   white-space: nowrap;
   width: 1%;
-  padding: 0.5rem !important;
+  padding: 0.4rem !important;
 }
 
 .action-buttons-container {
@@ -958,11 +943,6 @@ input[list]:focus::-webkit-calendar-picker-indicator { opacity: 1; }
 .nav a { text-decoration: none; color: var(--color-primary); }
 .nav span { color: var(--color-text); }
 
-.records-table { width: 100%; border-collapse: collapse; margin-top: 1rem; }
-.records-table th, .records-table td { border: 1px solid var(--color-border); padding: 8px; text-align: left; }
-.records-table th { background: #f8fafb; }
-.records-table tr:nth-child(even) { background: #fafcfd; }
-.records-table tr:hover { background: var(--color-primary-light); }
 
 .btn-edit { display: inline-block; padding: 6px 8px; border-radius: var(--radius-sm); background: var(--color-primary); color: #fff; text-decoration: none; font-size: 0.9rem; }
 .btn-edit:hover { background: var(--color-primary-dark); }
