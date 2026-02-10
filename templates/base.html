@@ -17,12 +17,6 @@
 
   {% if current_user.is_authenticated %}
   <aside class="sidebar">
-    <!-- Sidebar Toggle Button -->
-    <button class="sidebar-toggle-btn" id="sidebarToggle" aria-label="Toggle sidebar">
-      <i class="bi bi-x-lg"></i>
-      <i class="bi bi-chevron-right"></i>
-    </button>
-
     <div class="sidebar-brand">
       <a href="{{ url_for('records.index') }}">
         <i class="bi bi-clipboard2-pulse"></i>
@@ -181,70 +175,7 @@
         }
       });
 
-      // Sidebar toggle functionality
-      var sidebarToggle = document.getElementById('sidebarToggle');
-      if (sidebarToggle) {
-        // Check if mobile viewport
-        var isMobile = window.innerWidth <= 768;
-
-        // Restore sidebar state from localStorage (desktop only)
-        if (!isMobile) {
-          var sidebarCollapsed = localStorage.getItem('sidebarCollapsed') === 'true';
-          if (sidebarCollapsed) {
-            document.body.classList.add('sidebar-collapsed');
-          }
-        } else {
-          // On mobile, sidebar is hidden by default
-          document.body.classList.remove('sidebar-collapsed');
-        }
-
-        // Toggle sidebar on button click
-        sidebarToggle.addEventListener('click', function() {
-          var isMobile = window.innerWidth <= 768;
-
-          if (isMobile) {
-            // Mobile: toggle sidebar-open class
-            document.body.classList.toggle('sidebar-open');
-          } else {
-            // Desktop: toggle sidebar-collapsed class
-            document.body.classList.toggle('sidebar-collapsed');
-            // Save state to localStorage
-            var isCollapsed = document.body.classList.contains('sidebar-collapsed');
-            localStorage.setItem('sidebarCollapsed', isCollapsed);
-          }
-        });
-
-        // Close sidebar when clicking outside on mobile
-        document.addEventListener('click', function(e) {
-          if (window.innerWidth <= 768) {
-            var sidebar = document.querySelector('.sidebar');
-            var isClickInsideSidebar = sidebar && sidebar.contains(e.target);
-            var isClickOnToggle = sidebarToggle.contains(e.target);
-
-            if (!isClickInsideSidebar && !isClickOnToggle && document.body.classList.contains('sidebar-open')) {
-              document.body.classList.remove('sidebar-open');
-            }
-          }
-        });
-
-        // Handle window resize
-        window.addEventListener('resize', function() {
-          var isMobile = window.innerWidth <= 768;
-          if (isMobile) {
-            // Remove desktop classes on mobile
-            document.body.classList.remove('sidebar-collapsed');
-            document.body.classList.remove('sidebar-open');
-          } else {
-            // Remove mobile classes on desktop
-            document.body.classList.remove('sidebar-open');
-            // Restore saved state
-            var sidebarCollapsed = localStorage.getItem('sidebarCollapsed') === 'true';
-            if (sidebarCollapsed) {
-              document.body.classList.add('sidebar-collapsed');
-            }
-          }
-        });
-      }
+      // Sidebar is always visible on desktop, no toggle needed
     });
 
     // Helper to add CSRF token to dynamically created forms
