@@ -53,17 +53,21 @@
         <span class="stat-pill stat-pill-total" data-bs-toggle="tooltip" data-bs-title="Загальна кількість записів (з урахуванням фільтрів)">
           <i class="bi bi-layers"></i>Всього: <strong>{{ count }}</strong>
         </span>
-        <span class="stat-pill stat-pill-success" data-bs-toggle="tooltip" data-bs-title="Записи зі статусом 'Виписаний' без дати смерті">
+        <span class="stat-pill stat-pill-success{% if count_discharged == 0 %} stat-pill-muted{% endif %}" data-bs-toggle="tooltip" data-bs-title="Записи зі статусом 'Виписаний' без дати смерті">
           <i class="bi bi-check-circle"></i>Виписаних: <strong>{{ count_discharged }}</strong>
+          {% if count > 0 %}<span class="stat-pct">({{ "%.0f"|format(count_discharged / count * 100) }}%)</span>{% endif %}
         </span>
-        <span class="stat-pill stat-pill-warning" data-bs-toggle="tooltip" data-bs-title="Записи зі статусом 'Опрацьовується' без дати смерті">
+        <span class="stat-pill stat-pill-warning{% if count_processing == 0 %} stat-pill-muted{% endif %}" data-bs-toggle="tooltip" data-bs-title="Записи зі статусом 'Опрацьовується' без дати смерті">
           <i class="bi bi-clock"></i>Опрацьовується: <strong>{{ count_processing }}</strong>
+          {% if count > 0 %}<span class="stat-pct">({{ "%.0f"|format(count_processing / count * 100) }}%)</span>{% endif %}
         </span>
-        <span class="stat-pill stat-pill-danger" data-bs-toggle="tooltip" data-bs-title="Записи зі статусом 'Порушені вимоги' без дати смерті">
+        <span class="stat-pill stat-pill-danger{% if count_violations == 0 %} stat-pill-muted{% endif %}" data-bs-toggle="tooltip" data-bs-title="Записи зі статусом 'Порушені вимоги' без дати смерті">
           <i class="bi bi-exclamation-triangle"></i>Порушення: <strong>{{ count_violations }}</strong>
+          {% if count > 0 %}<span class="stat-pct">({{ "%.0f"|format(count_violations / count * 100) }}%)</span>{% endif %}
         </span>
-        <span class="stat-pill stat-pill-dark" data-bs-toggle="tooltip" data-bs-title="Всі записи з датою смерті (незалежно від статусу)">
+        <span class="stat-pill stat-pill-dark{% if count_deceased == 0 %} stat-pill-muted{% endif %}" data-bs-toggle="tooltip" data-bs-title="Всі записи з датою смерті (незалежно від статусу)">
           <i class="bi bi-x-circle"></i>Померло: <strong>{{ count_deceased }}</strong>
+          {% if count > 0 %}<span class="stat-pct">({{ "%.0f"|format(count_deceased / count * 100) }}%)</span>{% endif %}
         </span>
         <button type="button" class="btn btn-sm btn-link text-muted p-0" data-bs-toggle="popover" data-bs-placement="bottom" data-bs-html="true"
                 data-bs-title="<i class='bi bi-info-circle me-1'></i>Як рахується статистика?"
@@ -147,10 +151,6 @@
             <a class="btn btn-outline-secondary btn-sm ms-2" href="{{ url_for('records.index') }}">
               <i class="bi bi-arrow-clockwise me-1"></i>Скинути
             </a>
-          </div>
-          <div class="form-check mb-0">
-            <input class="form-check-input" type="checkbox" value="1" id="all_months" name="all_months" {% if show_all %}checked{% endif %}>
-            <label class="form-check-label" for="all_months">Всі місяці</label>
           </div>
           <div class="form-check mb-0">
             <input class="form-check-input" type="checkbox" value="1" id="has_death_date" name="has_death_date" {% if has_death_date %}checked{% endif %}>
@@ -360,27 +360,6 @@
       // Initialize Bootstrap popovers
       const popoverTriggerList = document.querySelectorAll('[data-bs-toggle="popover"]');
       const popoverList = [...popoverTriggerList].map(popoverTriggerEl => new bootstrap.Popover(popoverTriggerEl));
-
-      const allMonthsCheckbox = document.getElementById('all_months');
-      const monthFilter = document.getElementById('month_filter');
-
-      if (allMonthsCheckbox && monthFilter) {
-        // Initial state
-        if (allMonthsCheckbox.checked) {
-          monthFilter.disabled = true;
-          monthFilter.value = '';
-        }
-
-        // On change
-        allMonthsCheckbox.addEventListener('change', function() {
-          if (this.checked) {
-            monthFilter.disabled = true;
-            monthFilter.value = '';
-          } else {
-            monthFilter.disabled = false;
-          }
-        });
-      }
 
       // Scroll to edited record with smooth animation and highlight
       if (window.location.hash) {

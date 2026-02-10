@@ -300,6 +300,17 @@ def nszu_edit(correction_id):
     correction = NSZUCorrection.query.get_or_404(correction_id)
 
     if request.method == 'POST':
+        # Collect filter params from hidden fields for redirect
+        filter_params = {
+            'month_year': request.form.get('filter_month_year', ''),
+            'status': request.form.get('filter_status', ''),
+            'doctor': request.form.get('filter_doctor', ''),
+            'nszu_record_id': request.form.get('filter_nszu_record_id', ''),
+            'per_page': request.form.get('filter_per_page', ''),
+            'sort_by': request.form.get('filter_sort_by', ''),
+            'sort_order': request.form.get('filter_sort_order', ''),
+        }
+
         date_str = request.form.get('date', '').strip()
         nszu_record_id = request.form.get('nszu_record_id', '').strip()
         doctor = request.form.get('doctor', '').strip()
@@ -311,20 +322,20 @@ def nszu_edit(correction_id):
         # Validate required fields
         if not all([date_str, nszu_record_id, doctor, status]):
             flash('Будь ласка, заповніть усі обов\'язкові поля', 'warning')
-            return redirect(url_for('nszu.nszu_edit', correction_id=correction_id))
+            return redirect(url_for('nszu.nszu_edit', correction_id=correction_id, **filter_params))
 
         # Parse date
         date_obj = parse_date(date_str)
         if date_obj is None:
             flash('Дата повинна бути у форматі ДД.ММ.РРРР або РРРР-ММ-ДД', 'warning')
-            return redirect(url_for('nszu.nszu_edit', correction_id=correction_id))
+            return redirect(url_for('nszu.nszu_edit', correction_id=correction_id, **filter_params))
 
         # Parse fakt_summ
         if fakt_summ_str and fakt_summ_str != '-':
             fakt_summ = parse_numeric(fakt_summ_str, default=0.0)
             if fakt_summ is None:
                 flash('Фактична сума повинна бути числом', 'warning')
-                return redirect(url_for('nszu.nszu_edit', correction_id=correction_id))
+                return redirect(url_for('nszu.nszu_edit', correction_id=correction_id, **filter_params))
         else:
             fakt_summ = 0.00
 
@@ -348,13 +359,24 @@ def nszu_edit(correction_id):
 
         current_app.logger.info(f'NSZU correction updated: {correction.id} by {current_user.username}')
         flash(f'Запис перевірки НСЗУ #{correction.id} успішно оновлено', 'success')
-        return redirect(url_for('nszu.nszu_list'))
+        return redirect(url_for('nszu.nszu_list', **filter_params))
 
     # GET - render form
+    # Collect filter params from query string to pass to template
+    filter_params = {
+        'filter_month_year': request.args.get('month_year', ''),
+        'filter_status': request.args.get('status', ''),
+        'filter_doctor': request.args.get('doctor', ''),
+        'filter_nszu_record_id': request.args.get('nszu_record_id', ''),
+        'filter_per_page': request.args.get('per_page', ''),
+        'filter_sort_by': request.args.get('sort_by', ''),
+        'filter_sort_order': request.args.get('sort_order', ''),
+    }
+
     doctors = [d[0] for d in db.session.query(NSZUCorrection.doctor).distinct().filter(NSZUCorrection.doctor != None).order_by(NSZUCorrection.doctor).all()]
     statuses = ['В обробці', 'Опрацьовано', 'Оплачено', 'Не підлягає оплаті']
 
-    return render_template('nszu_edit.html', correction=correction, doctors=doctors, statuses=statuses)
+    return render_template('nszu_edit.html', correction=correction, doctors=doctors, statuses=statuses, **filter_params)
 
 
 @nszu_bp.route('/<int:correction_id>/delete', methods=['POST'])
@@ -374,7 +396,14 @@ def nszu_delete(correction_id):
 
     current_app.logger.info(f'NSZU correction deleted: {correction_id} by {current_user.username}')
     flash(f'Запис перевірки НСЗУ #{correction_id} видалено', 'danger')
-    return redirect(url_for('nszu.nszu_list'))
+    return redirect(url_for('nszu.nszu_list',
+                            month_year=request.form.get('month_year', ''),
+                            status=request.form.get('status', ''),
+                            doctor=request.form.get('doctor', ''),
+                            nszu_record_id=request.form.get('nszu_record_id', ''),
+                            per_page=request.form.get('per_page', ''),
+                            sort_by=request.form.get('sort_by', ''),
+                            sort_order=request.form.get('sort_order', '')))
 
 
 @nszu_bp.route('/export', methods=['POST'])

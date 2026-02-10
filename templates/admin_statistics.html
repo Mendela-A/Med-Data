@@ -10,7 +10,7 @@
 
 {% block content %}
 <div class="d-flex justify-content-between align-items-center mb-3">
-  <h3><i class="bi bi-bar-chart-line me-2"></i>Статистика</h3>
+  <h1 class="h4 mb-0"><i class="bi bi-bar-chart-line me-2"></i>Статистика</h1>
 </div>
 
 <!-- Month Filter - Compact -->
@@ -35,9 +35,7 @@
         <i class="bi bi-arrow-clockwise me-1"></i>Поточний
       </a>
       <div class="ms-auto">
-        <span class="badge bg-primary" style="font-size: 0.95rem; padding: 0.4rem 0.8rem;">
-          {{ current_month }}
-        </span>
+        <span class="stat-pill stat-pill-info"><i class="bi bi-calendar3"></i>{{ current_month }}</span>
       </div>
     </form>
   </div>
@@ -49,7 +47,7 @@
   <div class="col-md-3 col-sm-6">
     <a href="{{ url_for('records.index', month_filter='%04d-%02d'|format(selected_year, selected_month), from_stats='1') }}"
        class="text-decoration-none stat-card-link">
-      <div class="card stat-card h-100 border-0 shadow-sm">
+      <div class="card stat-card h-100">
         <div class="card-body">
           <div class="d-flex justify-content-between align-items-start mb-2">
             <div>
@@ -87,7 +85,7 @@
   <div class="col-md-3 col-sm-6">
     <a href="{{ url_for('records.index', month_filter='%04d-%02d'|format(selected_year, selected_month), discharge_status='Опрацьовується', from_stats='1') }}"
        class="text-decoration-none stat-card-link">
-      <div class="card stat-card h-100 border-0 shadow-sm">
+      <div class="card stat-card h-100">
         <div class="card-body">
           <div class="d-flex justify-content-between align-items-start mb-2">
             <div>
@@ -128,7 +126,7 @@
   <div class="col-md-3 col-sm-6">
     <a href="{{ url_for('records.index', month_filter='%04d-%02d'|format(selected_year, selected_month), discharge_status='Виписаний', from_stats='1') }}"
        class="text-decoration-none stat-card-link">
-      <div class="card stat-card h-100 border-0 shadow-sm">
+      <div class="card stat-card h-100">
         <div class="card-body">
           <div class="d-flex justify-content-between align-items-start mb-2">
             <div>
@@ -169,7 +167,7 @@
   <div class="col-md-3 col-sm-6">
     <a href="{{ url_for('records.index', month_filter='%04d-%02d'|format(selected_year, selected_month), has_death_date='1', from_stats='1') }}"
        class="text-decoration-none stat-card-link">
-      <div class="card stat-card h-100 border-0 shadow-sm">
+      <div class="card stat-card h-100">
         <div class="card-body">
           <div class="d-flex justify-content-between align-items-start mb-2">
             <div>
@@ -210,7 +208,7 @@
 <!-- Section 2: Status distribution by department -->
 <div class="card mb-4">
   <div class="card-body">
-    <h5 class="card-title mb-3">
+    <h2 class="h6 mb-3">
       <i class="bi bi-building me-2"></i>Розподіл статусів по відділеннях
       <button type="button"
               class="btn btn-sm btn-outline-secondary ms-2"
@@ -221,12 +219,12 @@
               data-bs-content="<ul class='mb-0 ps-3'><li><strong>Померло</strong> — пріоритетна категорія: всі записи з датою смерті рахуються сюди, незалежно від статусу виписки</li><li><strong>Виписаний, Опрацьовується</strong> — рахуються тільки записи БЕЗ дати смерті</li><li><strong>Всього</strong> = сума всіх категорій по відділенню</li></ul>">
         <i class="bi bi-question-circle"></i>
       </button>
-    </h5>
+    </h2>
 
     {% if status_by_dept %}
     <div class="table-responsive">
-      <table class="table table-striped table-hover table-sm" id="statusByDeptTable">
-        <thead class="table-light">
+      <table class="table table-hover table-sm" id="statusByDeptTable">
+        <thead>
           <tr>
             <th class="sortable-header" data-column="department" data-type="text" title="Натисніть для сортування">
               Відділення <i class="bi bi-chevron-expand sort-icon"></i>
@@ -318,7 +316,7 @@
           </tr>
           {% endfor %}
         </tbody>
-        <tfoot class="table-light">
+        <tfoot>
           <tr>
             <th>
               <a href="{{ url_for('records.index', month_filter='%04d-%02d'|format(selected_year, selected_month), from_stats='1') }}"
@@ -356,7 +354,10 @@
       </table>
     </div>
     {% else %}
-    <p class="text-muted">Немає даних за поточний місяць</p>
+    <div class="text-center py-4">
+      <i class="bi bi-building text-muted" style="font-size: 2rem;"></i>
+      <p class="text-muted mt-2 mb-0">Немає даних за поточний місяць</p>
+    </div>
     {% endif %}
   </div>
 </div>
@@ -364,14 +365,14 @@
 <!-- Section 1: Records by discharge date -->
 <div class="card mb-4">
   <div class="card-body">
-    <h5 class="card-title mb-3">
+    <h2 class="h6 mb-3">
       <i class="bi bi-calendar-check me-2"></i>Записи по датах виписки
-    </h5>
+    </h2>
 
     {% if records_per_day %}
     <div class="table-responsive">
-      <table class="table table-striped table-hover table-sm">
-        <thead class="table-light">
+      <table class="table table-hover table-sm">
+        <thead>
           <tr>
             <th>Дата</th>
             <th class="text-end">Кількість записів</th>
@@ -385,7 +386,7 @@
           </tr>
           {% endfor %}
         </tbody>
-        <tfoot class="table-light">
+        <tfoot>
           <tr>
             <th>Всього</th>
             <th class="text-end"><strong>{{ records_per_day | sum(attribute='count') }}</strong></th>
@@ -394,7 +395,10 @@
       </table>
     </div>
     {% else %}
-    <p class="text-muted">Немає даних за поточний місяць</p>
+    <div class="text-center py-4">
+      <i class="bi bi-calendar-x text-muted" style="font-size: 2rem;"></i>
+      <p class="text-muted mt-2 mb-0">Немає даних за поточний місяць</p>
+    </div>
     {% endif %}
   </div>
 </div>

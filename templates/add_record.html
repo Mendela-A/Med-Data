@@ -6,71 +6,78 @@
 {% endblock %}
 
 {% block content %}
-  <h1 class="h4">Додати запис</h1>
-  <form method="post" class="mt-3 row g-2 form-compact">
-    <!-- preserve filters so we can return to the filtered list -->
-    <input type="hidden" name="filter_discharge_status" value="{{ selected_status }}">
-    <input type="hidden" name="filter_treating_physician" value="{{ selected_physician }}">
-    <input type="hidden" name="filter_history" value="{{ history_q }}">
+  <h1 class="h4 mb-4"><i class="bi bi-plus-circle me-2"></i>Додати запис</h1>
 
-    <div class="col-auto">
-      <label class="form-label">ПІБ</label>
-      <input class="form-control input-name" name="full_name" maxlength="50" required>
-    </div>
+  <div class="card">
+    <div class="card-body">
+      <form method="post" class="row g-2 form-compact">
+        <!-- preserve filters so we can return to the filtered list -->
+        <input type="hidden" name="filter_discharge_status" value="{{ selected_status }}">
+        <input type="hidden" name="filter_treating_physician" value="{{ selected_physician }}">
+        <input type="hidden" name="filter_history" value="{{ history_q }}">
 
-    <div class="col-auto">
-      <label class="form-label">Дата виписки</label>
-      <input class="form-control date-input" name="date_of_discharge" type="date" required>
-    </div>
+        <div class="col-auto">
+          <label class="form-label">ПІБ</label>
+          <input class="form-control input-name" name="full_name" maxlength="50" required>
+        </div>
 
-    <div class="col-auto">
-      <label class="form-label">К днів</label>
-      <input class="form-control input-xsmall" name="k_days" type="number" min="0" required>
-    </div>
+        <div class="col-auto">
+          <label class="form-label">Дата виписки</label>
+          <input class="form-control date-input" name="date_of_discharge" type="date" required>
+        </div>
 
-    <div class="col-auto" id="death-row">
-      <label class="form-label">
-        <input type="checkbox" id="death-checkbox" class="form-check-input me-1">
-        <span style="color: #c82333;">Дата смерті</span>
-      </label>
-      <input id="date_of_death" class="form-control date-input" name="date_of_death" type="date" disabled>
-    </div>
+        <div class="col-auto">
+          <label class="form-label">К днів</label>
+          <input class="form-control input-xsmall" name="k_days" type="number" min="0" required>
+        </div>
 
-    <div class="col-auto">
-      <label class="form-label">Історія</label>
-      <input class="form-control input-history" name="history" maxlength="6" required>
-    </div>
+        <div class="col-auto" id="death-row">
+          <label class="form-label">
+            <input type="checkbox" id="death-checkbox" class="form-check-input me-1">
+            <span style="color: var(--color-danger);">Дата смерті</span>
+          </label>
+          <input id="date_of_death" class="form-control date-input" name="date_of_death" type="date" disabled>
+        </div>
 
-    <div class="col-auto">
-      <label class="form-label">Відділення</label>
-      <select class="form-select input-medium" name="discharge_department">
-        <option value="">(не вказано)</option>
-        {% for d in departments %}
-          <option value="{{ d.name }}" {% if d.name == selected_department %}selected{% endif %}>{{ d.name }}</option>
-        {% endfor %}
-      </select>
-    </div>
+        <div class="col-auto">
+          <label class="form-label">Історія</label>
+          <input class="form-control input-history" name="history" maxlength="6" required>
+        </div>
 
-    <div class="col-auto">
-      <label class="form-label">Лікар {% if physicians %}({{ physicians|length }} у списку){% endif %}</label>
-      <input class="form-control input-medium" name="treating_physician" list="physicians-list" autocomplete="off" required>
-      <datalist id="physicians-list">
-        {% for p in physicians %}
-          <option value="{{ p }}">
-        {% endfor %}
-      </datalist>
-    </div>
+        <div class="col-auto">
+          <label class="form-label">Відділення</label>
+          <select class="form-select input-medium" name="discharge_department">
+            <option value="">(не вказано)</option>
+            {% for d in departments %}
+              <option value="{{ d.name }}" {% if d.name == selected_department %}selected{% endif %}>{{ d.name }}</option>
+            {% endfor %}
+          </select>
+        </div>
 
-    <div class="col-12">
-      <label class="form-label">Коментар</label>
-      <textarea class="form-control" name="comment" rows="2"></textarea>
-    </div>
+        <div class="col-auto">
+          <label class="form-label">Лікар {% if physicians %}({{ physicians|length }} у списку){% endif %}</label>
+          <input class="form-control input-medium" name="treating_physician" list="physicians-list" autocomplete="off" required>
+          <datalist id="physicians-list">
+            {% for p in physicians %}
+              <option value="{{ p }}">
+            {% endfor %}
+          </datalist>
+        </div>
 
-    <div class="col-12">
-      <button class="btn btn-primary" type="submit">Додати</button>
-      <a class="btn btn-secondary ms-2" href="{{ url_for('records.index') }}">Скасувати</a>
+        <div class="col-12">
+          <label class="form-label">Коментар</label>
+          <textarea class="form-control" name="comment" rows="2"></textarea>
+        </div>
+
+        <div class="col-12">
+          <div class="d-flex gap-2">
+            <button class="btn btn-primary" type="submit"><i class="bi bi-plus-lg me-1"></i>Додати</button>
+            <a class="btn btn-outline-secondary" href="{{ url_for('records.index') }}">Скасувати</a>
+          </div>
+        </div>
+      </form>
     </div>
-  </form>
+  </div>
 {% endblock %}
 
 {% block scripts %}

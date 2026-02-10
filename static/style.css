@@ -482,6 +482,41 @@ td .badge {
   color: var(--color-secondary);
 }
 
+/* NSZU status badges */
+.nszu-status {
+  font-size: 0.78em;
+  font-weight: 500;
+  padding: 0.3em 0.65em;
+  border-radius: 20px;
+  border: 1px solid;
+  min-width: 80px;
+  text-align: center;
+}
+
+.nszu-status-paid {
+  background-color: rgba(22, 163, 74, 0.08);
+  border-color: rgba(22, 163, 74, 0.2);
+  color: #15803d;
+}
+
+.nszu-status-processed {
+  background-color: rgba(245, 158, 11, 0.08);
+  border-color: rgba(245, 158, 11, 0.2);
+  color: #b45309;
+}
+
+.nszu-status-pending {
+  background-color: rgba(100, 116, 139, 0.08);
+  border-color: rgba(100, 116, 139, 0.15);
+  color: #475569;
+}
+
+.nszu-status-rejected {
+  background-color: rgba(220, 38, 38, 0.08);
+  border-color: rgba(220, 38, 38, 0.2);
+  color: #b91c1c;
+}
+
 /* Stat pills (dashboard header) */
 .stat-pill {
   display: inline-flex;
@@ -499,33 +534,54 @@ td .badge {
 .stat-pill strong { font-weight: 600; }
 
 .stat-pill-total {
-  background-color: rgba(15, 118, 110, 0.06);
-  border-color: rgba(15, 118, 110, 0.15);
-  color: var(--color-primary-dark);
+  background-color: var(--color-primary);
+  border-color: var(--color-primary);
+  color: #fff;
 }
 
 .stat-pill-success {
-  background-color: rgba(22, 163, 74, 0.06);
-  border-color: rgba(22, 163, 74, 0.15);
-  color: #15803d;
+  background-color: var(--color-success);
+  border-color: var(--color-success);
+  color: #fff;
 }
 
 .stat-pill-warning {
-  background-color: rgba(245, 158, 11, 0.06);
-  border-color: rgba(245, 158, 11, 0.15);
-  color: #b45309;
+  background-color: var(--color-warning);
+  border-color: var(--color-warning);
+  color: #fff;
 }
 
 .stat-pill-danger {
-  background-color: rgba(220, 38, 38, 0.06);
-  border-color: rgba(220, 38, 38, 0.15);
-  color: #b91c1c;
+  background-color: var(--color-danger);
+  border-color: var(--color-danger);
+  color: #fff;
 }
 
 .stat-pill-dark {
-  background-color: rgba(30, 41, 59, 0.06);
-  border-color: rgba(30, 41, 59, 0.12);
-  color: #334155;
+  background-color: #334155;
+  border-color: #334155;
+  color: #fff;
+}
+
+.stat-pill-info {
+  background-color: var(--color-info);
+  border-color: var(--color-info);
+  color: #fff;
+}
+
+/* Muted state for zero values */
+.stat-pill-muted {
+  background-color: #cbd5e1 !important;
+  border-color: #cbd5e1 !important;
+  color: #fff !important;
+  opacity: 0.65;
+}
+
+/* Percentage text inside pill */
+.stat-pill .stat-pct {
+  font-size: 0.72rem;
+  opacity: 0.8;
+  font-weight: 400;
 }
 
 /* Pagination */
