@@ -13,29 +13,29 @@
   <h1 class="h4 mb-0"><i class="bi bi-bar-chart-line me-2"></i>Статистика</h1>
 </div>
 
-<!-- Month Filter - Compact -->
+<!-- Date Range Filter -->
 <div class="card mb-3">
   <div class="card-body py-2">
-    <form method="get" action="{{ url_for('admin.admin_statistics') }}" id="monthFilterForm" class="d-flex align-items-center gap-2 flex-wrap">
-      <label for="month_select" class="form-label mb-0 me-2">
-        <i class="bi bi-calendar-month me-1"></i><strong>Місяць:</strong>
+    <form method="get" action="{{ url_for('admin.admin_statistics') }}" id="dateRangeForm" class="d-flex align-items-center gap-2 flex-wrap">
+      <label class="form-label mb-0 me-1">
+        <i class="bi bi-calendar-range me-1"></i><strong>Період:</strong>
       </label>
-      <input
-        type="month"
-        class="form-control form-control-sm"
-        id="month_select"
-        name="month_year"
-        value="{{ '%04d-%02d'|format(selected_year, selected_month) }}"
-        min="2020-01"
-        style="width: auto;">
+      <input type="date" class="form-control form-control-sm" id="from_date" name="from_date"
+             value="{{ from_date.isoformat() }}" style="width: auto;">
+      <span class="text-muted">—</span>
+      <input type="date" class="form-control form-control-sm" id="to_date" name="to_date"
+             value="{{ to_date.isoformat() }}" style="width: auto;">
       <button type="submit" class="btn btn-primary btn-sm">
         <i class="bi bi-search me-1"></i>Показати
       </button>
-      <a href="{{ url_for('admin.admin_statistics') }}" class="btn btn-outline-secondary btn-sm">
+      <a href="{{ url_for('admin.admin_statistics') }}" class="btn btn-outline-secondary btn-sm" title="Поточний місяць">
         <i class="bi bi-arrow-clockwise me-1"></i>Поточний
       </a>
+      <button type="button" class="btn btn-outline-secondary btn-sm" id="prevMonthBtn" title="Попередній місяць">
+        <i class="bi bi-chevron-left me-1"></i>Попередній
+      </button>
       <div class="ms-auto">
-        <span class="stat-pill stat-pill-info"><i class="bi bi-calendar3"></i>{{ current_month }}</span>
+        <span class="stat-pill stat-pill-info"><i class="bi bi-calendar3"></i>{{ period_label }}</span>
       </div>
     </form>
   </div>
@@ -45,7 +45,7 @@
 <div class="row mb-4 g-3">
   <!-- Total -->
   <div class="col-md-3 col-sm-6">
-    <a href="{{ url_for('records.index', month_filter='%04d-%02d'|format(selected_year, selected_month), from_stats='1') }}"
+    <a href="{{ url_for('records.index', from_date=from_date.isoformat(), to_date=to_date.isoformat(), from_stats='1') }}"
        class="text-decoration-none stat-card-link">
       <div class="card stat-card h-100">
         <div class="card-body">
@@ -83,7 +83,7 @@
 
   <!-- Processing -->
   <div class="col-md-3 col-sm-6">
-    <a href="{{ url_for('records.index', month_filter='%04d-%02d'|format(selected_year, selected_month), discharge_status='Опрацьовується', from_stats='1') }}"
+    <a href="{{ url_for('records.index', from_date=from_date.isoformat(), to_date=to_date.isoformat(), discharge_status='Опрацьовується', from_stats='1') }}"
        class="text-decoration-none stat-card-link">
       <div class="card stat-card h-100">
         <div class="card-body">
@@ -124,7 +124,7 @@
 
   <!-- Discharged -->
   <div class="col-md-3 col-sm-6">
-    <a href="{{ url_for('records.index', month_filter='%04d-%02d'|format(selected_year, selected_month), discharge_status='Виписаний', from_stats='1') }}"
+    <a href="{{ url_for('records.index', from_date=from_date.isoformat(), to_date=to_date.isoformat(), discharge_status='Виписаний', from_stats='1') }}"
        class="text-decoration-none stat-card-link">
       <div class="card stat-card h-100">
         <div class="card-body">
@@ -165,7 +165,7 @@
 
   <!-- Deceased -->
   <div class="col-md-3 col-sm-6">
-    <a href="{{ url_for('records.index', month_filter='%04d-%02d'|format(selected_year, selected_month), has_death_date='1', from_stats='1') }}"
+    <a href="{{ url_for('records.index', from_date=from_date.isoformat(), to_date=to_date.isoformat(), has_death_date='1', from_stats='1') }}"
        class="text-decoration-none stat-card-link">
       <div class="card stat-card h-100">
         <div class="card-body">
@@ -267,7 +267,7 @@
           {% for dept in dept_list %}
           <tr>
             <td>
-              <a href="{{ url_for('records.index', month_filter='%04d-%02d'|format(selected_year, selected_month), discharge_department=dept, from_stats='1') }}"
+              <a href="{{ url_for('records.index', from_date=from_date.isoformat(), to_date=to_date.isoformat(), discharge_department=dept, from_stats='1') }}"
                  class="text-decoration-none text-dark fw-bold"
                  title="Переглянути всі записи для {{ dept }}">
                 {{ dept }}
@@ -276,7 +276,7 @@
             <td>
               {% set dept_total = status_by_dept[dept]['Опрацьовується'] + status_by_dept[dept]['Виписаний'] + status_by_dept[dept]['Помер'] %}
               {% set proc_pct = (status_by_dept[dept]['Опрацьовується'] / dept_total * 100) if dept_total > 0 else 0 %}
-              <a href="{{ url_for('records.index', month_filter='%04d-%02d'|format(selected_year, selected_month), discharge_department=dept, discharge_status='Опрацьовується', from_stats='1') }}"
+              <a href="{{ url_for('records.index', from_date=from_date.isoformat(), to_date=to_date.isoformat(), discharge_department=dept, discharge_status='Опрацьовується', from_stats='1') }}"
                  class="text-decoration-none">
                 <div class="d-flex align-items-center">
                   <span class="badge bg-warning me-2">{{ status_by_dept[dept]['Опрацьовується'] }}</span>
@@ -288,7 +288,7 @@
             </td>
             <td>
               {% set disch_pct = (status_by_dept[dept]['Виписаний'] / dept_total * 100) if dept_total > 0 else 0 %}
-              <a href="{{ url_for('records.index', month_filter='%04d-%02d'|format(selected_year, selected_month), discharge_department=dept, discharge_status='Виписаний', from_stats='1') }}"
+              <a href="{{ url_for('records.index', from_date=from_date.isoformat(), to_date=to_date.isoformat(), discharge_department=dept, discharge_status='Виписаний', from_stats='1') }}"
                  class="text-decoration-none">
                 <div class="d-flex align-items-center">
                   <span class="badge bg-success me-2">{{ status_by_dept[dept]['Виписаний'] }}</span>
@@ -300,7 +300,7 @@
             </td>
             <td>
               {% set dec_pct = (status_by_dept[dept]['Помер'] / dept_total * 100) if dept_total > 0 else 0 %}
-              <a href="{{ url_for('records.index', month_filter='%04d-%02d'|format(selected_year, selected_month), discharge_department=dept, has_death_date='1', from_stats='1') }}"
+              <a href="{{ url_for('records.index', from_date=from_date.isoformat(), to_date=to_date.isoformat(), discharge_department=dept, has_death_date='1', from_stats='1') }}"
                  class="text-decoration-none">
                 <div class="d-flex align-items-center">
                   <span class="badge bg-danger me-2">{{ status_by_dept[dept]['Помер'] }}</span>
@@ -319,28 +319,28 @@
         <tfoot>
           <tr>
             <th>
-              <a href="{{ url_for('records.index', month_filter='%04d-%02d'|format(selected_year, selected_month), from_stats='1') }}"
+              <a href="{{ url_for('records.index', from_date=from_date.isoformat(), to_date=to_date.isoformat(), from_stats='1') }}"
                  class="text-decoration-none text-dark"
                  title="Переглянути всі записи">
                 Всього
               </a>
             </th>
             <th class="text-center">
-              <a href="{{ url_for('records.index', month_filter='%04d-%02d'|format(selected_year, selected_month), discharge_status='Опрацьовується', from_stats='1') }}"
+              <a href="{{ url_for('records.index', from_date=from_date.isoformat(), to_date=to_date.isoformat(), discharge_status='Опрацьовується', from_stats='1') }}"
                  class="text-decoration-none"
                  title="Переглянути всі записи що опрацьовуються">
                 <span class="badge bg-warning badge-clickable">{{ status_distribution['Опрацьовується'] }}</span>
               </a>
             </th>
             <th class="text-center">
-              <a href="{{ url_for('records.index', month_filter='%04d-%02d'|format(selected_year, selected_month), discharge_status='Виписаний', from_stats='1') }}"
+              <a href="{{ url_for('records.index', from_date=from_date.isoformat(), to_date=to_date.isoformat(), discharge_status='Виписаний', from_stats='1') }}"
                  class="text-decoration-none"
                  title="Переглянути всі виписані записи">
                 <span class="badge bg-success badge-clickable">{{ status_distribution['Виписаний'] }}</span>
               </a>
             </th>
             <th class="text-center">
-              <a href="{{ url_for('records.index', month_filter='%04d-%02d'|format(selected_year, selected_month), has_death_date='1', from_stats='1') }}"
+              <a href="{{ url_for('records.index', from_date=from_date.isoformat(), to_date=to_date.isoformat(), has_death_date='1', from_stats='1') }}"
                  class="text-decoration-none"
                  title="Переглянути всі записи померлих">
                 <span class="badge bg-danger badge-clickable">{{ status_distribution['Помер'] }}</span>
@@ -356,7 +356,7 @@
     {% else %}
     <div class="text-center py-4">
       <i class="bi bi-building text-muted" style="font-size: 2rem;"></i>
-      <p class="text-muted mt-2 mb-0">Немає даних за поточний місяць</p>
+      <p class="text-muted mt-2 mb-0">Немає даних за обраний період</p>
     </div>
     {% endif %}
   </div>
@@ -397,7 +397,7 @@
     {% else %}
     <div class="text-center py-4">
       <i class="bi bi-calendar-x text-muted" style="font-size: 2rem;"></i>
-      <p class="text-muted mt-2 mb-0">Немає даних за поточний місяць</p>
+      <p class="text-muted mt-2 mb-0">Немає даних за обраний період</p>
     </div>
     {% endif %}
   </div>
@@ -407,7 +407,6 @@
 
 {% block scripts %}
 <script>
-  // Handle month selection form submission
   document.addEventListener('DOMContentLoaded', function() {
     // Initialize Bootstrap tooltips
     const tooltipTriggerList = document.querySelectorAll('[data-bs-toggle="tooltip"]');
@@ -417,35 +416,19 @@
     const popoverTriggerList = document.querySelectorAll('[data-bs-toggle="popover"]');
     const popoverList = [...popoverTriggerList].map(popoverTriggerEl => new bootstrap.Popover(popoverTriggerEl));
 
-    const form = document.getElementById('monthFilterForm');
-    const monthInput = document.getElementById('month_select');
-
-    if (form && monthInput) {
-      // Submit form when month is selected
-      form.addEventListener('submit', function(e) {
-        e.preventDefault();
-
-        const selectedValue = monthInput.value;
-        if (!selectedValue) {
-          return;
-        }
-
-        const [year, month] = selectedValue.split('-');
-
-        // Build URL with year and month parameters
-        const url = new URL(window.location.href);
-        url.searchParams.set('year', year);
-        url.searchParams.set('month', month);
-
-        // Navigate to the new URL
-        window.location.href = url.toString();
-      });
-
-      // Optional: Submit on change for faster UX
-      monthInput.addEventListener('change', function() {
-        if (this.value) {
-          form.dispatchEvent(new Event('submit'));
-        }
+    // "Previous month" preset button
+    const prevMonthBtn = document.getElementById('prevMonthBtn');
+    if (prevMonthBtn) {
+      prevMonthBtn.addEventListener('click', function() {
+        const now = new Date();
+        const prev = new Date(now.getFullYear(), now.getMonth() - 1, 1);
+        const lastDay = new Date(prev.getFullYear(), prev.getMonth() + 1, 0);
+        const pad = n => String(n).padStart(2, '0');
+        const fromStr = `${prev.getFullYear()}-${pad(prev.getMonth()+1)}-01`;
+        const toStr = `${lastDay.getFullYear()}-${pad(lastDay.getMonth()+1)}-${pad(lastDay.getDate())}`;
+        document.getElementById('from_date').value = fromStr;
+        document.getElementById('to_date').value = toStr;
+        document.getElementById('dateRangeForm').submit();
       });
     }
 

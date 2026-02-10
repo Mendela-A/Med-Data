@@ -5,7 +5,7 @@ Admin routes
 
 from flask import render_template, redirect, url_for, flash, request, current_app
 from flask_login import login_required, current_user
-from datetime import datetime
+from datetime import datetime, date, timedelta
 from sqlalchemy import extract, case, func
 
 from app.extensions import db
@@ -175,50 +175,72 @@ def admin_delete_department(dept_id):
 @admin_bp.route('/statistics')
 @role_required('admin', 'viewer')
 def admin_statistics():
-    # Get selected month/year from query params or use current
     now = datetime.now()
+    today = now.date()
 
-    # Try to get from 'year' and 'month' params first (for backward compatibility)
-    selected_year = request.args.get('year', type=int)
-    selected_month = request.args.get('month', type=int)
+    # --- Parse date range from query params ---
+    from_str = request.args.get('from_date', '').strip()
+    to_str = request.args.get('to_date', '').strip()
 
-    # If not found, try month_year param (YYYY-MM format from HTML5 month input)
+    # Backward compatibility: month_year param (YYYY-MM)
     month_year = request.args.get('month_year', '')
-    if month_year and '-' in month_year:
+
+    from_date = None
+    to_date = None
+
+    # Try from_date / to_date first
+    if from_str:
         try:
-            year_str, month_str = month_year.split('-')
-            selected_year = int(year_str)
-            selected_month = int(month_str)
+            from_date = date.fromisoformat(from_str)
+        except ValueError:
+            pass
+    if to_str:
+        try:
+            to_date = date.fromisoformat(to_str)
+        except ValueError:
+            pass
+
+    # Fallback: month_year param
+    if from_date is None and month_year and '-' in month_year:
+        try:
+            y, m = month_year.split('-')
+            y, m = int(y), int(m)
+            if 1 <= m <= 12 and 2000 <= y <= 2100:
+                from_date = date(y, m, 1)
+                to_date = date(y + 1, 1, 1) - timedelta(days=1) if m == 12 else date(y, m + 1, 1) - timedelta(days=1)
         except (ValueError, IndexError):
             pass
 
-    # Default to current month if not set
-    if selected_year is None:
-        selected_year = now.year
-    if selected_month is None:
-        selected_month = now.month
+    # Default: current month
+    if from_date is None:
+        from_date = date(today.year, today.month, 1)
+    if to_date is None:
+        if from_date.month == 12:
+            to_date = date(from_date.year + 1, 1, 1) - timedelta(days=1)
+        else:
+            to_date = date(from_date.year, from_date.month + 1, 1) - timedelta(days=1)
 
-    # Validate month/year
-    if not (1 <= selected_month <= 12):
-        selected_month = now.month
-    if not (2000 <= selected_year <= 2100):
-        selected_year = now.year
+    # Validate: from <= to
+    if from_date > to_date:
+        from_date, to_date = to_date, from_date
 
-    # Get selected month boundaries
-    first_day = datetime(selected_year, selected_month, 1)
-    if selected_month == 12:
-        last_day = datetime(selected_year + 1, 1, 1)
+    # Exclusive upper bound for queries (to_date is inclusive, so +1 day)
+    query_end = to_date + timedelta(days=1)
+
+    # Period label for display
+    if from_date.day == 1 and to_date == (date(from_date.year, from_date.month + 1, 1) - timedelta(days=1) if from_date.month < 12 else date(from_date.year + 1, 1, 1) - timedelta(days=1)):
+        period_label = datetime(from_date.year, from_date.month, 1).strftime('%B %Y')
     else:
-        last_day = datetime(selected_year, selected_month + 1, 1)
+        period_label = f"{from_date.strftime('%d.%m.%Y')} — {to_date.strftime('%d.%m.%Y')}"
 
-    # 1. Records per day by discharge date for current month
+    # 1. Records per day by discharge date
     records_per_day = db.session.query(
         func.date(Record.date_of_discharge).label('date'),
         func.count(Record.id).label('count')
     ).filter(
         Record.date_of_discharge != None,
-        Record.date_of_discharge >= first_day.date(),
-        Record.date_of_discharge < last_day.date()
+        Record.date_of_discharge >= from_date,
+        Record.date_of_discharge < query_end
     ).group_by(
         func.date(Record.date_of_discharge)
     ).order_by('date').all()
@@ -232,8 +254,8 @@ def admin_statistics():
     ).filter(
         Record.discharge_department.isnot(None),
         Record.date_of_discharge.isnot(None),
-        Record.date_of_discharge >= first_day.date(),
-        Record.date_of_discharge < last_day.date()
+        Record.date_of_discharge >= from_date,
+        Record.date_of_discharge < query_end
     ).group_by(Record.discharge_department).all()
 
     status_by_dept = {}
@@ -246,15 +268,15 @@ def admin_statistics():
 
     dept_list = sorted(status_by_dept.keys())
 
-    # 3. Overall status distribution for current month (OPTIMIZED: Single query)
+    # 3. Overall status distribution (OPTIMIZED: Single query)
     current_stats = db.session.query(
         func.sum(case((Record.date_of_death.isnot(None), 1), else_=0)).label('deceased'),
         func.sum(case(((Record.discharge_status == 'Виписаний') & (Record.date_of_death.is_(None)), 1), else_=0)).label('discharged'),
         func.sum(case(((Record.discharge_status == 'Опрацьовується') & (Record.date_of_death.is_(None)), 1), else_=0)).label('processing')
     ).filter(
         Record.date_of_discharge.isnot(None),
-        Record.date_of_discharge >= first_day.date(),
-        Record.date_of_discharge < last_day.date()
+        Record.date_of_discharge >= from_date,
+        Record.date_of_discharge < query_end
     ).first()
 
     status_distribution = {
@@ -263,32 +285,22 @@ def admin_statistics():
         'Опрацьовується': current_stats.processing or 0
     }
 
-    # Calculate total records for selected month
     total_records = sum(status_distribution.values())
 
-    # Get previous month data for trends
-    if selected_month == 1:
-        prev_month = 12
-        prev_year = selected_year - 1
-    else:
-        prev_month = selected_month - 1
-        prev_year = selected_year
+    # --- Trends: compare with previous period of equal length ---
+    range_days = (to_date - from_date).days + 1
+    prev_to = from_date - timedelta(days=1)
+    prev_from = prev_to - timedelta(days=range_days - 1)
+    prev_query_end = prev_to + timedelta(days=1)
 
-    prev_first_day = datetime(prev_year, prev_month, 1)
-    if prev_month == 12:
-        prev_last_day = datetime(prev_year + 1, 1, 1)
-    else:
-        prev_last_day = datetime(prev_year, prev_month + 1, 1)
-
-    # Previous month statistics (OPTIMIZED: Single query)
     prev_stats = db.session.query(
         func.sum(case((Record.date_of_death.isnot(None), 1), else_=0)).label('deceased'),
         func.sum(case(((Record.discharge_status == 'Виписаний') & (Record.date_of_death.is_(None)), 1), else_=0)).label('discharged'),
         func.sum(case(((Record.discharge_status == 'Опрацьовується') & (Record.date_of_death.is_(None)), 1), else_=0)).label('processing')
     ).filter(
         Record.date_of_discharge.isnot(None),
-        Record.date_of_discharge >= prev_first_day.date(),
-        Record.date_of_discharge < prev_last_day.date()
+        Record.date_of_discharge >= prev_from,
+        Record.date_of_discharge < prev_query_end
     ).first()
 
     prev_deceased = prev_stats.deceased or 0
@@ -296,16 +308,12 @@ def admin_statistics():
     prev_processing = prev_stats.processing or 0
     prev_total = prev_deceased + prev_discharged + prev_processing
 
-    # Calculate trends
     trends = {
         'total': total_records - prev_total,
         'processing': status_distribution['Опрацьовується'] - prev_processing,
         'discharged': status_distribution['Виписаний'] - prev_discharged,
         'deceased': status_distribution['Помер'] - prev_deceased
     }
-
-    # Month name for display
-    selected_month_name = datetime(selected_year, selected_month, 1).strftime('%B %Y')
 
     return render_template(
         'admin_statistics.html',
@@ -315,7 +323,7 @@ def admin_statistics():
         status_distribution=status_distribution,
         total_records=total_records,
         trends=trends,
-        current_month=selected_month_name,
-        selected_year=selected_year,
-        selected_month=selected_month
+        period_label=period_label,
+        from_date=from_date,
+        to_date=to_date,
     )

@@ -43,7 +43,7 @@
           {% endif %}
         </h1>
         {% if request.args.get('from_stats') == '1' and current_user.role in ['admin', 'viewer'] %}
-        <a href="{{ url_for('admin.admin_statistics', month_year='%04d-%02d'|format(selected_year, selected_month) if selected_year and selected_month else '') }}"
+        <a href="{{ url_for('admin.admin_statistics', from_date=request.args.get('from_date', ''), to_date=request.args.get('to_date', '')) }}"
            class="btn btn-sm btn-outline-secondary">
           <i class="bi bi-arrow-left me-1"></i>До статистики
         </a>

@@ -66,13 +66,27 @@ def index():
     # support a toggle to show all months
     show_all = request.args.get('all_months', '').lower() in ('1', 'true', 'yes')
 
-    # allow explicit month/year selection via query params or HTML5 month input (YYYY-MM format)
+    # Allow explicit month/year selection via query params or HTML5 month input (YYYY-MM format)
+    # Also support from_date / to_date params (YYYY-MM-DD) from statistics page
     month_input = request.args.get('month_filter', '').strip()
+    from_date_input = request.args.get('from_date', '').strip()
+    to_date_input = request.args.get('to_date', '').strip()
     selected_month = None
     selected_year = None
 
     try:
-        if month_input:
+        if from_date_input and to_date_input:
+            # Date range mode from statistics page
+            from datetime import date as date_type
+            fd = date_type.fromisoformat(from_date_input)
+            td = date_type.fromisoformat(to_date_input)
+            if fd > td:
+                fd, td = td, fd
+            start = datetime(fd.year, fd.month, fd.day)
+            end = datetime(td.year, td.month, td.day) + timedelta(days=1)
+            selected_year = fd.year
+            selected_month = fd.month
+        elif month_input:
             # Parse HTML5 month input format: YYYY-MM
             parts = month_input.split('-')
             if len(parts) == 2:
