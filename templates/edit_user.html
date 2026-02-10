@@ -2,43 +2,46 @@
 {% block title %}Редагувати користувача{% endblock %}
 {% block breadcrumbs %}
   <li class="breadcrumb-item"><a href="{{ url_for('admin.admin_users') }}">Користувачі</a></li>
-  <li class="breadcrumb-item active" aria-current="page">Редагувати користувача</li>
+  <li class="breadcrumb-item active" aria-current="page">Редагувати</li>
 {% endblock %}
 {% block content %}
-  <h1 class="h4">Редагувати користувача: {{ user.username }}</h1>
+  <h1 class="h4 mb-4"><i class="bi bi-pencil me-2"></i>Редагувати: {{ user.username }}</h1>
 
-  <form method="post" class="mt-4">
-    <div class="mb-3">
-      <label class="form-label">Ім'я користувача</label>
-      <input class="form-control" name="username" value="{{ user.username }}" required>
-      <div class="form-text">Унікальне ім'я для входу в систему</div>
-    </div>
+  <div class="card" style="max-width: 560px;">
+    <div class="card-body">
+      <form method="post">
+        <div class="mb-3">
+          <label class="form-label">Ім'я користувача</label>
+          <input class="form-control" name="username" value="{{ user.username }}" required>
+          <div class="form-text">Унікальне ім'я для входу в систему</div>
+        </div>
 
-    <div class="mb-3">
-      <label class="form-label">Новий пароль (залиште порожнім, якщо не потрібно змінювати)</label>
-      <input class="form-control" name="password" type="password" autocomplete="new-password">
-      <div class="form-text">Введіть новий пароль тільки якщо хочете його змінити</div>
-    </div>
+        <div class="mb-3">
+          <label class="form-label">Новий пароль</label>
+          <input class="form-control" name="password" type="password" autocomplete="new-password" placeholder="Залиште порожнім, якщо не змінюєте">
+        </div>
 
-    <div class="mb-3">
-      <label class="form-label">Роль</label>
-      <select class="form-select" name="role" required>
-        <option value="operator" {% if user.role == 'operator' %}selected{% endif %}>operator</option>
-        <option value="editor" {% if user.role == 'editor' %}selected{% endif %}>editor</option>
-        <option value="admin" {% if user.role == 'admin' %}selected{% endif %}>admin</option>
-        <option value="viewer" {% if user.role == 'viewer' %}selected{% endif %}>viewer</option>
-      </select>
-      <div class="form-text">
-        <strong>operator:</strong> може додавати записи<br>
-        <strong>editor:</strong> може редагувати та експортувати записи<br>
-        <strong>admin:</strong> має повний доступ до системи<br>
-        <strong>viewer:</strong> тільки перегляд записів та статистики
-      </div>
-    </div>
+        <div class="mb-4">
+          <label class="form-label">Роль</label>
+          <select class="form-select" name="role" required>
+            <option value="operator" {% if user.role == 'operator' %}selected{% endif %}>operator</option>
+            <option value="editor" {% if user.role == 'editor' %}selected{% endif %}>editor</option>
+            <option value="admin" {% if user.role == 'admin' %}selected{% endif %}>admin</option>
+            <option value="viewer" {% if user.role == 'viewer' %}selected{% endif %}>viewer</option>
+          </select>
+          <div class="form-text">
+            <strong>operator</strong> — додавання записів |
+            <strong>editor</strong> — редагування та експорт |
+            <strong>admin</strong> — повний доступ |
+            <strong>viewer</strong> — перегляд та статистика
+          </div>
+        </div>
 
-    <div class="d-flex gap-2">
-      <button type="submit" class="btn btn-primary">Зберегти зміни</button>
-      <a href="{{ url_for('admin.admin_users') }}" class="btn btn-secondary">Скасувати</a>
+        <div class="d-flex gap-2">
+          <button type="submit" class="btn btn-primary"><i class="bi bi-check-lg me-1"></i>Зберегти</button>
+          <a href="{{ url_for('admin.admin_users') }}" class="btn btn-outline-secondary">Скасувати</a>
+        </div>
+      </form>
     </div>
-  </form>
+  </div>
 {% endblock %}

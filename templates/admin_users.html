@@ -4,61 +4,89 @@
   <li class="breadcrumb-item active" aria-current="page">Користувачі</li>
 {% endblock %}
 {% block content %}
-  <div class="d-flex align-items-center justify-content-between">
-    <h1 class="h4">Користувачі</h1>
+  <h1 class="h4 mb-4">Користувачі</h1>
 
+  <div class="card mb-4">
+    <div class="card-body">
+      <h2 class="h6 mb-3"><i class="bi bi-person-plus me-2"></i>Створити користувача</h2>
+      <form method="post" action="{{ url_for('admin.admin_create_user') }}" class="row gx-3 gy-2 align-items-end">
+        <div class="col-sm-4">
+          <label class="form-label">Ім'я користувача</label>
+          <input class="form-control" name="username" required>
+        </div>
+        <div class="col-sm-4">
+          <label class="form-label">Пароль</label>
+          <input class="form-control" name="password" type="password" required>
+        </div>
+        <div class="col-sm-3">
+          <label class="form-label">Роль</label>
+          <select class="form-select" name="role">
+            <option value="operator">operator</option>
+            <option value="editor">editor</option>
+            <option value="admin">admin</option>
+            <option value="viewer">viewer</option>
+          </select>
+        </div>
+        <div class="col-auto">
+          <button class="btn btn-primary" type="submit"><i class="bi bi-plus-lg me-1"></i>Створити</button>
+        </div>
+      </form>
+    </div>
   </div>
 
-  <h2 class="mt-4">Створити користувача</h2>
-  <form method="post" action="{{ url_for('admin.admin_create_user') }}" class="row gx-3 gy-2 align-items-end">
-    <div class="col-sm-4">
-      <label class="form-label">Ім'я користувача</label>
-      <input class="form-control" name="username" required>
+  <div class="card">
+    <div class="card-body p-0">
+      <div class="table-responsive">
+        <table class="table table-hover mb-0">
+          <thead>
+            <tr>
+              <th>ID</th>
+              <th>Ім'я</th>
+              <th>Роль</th>
+              <th>Дія</th>
+            </tr>
+          </thead>
+          <tbody>
+            {% for u in users %}
+              <tr>
+                <td>{{ u.id }}</td>
+                <td>
+                  <span class="fw-medium">{{ u.username }}</span>
+                  {% if current_user.id == u.id %}
+                    <span class="badge bg-primary bg-opacity-10 text-primary ms-1" style="font-size: 0.7em;">ви</span>
+                  {% endif %}
+                </td>
+                <td>
+                  {% if u.role == 'admin' %}
+                    <span class="badge role-badge role-admin">admin</span>
+                  {% elif u.role == 'editor' %}
+                    <span class="badge role-badge role-editor">editor</span>
+                  {% elif u.role == 'viewer' %}
+                    <span class="badge role-badge role-viewer">viewer</span>
+                  {% else %}
+                    <span class="badge role-badge role-operator">operator</span>
+                  {% endif %}
+                </td>
+                <td>
+                  <a href="{{ url_for('admin.admin_edit_user', user_id=u.id) }}" class="btn btn-sm btn-outline-primary"><i class="bi bi-pencil me-1"></i>Редагувати</a>
+                  {% if current_user.id != u.id %}
+                    <form method="post" action="{{ url_for('admin.admin_delete_user', user_id=u.id) }}" style="display:inline;" class="delete-form" data-confirm="Видалити користувача «{{ u.username }}»?">
+                      <button class="btn btn-sm btn-outline-danger" type="submit"><i class="bi bi-trash me-1"></i>Видалити</button>
+                    </form>
+                  {% endif %}
+                </td>
+              </tr>
+            {% else %}
+              <tr>
+                <td colspan="4" class="text-center py-4">
+                  <i class="bi bi-people text-muted" style="font-size: 2rem;"></i>
+                  <p class="text-muted mt-2 mb-0">Користувачів поки немає</p>
+                </td>
+              </tr>
+            {% endfor %}
+          </tbody>
+        </table>
+      </div>
     </div>
-    <div class="col-sm-4">
-      <label class="form-label">Пароль</label>
-      <input class="form-control" name="password" type="password" required>
-    </div>
-    <div class="col-sm-3">
-      <label class="form-label">Роль</label>
-      <select class="form-select" name="role">
-        <option value="operator">operator</option>
-        <option value="editor">editor</option>
-        <option value="admin">admin</option>
-        <option value="viewer">viewer</option>
-      </select>
-    </div>
-    <div class="col-auto">
-      <button class="btn btn-success" type="submit">Створити</button>
-    </div>
-  </form>
-
-  <h2 class="mt-5">Список користувачів</h2>
-  <div class="table-responsive">
-  <table class="table table-striped">    <thead>
-      <tr>
-        <th>ID</th>
-        <th>Username</th>
-        <th>Role</th>
-        <th>Дія</th>
-      </tr>
-    </thead>
-    <tbody>
-      {% for u in users %}
-        <tr>
-          <td>{{ u.id }}</td>
-          <td>{{ u.username }}</td>
-          <td>{{ u.role }}</td>
-          <td>
-            <a href="{{ url_for('admin.admin_edit_user', user_id=u.id) }}" class="btn btn-sm btn-primary">Редагувати</a>
-            {% if current_user.id != u.id %}
-              <form method="post" action="{{ url_for('admin.admin_delete_user', user_id=u.id) }}" style="display:inline;" class="delete-form" data-confirm="Видалити користувача «{{ u.username }}»?">
-                <button class="btn btn-sm btn-danger" type="submit">Видалити</button>
-              </form>
-            {% endif %}
-          </td>
-        </tr>
-      {% endfor %}
-    </tbody>
-  </table>
+  </div>
 {% endblock %}
