@@ -761,7 +761,7 @@ td .badge {
   text-align: center;
 }
 
-.records-table th:nth-child(6),  /* К днів */
+.records-table th:nth-child(6),  /* Днів */
 .records-table td:nth-child(6) {
   width: 85px;
   max-width: 85px;
