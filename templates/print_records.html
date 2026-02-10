@@ -114,24 +114,27 @@
         }
 
         .status-discharged {
-            background-color: #d4edda;
-            color: #155724;
+            background-color: #198754;
+            color: #fff;
         }
 
         .status-processing {
-            background-color: #fff3cd;
-            color: #856404;
+            background-color: #ffc107;
+            color: #212529;
         }
 
         .status-violation {
-            background-color: #f8d7da;
-            color: #721c24;
+            background-color: #dc3545;
+            color: #fff;
         }
 
-        .deceased {
-            background-color: #343a40;
-            color: white;
-            font-weight: bold;
+        .status-deceased {
+            background-color: #dc3545;
+            color: #fff;
+        }
+
+        .deceased-row {
+            background-color: #f8f8f8;
         }
 
         .footer {
@@ -232,7 +235,7 @@
         </thead>
         <tbody>
             {% for r in records %}
-            <tr {% if r.date_of_death %}class="deceased"{% endif %}>
+            <tr {% if r.date_of_death %}class="deceased-row"{% endif %}>
                 <td class="col-narrow">{{ loop.index }}</td>
                 <td class="col-date">{{ r.date_of_discharge.strftime('%d.%m.%Y') if r.date_of_discharge else '' }}</td>
                 <td class="col-name">{{ r.full_name }}</td>
@@ -241,18 +244,16 @@
                 <td class="col-history">{{ r.history or '' }}</td>
                 <td class="col-days">{{ r.k_days if r.k_days is not none else '' }}</td>
                 <td class="col-status">
-                    {% if not r.date_of_death %}
-                        {% if r.discharge_status == 'Виписаний' %}
-                            <span class="status-badge status-discharged">{{ r.discharge_status }}</span>
-                        {% elif r.discharge_status == 'Опрацьовується' %}
-                            <span class="status-badge status-processing">{{ r.discharge_status }}</span>
-                        {% elif r.discharge_status == 'Порушені вимоги' %}
-                            <span class="status-badge status-violation">{{ r.discharge_status }}</span>
-                        {% else %}
-                            {{ r.discharge_status or '' }}
-                        {% endif %}
-                    {% else %}
-                        <span class="status-badge deceased">Померло</span>
+                    {% if r.discharge_status == 'Виписаний' %}
+                        <span class="status-badge status-discharged">{{ r.discharge_status }}</span>
+                    {% elif r.discharge_status == 'Помер' %}
+                        <span class="status-badge status-deceased">{{ r.discharge_status }}</span>
+                    {% elif r.discharge_status == 'Опрацьовується' %}
+                        <span class="status-badge status-processing">{{ r.discharge_status }}</span>
+                    {% elif r.discharge_status == 'Порушені вимоги' %}
+                        <span class="status-badge status-violation">{{ r.discharge_status }}</span>
+                    {% elif r.discharge_status %}
+                        <span class="status-badge" style="background-color: #6c757d; color: #fff;">{{ r.discharge_status }}</span>
                     {% endif %}
                 </td>
                 <td class="col-death">{{ r.date_of_death.strftime('%d.%m.%Y') if r.date_of_death else '' }}</td>
@@ -286,7 +287,7 @@
             Виписаних: {{ ns.discharged }},
             Опрацьовується: {{ ns.processing }},
             Порушені вимоги: {{ ns.violation }},
-            Померло: {{ ns.deceased }}
+            Помер: {{ ns.deceased }}
         </div>
     </div>
 
