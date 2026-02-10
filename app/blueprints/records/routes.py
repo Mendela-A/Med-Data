@@ -599,7 +599,6 @@ def api_add_record():
     from datetime import datetime
 
     current_app.logger.info(f'API add_record called by {current_user.username}')
-    current_app.logger.debug(f'Form data: {dict(request.form)}')
 
     date_str = request.form.get('date_of_discharge', '').strip()
     full_name = request.form.get('full_name', '').strip()
@@ -684,7 +683,6 @@ def api_edit_record(record_id):
     from datetime import datetime
 
     current_app.logger.info(f'API edit_record called by {current_user.username} for record {record_id}')
-    current_app.logger.debug(f'Form data: {dict(request.form)}')
 
     r = Record.query.get_or_404(record_id)
 
@@ -733,7 +731,7 @@ def api_edit_record(record_id):
     r.date_of_death = date_of_death
     r.comment = comment or None
     r.updated_by = current_user.id
-    r.updated_at = datetime.utcnow()
+    r.updated_at = datetime.now(timezone.utc)
 
     try:
         db.session.commit()
@@ -820,7 +818,7 @@ def edit_record(record_id):
         r.date_of_death = date_of_death
         r.comment = comment
         r.updated_by = current_user.id
-        r.updated_at = datetime.utcnow()
+        r.updated_at = datetime.now(timezone.utc)
 
         db.session.commit()
         # Clear dropdown cache after editing record

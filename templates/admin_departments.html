@@ -30,7 +30,7 @@
             <td>{{ d.id }}</td>
             <td>{{ d.name }}</td>
             <td>
-              <form method="post" action="{{ url_for('admin.admin_delete_department', dept_id=d.id) }}" style="display:inline;" onsubmit="return confirm('Видалити відділення {{ d.name }}?');">
+              <form method="post" action="{{ url_for('admin.admin_delete_department', dept_id=d.id) }}" style="display:inline;" class="delete-form" data-confirm="Видалити відділення «{{ d.name }}»?">
                 <button class="btn btn-danger btn-sm" type="submit">Видалити</button>
               </form>
             </td>

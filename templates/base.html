@@ -3,12 +3,15 @@
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="csrf-token" content="{{ csrf_token() }}">
   <title>{% block title %}Flask App{% endblock %}</title>
-  <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
-  <link href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.0/font/bootstrap-icons.css" rel="stylesheet">
+  <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet" crossorigin="anonymous">
+  <link href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.0/font/bootstrap-icons.css" rel="stylesheet" crossorigin="anonymous">
   <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
 </head>
 <body>
+  <a href="#main-content" class="visually-hidden-focusable">Перейти до основного вмісту</a>
+
   <nav class="navbar navbar-expand-lg navbar-dark navbar-medical mb-3">
     <div class="container-fluid">
       <a class="navbar-brand" href="{{ url_for('records.index') }}"><i class="bi bi-clipboard2-pulse me-2"></i>Сервіс виписок</a>
@@ -84,24 +87,83 @@
     {% endwith %}
   </div>
 
-  <div class="{% block container_class %}container{% endblock %}">
+  <main id="main-content" class="{% block container_class %}container{% endblock %}">
     {% block breadcrumbs %}{% endblock %}
 
     {% block content %}{% endblock %}
+  </main>
+
+  <!-- Confirm Delete Modal -->
+  <div class="modal fade" id="confirmDeleteModal" tabindex="-1" aria-labelledby="confirmDeleteModalLabel" aria-hidden="true">
+    <div class="modal-dialog modal-sm modal-dialog-centered">
+      <div class="modal-content">
+        <div class="modal-header bg-danger text-white py-2">
+          <h5 class="modal-title" id="confirmDeleteModalLabel"><i class="bi bi-exclamation-triangle me-2"></i>Підтвердження</h5>
+          <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal" aria-label="Close"></button>
+        </div>
+        <div class="modal-body" id="confirmDeleteMessage">Ви впевнені?</div>
+        <div class="modal-footer py-2">
+          <button type="button" class="btn btn-secondary btn-sm" data-bs-dismiss="modal">Скасувати</button>
+          <button type="button" class="btn btn-danger btn-sm" id="confirmDeleteBtn">Видалити</button>
+        </div>
+      </div>
+    </div>
   </div>
 
-  <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js" crossorigin="anonymous"></script>
   <script>
-    // Initialize and show all toast notifications
+    // CSRF token helper
+    function getCSRFToken() {
+      return document.querySelector('meta[name="csrf-token"]')?.content || '';
+    }
+
     document.addEventListener('DOMContentLoaded', function() {
-      const toastElements = document.querySelectorAll('.toast');
-      toastElements.forEach(function(toastEl) {
-        const toast = new bootstrap.Toast(toastEl, {
-          autohide: true
+      // Auto-inject CSRF token into all existing forms
+      var csrfToken = getCSRFToken();
+      if (csrfToken) {
+        document.querySelectorAll('form').forEach(function(form) {
+          if (!form.querySelector('input[name="csrf_token"]')) {
+            var input = document.createElement('input');
+            input.type = 'hidden';
+            input.name = 'csrf_token';
+            input.value = csrfToken;
+            form.appendChild(input);
+          }
         });
+      }
+
+      // Initialize and show all toast notifications
+      var toastElements = document.querySelectorAll('.toast');
+      toastElements.forEach(function(toastEl) {
+        var toast = new bootstrap.Toast(toastEl, { autohide: true });
         toast.show();
       });
+
+      // Intercept delete forms with data-confirm attribute
+      document.addEventListener('submit', function(e) {
+        var form = e.target;
+        if (form.classList.contains('delete-form')) {
+          e.preventDefault();
+          var message = form.dataset.confirm || 'Ви впевнені, що хочете видалити?';
+          document.getElementById('confirmDeleteMessage').textContent = message;
+          var confirmBtn = document.getElementById('confirmDeleteBtn');
+          confirmBtn.onclick = function() {
+            form.classList.remove('delete-form');
+            form.submit();
+          };
+          new bootstrap.Modal(document.getElementById('confirmDeleteModal')).show();
+        }
+      });
     });
+
+    // Helper to add CSRF token to dynamically created forms
+    function addCSRFToForm(form) {
+      var input = document.createElement('input');
+      input.type = 'hidden';
+      input.name = 'csrf_token';
+      input.value = getCSRFToken();
+      form.appendChild(input);
+    }
   </script>
   {% block scripts %}{% endblock %}
 </body>

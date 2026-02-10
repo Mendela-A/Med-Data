@@ -5,7 +5,7 @@ NSZU Corrections routes
 
 from flask import render_template, redirect, url_for, flash, request, current_app, send_file, jsonify
 from flask_login import login_required, current_user
-from datetime import datetime
+from datetime import datetime, timezone
 from calendar import monthrange
 from io import BytesIO
 import locale
@@ -337,7 +337,7 @@ def nszu_edit(correction_id):
         correction.fakt_summ = fakt_summ
         correction.comment = comment or None
         correction.updated_by = current_user.id
-        correction.updated_at = datetime.utcnow()
+        correction.updated_at = datetime.now(timezone.utc)
 
         db.session.commit()
 

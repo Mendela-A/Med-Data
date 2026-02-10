@@ -52,8 +52,8 @@
           <td>
             <a href="{{ url_for('admin.admin_edit_user', user_id=u.id) }}" class="btn btn-sm btn-primary">Редагувати</a>
             {% if current_user.id != u.id %}
-              <form method="post" action="{{ url_for('admin.admin_delete_user', user_id=u.id) }}" style="display:inline;">
-                <button class="btn-delete btn btn-sm btn-danger" type="submit" onclick="return confirm('Ви впевнені, що хочете видалити цього користувача?');">Видалити</button>
+              <form method="post" action="{{ url_for('admin.admin_delete_user', user_id=u.id) }}" style="display:inline;" class="delete-form" data-confirm="Видалити користувача «{{ u.username }}»?">
+                <button class="btn btn-sm btn-danger" type="submit">Видалити</button>
               </form>
             {% endif %}
           </td>

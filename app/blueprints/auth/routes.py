@@ -7,10 +7,12 @@ from flask import render_template, redirect, url_for, flash, request
 from flask_login import login_user, logout_user, login_required
 
 from models import User
+from app.extensions import limiter
 from . import auth_bp
 
 
 @auth_bp.route('/login', methods=['GET', 'POST'])
+@limiter.limit("5 per minute")
 def login():
     """
     Login page and authentication handler

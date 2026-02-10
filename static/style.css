@@ -1,3 +1,22 @@
+:root {
+  --color-primary: #0d9488;
+  --color-primary-dark: #0b7b74;
+  --color-primary-light: rgba(13, 148, 136, 0.15);
+  --color-primary-medium: rgba(13, 148, 136, 0.3);
+  --color-bg-start: #eaf6f6;
+  --color-bg-end: #f7fbfd;
+  --color-text: #08343a;
+  --color-success: #28a745;
+  --color-danger: #dc3545;
+  --color-warning: #ffc107;
+  --color-info: #17a2b8;
+  --color-secondary: #6c757d;
+  --shadow-sm: 0 2px 8px rgba(10, 20, 20, 0.05);
+  --shadow-md: 0 4px 16px rgba(10, 20, 20, 0.1);
+  --shadow-lg: 0 6px 18px rgba(10, 20, 20, 0.06);
+  --radius: 8px;
+}
+
 body { font-family: Arial, sans-serif; margin: 2rem; background: #f7f7f7; }
 .container { background: #fff; padding: 1.5rem; border-radius: 6px; box-shadow: 0 2px 6px rgba(0,0,0,0.06);}
 
@@ -41,10 +60,10 @@ body { font-family: Arial, sans-serif; margin: 2rem; background: #f7f7f7; }
 .export-form .form-row { min-width:160px; }
 
 /* Medical theme */
-body { background: linear-gradient(180deg, #eaf6f6 0%, #f7fbfd 100%); color: #08343a; }
-.navbar-medical { background: linear-gradient(90deg,#0d9488,#0b7b74); }
+body { background: linear-gradient(180deg, var(--color-bg-start) 0%, var(--color-bg-end) 100%); color: var(--color-text); }
+.navbar-medical { background: linear-gradient(90deg, var(--color-primary), var(--color-primary-dark)); }
 .navbar-medical .navbar-brand, .navbar-medical .nav-link { color: #fff !important; }
-.container { background: #ffffff; padding: 1.5rem; border-radius: 8px; box-shadow: 0 6px 18px rgba(10,20,20,0.06); }
+.container { background: #ffffff; padding: 1.5rem; border-radius: var(--radius); box-shadow: var(--shadow-lg); }
 
 /* Centered login card */
 .login-card { max-width: 460px; margin: 5rem auto; padding: 1.75rem; border-radius: 10px; box-shadow: 0 10px 30px rgba(5,20,20,0.08); background: #ffffff; }
@@ -61,8 +80,8 @@ body { background: linear-gradient(180deg, #eaf6f6 0%, #f7fbfd 100%); color: #08
 .date-input { max-width: 140px; }
 
 /* Utility tweaks */
-.btn-primary { background-color: #0d9488; border-color: #0d9488; }
-.btn-primary:hover { background-color: #0b7b74; border-color: #0b7b74; }
+.btn-primary { background-color: var(--color-primary); border-color: var(--color-primary); }
+.btn-primary:hover { background-color: var(--color-primary-dark); border-color: var(--color-primary-dark); }
 
 /* Make tables a bit lighter */
 .table-striped > tbody > tr:nth-of-type(odd) { background-color: #fbffff; }
@@ -70,12 +89,12 @@ body { background: linear-gradient(180deg, #eaf6f6 0%, #f7fbfd 100%); color: #08
 /* Card improvements */
 .card {
   border: none;
-  box-shadow: 0 2px 8px rgba(10, 20, 20, 0.05);
-  border-radius: 8px;
+  box-shadow: var(--shadow-sm);
+  border-radius: var(--radius);
 }
 
 .card-title {
-  color: #0d9488;
+  color: var(--color-primary);
   font-weight: 600;
   font-size: 1.1rem;
 }
@@ -108,9 +127,9 @@ body { background: linear-gradient(180deg, #eaf6f6 0%, #f7fbfd 100%); color: #08
 /* Table improvements */
 .table-light th {
   background-color: #f0f9f8 !important;
-  color: #0d9488;
+  color: var(--color-primary);
   font-weight: 600;
-  border-bottom: 2px solid #0d9488 !important;
+  border-bottom: 2px solid var(--color-primary) !important;
 }
 
 .table-hover tbody tr:hover {
@@ -254,8 +273,8 @@ td .badge {
 .container-fluid.px-4 {
   background: #ffffff;
   padding: 1.5rem;
-  border-radius: 8px;
-  box-shadow: 0 6px 18px rgba(10,20,20,0.06);
+  border-radius: var(--radius);
+  box-shadow: var(--shadow-lg);
   margin: 0 1rem;
   max-width: calc(100% - 2rem);
 }
@@ -274,8 +293,8 @@ td .badge {
 
 /* Navbar improvements */
 .navbar-medical {
-  box-shadow: 0 2px 10px rgba(13, 148, 136, 0.15);
-  border-radius: 8px;
+  box-shadow: 0 2px 10px var(--color-primary-light);
+  border-radius: var(--radius);
   max-width: calc(100% - 2rem);
   margin: 0 1rem 1rem 1rem;
 }
@@ -302,7 +321,7 @@ td .badge {
 }
 
 .card:hover {
-  box-shadow: 0 4px 16px rgba(10, 20, 20, 0.1);
+  box-shadow: var(--shadow-md);
 }
 
 /* Breadcrumb styling */
@@ -314,13 +333,13 @@ td .badge {
 }
 
 .breadcrumb-item a {
-  color: #0d9488;
+  color: var(--color-primary);
   text-decoration: none;
   transition: color 0.2s ease;
 }
 
 .breadcrumb-item a:hover {
-  color: #0b7b74;
+  color: var(--color-primary-dark);
   text-decoration: underline;
 }
 
@@ -334,20 +353,20 @@ td .badge {
 }
 
 .btn-outline-primary {
-  border-color: #0d9488;
-  color: #0d9488;
+  border-color: var(--color-primary);
+  color: var(--color-primary);
 }
 
 .btn-outline-primary:hover {
-  background-color: #0d9488;
-  border-color: #0d9488;
+  background-color: var(--color-primary);
+  border-color: var(--color-primary);
   color: #fff;
 }
 
 /* Alert improvements */
 .alert {
   border: none;
-  border-radius: 8px;
+  border-radius: var(--radius);
   box-shadow: 0 2px 8px rgba(0, 0, 0, 0.08);
 }
 
@@ -362,15 +381,15 @@ td .badge {
 }
 
 .login-card h2 {
-  color: #0d9488;
+  color: var(--color-primary);
   font-weight: 600;
 }
 
 /* Form focus states */
 .form-control:focus,
 .form-select:focus {
-  border-color: #0d9488;
-  box-shadow: 0 0 0 0.2rem rgba(13, 148, 136, 0.15);
+  border-color: var(--color-primary);
+  box-shadow: 0 0 0 0.2rem var(--color-primary-light);
 }
 
 /* Smooth scrolling */
@@ -391,7 +410,7 @@ input[list]:focus::-webkit-calendar-picker-indicator {
 /* Highlight edited record */
 @keyframes highlightRow {
   0% {
-    background-color: rgba(13, 148, 136, 0.3);
+    background-color: var(--color-primary-medium);
   }
   100% {
     background-color: transparent;
@@ -400,7 +419,7 @@ input[list]:focus::-webkit-calendar-picker-indicator {
 
 .table-row-highlight {
   animation: highlightRow 2s ease-out;
-  background-color: rgba(13, 148, 136, 0.15) !important;
+  background-color: var(--color-primary-light) !important;
 }
 
 /* Toast notifications styling */
@@ -504,7 +523,7 @@ input[list]:focus::-webkit-calendar-picker-indicator {
 }
 
 .sortable-header:hover {
-  background-color: rgba(13, 148, 136, 0.15) !important;
+  background-color: var(--color-primary-light) !important;
 }
 
 .sortable-header .sort-icon {
@@ -522,7 +541,7 @@ input[list]:focus::-webkit-calendar-picker-indicator {
 .sortable-header.sorted-asc .sort-icon,
 .sortable-header.sorted-desc .sort-icon {
   opacity: 1;
-  color: #0d9488;
+  color: var(--color-primary);
 }
 
 .sortable-header.sorted-asc .sort-icon::before {
@@ -567,7 +586,7 @@ input[list]:focus::-webkit-calendar-picker-indicator {
 
 .stat-card-link:hover .stat-card {
   box-shadow: 0 8px 24px rgba(10, 20, 20, 0.15);
-  border-color: rgba(13, 148, 136, 0.2);
+  border-color: var(--color-primary-light);
 }
 
 .stat-card .card-body {
@@ -582,7 +601,7 @@ input[list]:focus::-webkit-calendar-picker-indicator {
 }
 
 .stat-card-link:hover .card-title {
-  color: #0d9488 !important;
+  color: var(--color-primary) !important;
 }
 
 /* Clickable badges in department table */
@@ -604,6 +623,6 @@ input[list]:focus::-webkit-calendar-picker-indicator {
 /* Department name hover in statistics table */
 #statusByDeptTable tbody td a.text-dark:hover,
 #statusByDeptTable tfoot th a.text-dark:hover {
-  color: #0d9488 !important;
+  color: var(--color-primary) !important;
   text-decoration: underline !important;
 }

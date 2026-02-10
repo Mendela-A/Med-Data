@@ -271,7 +271,7 @@
                     <i class="bi bi-pencil"></i>Змінити
                   </button>
                   {% if current_user.role == 'admin' %}
-                    <form method="post" action="{{ url_for('records.delete_record', record_id=r.id) }}" class="d-inline" onsubmit="return confirm('Ви справді хочете видалити запис #{{ r.id }}?');">
+                    <form method="post" action="{{ url_for('records.delete_record', record_id=r.id) }}" class="d-inline delete-form" data-confirm="Ви справді хочете видалити запис #{{ r.id }} ({{ r.full_name }})?">
                       <input type="hidden" name="discharge_status" value="{{ selected_status }}">
                       <input type="hidden" name="treating_physician" value="{{ selected_physician }}">
                       <input type="hidden" name="discharge_department" value="{{ selected_department }}">
@@ -859,7 +859,8 @@
         method: 'POST',
         body: formData,
         headers: {
-          'X-Requested-With': 'XMLHttpRequest'
+          'X-Requested-With': 'XMLHttpRequest',
+          'X-CSRFToken': getCSRFToken()
         }
       })
       .then(response => response.json())
@@ -1018,7 +1019,8 @@
         method: 'POST',
         body: formData,
         headers: {
-          'X-Requested-With': 'XMLHttpRequest'
+          'X-Requested-With': 'XMLHttpRequest',
+          'X-CSRFToken': getCSRFToken()
         }
       })
       .then(response => response.json())
@@ -1068,6 +1070,7 @@
     const form = document.createElement('form');
     form.method = 'POST';
     form.action = '{{ url_for("records.export") }}';
+    addCSRFToForm(form);
 
     // Get current month filter values
     const monthFilter = document.querySelector('input[name="month_filter"]');
@@ -1128,6 +1131,7 @@
     form.method = 'POST';
     form.action = '{{ url_for("records.print_records") }}';
     form.target = '_blank';  // Open PDF in new tab
+    addCSRFToForm(form);
 
     // Get current month filter values
     const monthFilter = document.querySelector('input[name="month_filter"]');

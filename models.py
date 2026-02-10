@@ -1,4 +1,4 @@
-from datetime import datetime
+from datetime import datetime, timezone
 from flask_sqlalchemy import SQLAlchemy
 from flask_bcrypt import Bcrypt
 from flask_login import UserMixin
@@ -88,9 +88,9 @@ class Record(db.Model):
     date_of_death = db.Column(db.Date, nullable=True)  # "дата_смерті"
     comment = db.Column(db.Text, nullable=True)  # "коментар"
     created_by = db.Column(db.Integer, db.ForeignKey('users.id'), nullable=True)
-    created_at = db.Column(db.DateTime, default=datetime.utcnow)
+    created_at = db.Column(db.DateTime, default=lambda: datetime.now(timezone.utc))
     updated_by = db.Column(db.Integer, db.ForeignKey('users.id'), nullable=True)
-    updated_at = db.Column(db.DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
+    updated_at = db.Column(db.DateTime, default=lambda: datetime.now(timezone.utc), onupdate=lambda: datetime.now(timezone.utc))
 
     updater = db.relationship('User', foreign_keys=[updated_by], backref='updated_records')
 
@@ -107,7 +107,7 @@ class Audit(db.Model):
     target_type = db.Column(db.String(50), nullable=True)
     target_id = db.Column(db.Integer, nullable=True)
     details = db.Column(db.Text, nullable=True)
-    created_at = db.Column(db.DateTime, default=datetime.utcnow)
+    created_at = db.Column(db.DateTime, default=lambda: datetime.now(timezone.utc))
 
     def __repr__(self):
         return f"<Audit {self.id} {self.action}>"
@@ -117,7 +117,7 @@ class Department(db.Model):
     __tablename__ = 'departments'
     id = db.Column(db.Integer, primary_key=True)
     name = db.Column(db.String(200), nullable=False, unique=True, index=True)
-    created_at = db.Column(db.DateTime, default=datetime.utcnow)
+    created_at = db.Column(db.DateTime, default=lambda: datetime.now(timezone.utc))
 
     def __repr__(self):
         return f"<Department {self.id} {self.name}>"
@@ -143,9 +143,9 @@ class NSZUCorrection(db.Model):
     comment = db.Column(db.Text, nullable=True)  # Коментар
 
     created_by = db.Column(db.Integer, db.ForeignKey('users.id'), nullable=True)
-    created_at = db.Column(db.DateTime, default=datetime.utcnow)
+    created_at = db.Column(db.DateTime, default=lambda: datetime.now(timezone.utc))
     updated_by = db.Column(db.Integer, db.ForeignKey('users.id'), nullable=True)
-    updated_at = db.Column(db.DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
+    updated_at = db.Column(db.DateTime, default=lambda: datetime.now(timezone.utc), onupdate=lambda: datetime.now(timezone.utc))
 
     # Relationships
     creator = db.relationship('User', foreign_keys=[created_by], backref='nszu_corrections_created')

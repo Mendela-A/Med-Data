@@ -455,6 +455,7 @@
     const form = document.createElement('form');
     form.method = 'POST';
     form.action = '{{ url_for("nszu.nszu_export") }}';
+    addCSRFToForm(form);
 
     // Get current month filter values
     const monthYear = '{{ "%04d-%02d"|format(selected_year, selected_month) }}';
@@ -492,6 +493,7 @@
     form.method = 'POST';
     form.action = '{{ url_for("nszu.print_nszu") }}';
     form.target = '_blank';  // Open PDF in new tab
+    addCSRFToForm(form);
 
     // Get current month filter values
     const monthYear = '{{ "%04d-%02d"|format(selected_year, selected_month) }}';
@@ -674,7 +676,8 @@
         method: 'POST',
         body: formData,
         headers: {
-          'X-Requested-With': 'XMLHttpRequest'
+          'X-Requested-With': 'XMLHttpRequest',
+          'X-CSRFToken': getCSRFToken()
         }
       })
       .then(response => response.json())
