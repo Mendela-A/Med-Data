@@ -748,35 +748,28 @@ td .badge {
 }
 
 /* Column width optimization for records table */
-.records-table th:nth-child(1),  /* ID */
+.records-table th:nth-child(1),  /* Дата виписки */
 .records-table td:nth-child(1) {
-  width: 60px;
-  max-width: 60px;
-  text-align: center;
-}
-
-.records-table th:nth-child(2),  /* Дата виписки */
-.records-table td:nth-child(2) {
   width: 125px;
   max-width: 125px;
 }
 
-.records-table th:nth-child(6),  /* Історія */
-.records-table td:nth-child(6) {
+.records-table th:nth-child(5),  /* Історія */
+.records-table td:nth-child(5) {
   width: 95px;
   max-width: 95px;
   text-align: center;
 }
 
-.records-table th:nth-child(7),  /* К днів */
-.records-table td:nth-child(7) {
+.records-table th:nth-child(6),  /* К днів */
+.records-table td:nth-child(6) {
   width: 85px;
   max-width: 85px;
   text-align: center;
 }
 
-.records-table th:nth-child(9),  /* Дата смерті */
-.records-table td:nth-child(9) {
+.records-table th:nth-child(8),  /* Дата смерті */
+.records-table td:nth-child(8) {
   width: 125px;
   max-width: 125px;
 }
