@@ -33,7 +33,7 @@
             margin-bottom: 10px;
             padding-bottom: 8px;
             padding-left: 80px;
-            border-bottom: 2px solid #0066cc;
+            border-bottom: 2px solid #0f766e;
             min-height: 60px;
         }
 
@@ -48,7 +48,7 @@
         .header h1 {
             font-size: 16pt;
             margin-bottom: 5px;
-            color: #0066cc;
+            color: #0f766e;
         }
 
         .header .subtitle {
@@ -84,7 +84,7 @@
         }
 
         thead {
-            background-color: #0066cc;
+            background-color: #0f766e;
             color: white;
         }
 
@@ -92,7 +92,7 @@
             padding: 6px 4px;
             text-align: left;
             font-weight: bold;
-            border: 1px solid #0066cc;
+            border: 1px solid #0f766e;
         }
 
         td {
@@ -103,10 +103,6 @@
 
         tbody tr:nth-child(even) {
             background-color: #f8f9fa;
-        }
-
-        tbody tr:hover {
-            background-color: #e9ecef;
         }
 
         .status-badge {
@@ -150,7 +146,7 @@
             margin-top: 10px;
             padding: 8px;
             background-color: #f8f9fa;
-            border-left: 4px solid #0066cc;
+            border-left: 4px solid #0f766e;
             font-size: 8pt;
         }
 
@@ -248,44 +244,58 @@
                         {{ c.status or '' }}
                     {% endif %}
                 </td>
-                <td class="col-details">{{ c.detail[:80] if c.detail else '' }}</td>
+                <td class="col-details">{{ c.detail[:150] if c.detail else '' }}</td>
                 <td class="col-amount">{{ '{:,.2f}'.format(c.fakt_summ) if c.fakt_summ is not none else '' }}</td>
-                <td class="col-comment">{{ c.comment[:100] if c.comment else '' }}</td>
+                <td class="col-comment">{{ c.comment[:200] if c.comment else '' }}</td>
             </tr>
             {% endfor %}
         </tbody>
+        <tfoot>
+            <tr style="background-color: #f0fdfa; font-weight: bold;">
+                <td colspan="6" style="text-align: right; border-top: 2px solid #0f766e;">Всього ({{ corrections|length }} записів):</td>
+                <td style="border-top: 2px solid #0f766e;">
+                    {% set ft = namespace(value=0) %}
+                    {% for c in corrections %}
+                        {% if c.fakt_summ is not none %}{% set ft.value = ft.value + c.fakt_summ %}{% endif %}
+                    {% endfor %}
+                    {{ '{:,.2f}'.format(ft.value) }}
+                </td>
+                <td style="border-top: 2px solid #0f766e;"></td>
+            </tr>
+        </tfoot>
     </table>
 
     <div class="summary">
         <div class="summary-item"><strong>Всього записів:</strong> {{ corrections|length }}</div>
         <div class="summary-item">
             <strong>Розподіл за статусами:</strong>
-            {% set ns = namespace(processing=0, processed=0, paid=0, rejected=0) %}
+            {% set ns = namespace(processing=0, processed=0, paid=0, rejected=0, sum_processing=0, sum_processed=0, sum_paid=0, sum_rejected=0, sum_total=0) %}
             {% for c in corrections %}
+                {% if c.fakt_summ is not none %}
+                    {% set ns.sum_total = ns.sum_total + c.fakt_summ %}
+                {% endif %}
                 {% if c.status == 'В обробці' %}
                     {% set ns.processing = ns.processing + 1 %}
+                    {% if c.fakt_summ is not none %}{% set ns.sum_processing = ns.sum_processing + c.fakt_summ %}{% endif %}
                 {% elif c.status == 'Опрацьовано' %}
                     {% set ns.processed = ns.processed + 1 %}
+                    {% if c.fakt_summ is not none %}{% set ns.sum_processed = ns.sum_processed + c.fakt_summ %}{% endif %}
                 {% elif c.status == 'Оплачено' %}
                     {% set ns.paid = ns.paid + 1 %}
+                    {% if c.fakt_summ is not none %}{% set ns.sum_paid = ns.sum_paid + c.fakt_summ %}{% endif %}
                 {% elif c.status == 'Не підлягає оплаті' %}
                     {% set ns.rejected = ns.rejected + 1 %}
+                    {% if c.fakt_summ is not none %}{% set ns.sum_rejected = ns.sum_rejected + c.fakt_summ %}{% endif %}
                 {% endif %}
             {% endfor %}
-            В обробці: {{ ns.processing }},
-            Опрацьовано: {{ ns.processed }},
-            Оплачено: {{ ns.paid }},
-            Не підлягає оплаті: {{ ns.rejected }}
+            В обробці: {{ ns.processing }} ({{ '{:,.2f}'.format(ns.sum_processing) }} грн),
+            Опрацьовано: {{ ns.processed }} ({{ '{:,.2f}'.format(ns.sum_processed) }} грн),
+            Оплачено: {{ ns.paid }} ({{ '{:,.2f}'.format(ns.sum_paid) }} грн),
+            Не підлягає оплаті: {{ ns.rejected }} ({{ '{:,.2f}'.format(ns.sum_rejected) }} грн)
         </div>
         <div class="summary-item">
             <strong>Загальна фактична сума:</strong>
-            {% set total_sum = namespace(value=0) %}
-            {% for c in corrections %}
-                {% if c.fakt_summ is not none %}
-                    {% set total_sum.value = total_sum.value + c.fakt_summ %}
-                {% endif %}
-            {% endfor %}
-            {{ '{:,.2f}'.format(total_sum.value) }} грн
+            {{ '{:,.2f}'.format(ns.sum_total) }} грн
         </div>
     </div>
 

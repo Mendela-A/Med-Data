@@ -33,7 +33,7 @@
             margin-bottom: 10px;
             padding-bottom: 8px;
             padding-left: 80px;
-            border-bottom: 2px solid #0066cc;
+            border-bottom: 2px solid #0f766e;
             min-height: 60px;
         }
 
@@ -48,7 +48,7 @@
         .header h1 {
             font-size: 16pt;
             margin-bottom: 5px;
-            color: #0066cc;
+            color: #0f766e;
         }
 
         .header .subtitle {
@@ -84,7 +84,7 @@
         }
 
         thead {
-            background-color: #0066cc;
+            background-color: #0f766e;
             color: white;
         }
 
@@ -92,7 +92,7 @@
             padding: 6px 4px;
             text-align: left;
             font-weight: bold;
-            border: 1px solid #0066cc;
+            border: 1px solid #0f766e;
         }
 
         td {
@@ -103,10 +103,6 @@
 
         tbody tr:nth-child(even) {
             background-color: #f8f9fa;
-        }
-
-        tbody tr:hover {
-            background-color: #e9ecef;
         }
 
         .status-badge {
@@ -151,7 +147,7 @@
             margin-top: 10px;
             padding: 8px;
             background-color: #f8f9fa;
-            border-left: 4px solid #0066cc;
+            border-left: 4px solid #0f766e;
             font-size: 8pt;
         }
 
@@ -260,10 +256,15 @@
                     {% endif %}
                 </td>
                 <td class="col-death">{{ r.date_of_death.strftime('%d.%m.%Y') if r.date_of_death else '' }}</td>
-                <td class="col-comment">{{ r.comment[:100] if r.comment else '' }}</td>
+                <td class="col-comment">{{ r.comment[:200] if r.comment else '' }}</td>
             </tr>
             {% endfor %}
         </tbody>
+        <tfoot>
+            <tr style="background-color: #f0fdfa; font-weight: bold;">
+                <td colspan="10" style="text-align: right; border-top: 2px solid #0f766e;">Всього записів: {{ records|length }}</td>
+            </tr>
+        </tfoot>
     </table>
 
     <div class="summary">
