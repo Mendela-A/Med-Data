@@ -163,11 +163,17 @@ data/
 ## Project Structure
 
 ```
-├── app.py              # Main Flask application
-├── models.py           # Database models (User, Record, Audit, Department)
+├── app/                # Flask application (Blueprint architecture)
+│   ├── __init__.py     # Application factory
+│   ├── extensions.py   # Flask extensions
+│   └── blueprints/     # auth, admin, nszu, records
+├── models.py           # Database models (User, Record, NSZUCorrection, Audit, Department)
+├── decorators.py       # role_required decorator
+├── utils.py            # Utility functions
 ├── config.py           # Configuration
 ├── templates/          # Jinja2 templates
-├── static/             # CSS, certificates
+├── static/             # CSS, JS, certificates
+├── migrations/         # Alembic database migrations
 ├── nginx/              # Nginx configuration
 ├── docker-compose.yml  # Docker setup
 ├── Dockerfile          # Container build

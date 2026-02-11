@@ -9,9 +9,8 @@ def clear_dropdown_cache():
     """
     Clear all dropdown caches - call after adding/editing records.
 
-    Note: This is a simplified version for blueprint compatibility.
-    The full implementation with memoized cache clearing is in app.py.
-    For now, we clear the entire cache to ensure data consistency.
+    Clears the entire cache to ensure dropdown values (statuses, physicians,
+    departments) are refreshed after CRUD operations. Used by blueprints.
     """
     try:
         from app.extensions import cache
