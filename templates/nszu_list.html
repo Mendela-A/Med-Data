@@ -230,9 +230,9 @@
                     <td class="text-nowrap">{{ c.updated_at.strftime('%d.%m.%Y %H:%M') if c.updated_at else (c.created_at.strftime('%d.%m.%Y %H:%M') if c.created_at else '') }}</td>
                     <td>
                       <div class="d-flex gap-1">
-                        <a href="{{ url_for('nszu.nszu_edit', correction_id=c.id, month_year='%04d-%02d'|format(selected_year, selected_month), status=selected_status, doctor=selected_doctor, nszu_record_id=nszu_record_id_q, per_page=pagination.per_page, sort_by=sort_by, sort_order=sort_order) }}" class="btn btn-sm btn-outline-primary" title="Редагувати">
+                        <button type="button" class="btn btn-sm btn-outline-primary btn-edit-nszu" data-id="{{ c.id }}" title="Редагувати">
                           <i class="bi bi-pencil"></i>
-                        </a>
+                        </button>
                         {% if current_user.role == 'admin' %}
                           <form method="POST" action="{{ url_for('nszu.nszu_delete', correction_id=c.id) }}" class="delete-form" data-confirm="Видалити запис #{{ c.id }} ({{ c.nszu_record_id }}, {{ c.doctor }})?">
                             <input type="hidden" name="month_year" value="{{ '%04d-%02d'|format(selected_year, selected_month) }}">
@@ -451,6 +451,76 @@
             <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Скасувати</button>
             <button type="submit" class="btn btn-primary">
               <i class="bi bi-download me-1"></i>Експортувати
+            </button>
+          </div>
+        </form>
+      </div>
+    </div>
+  </div>
+  {% endif %}
+
+  <!-- Edit Record Modal -->
+  {% if current_user.role in ['editor', 'admin'] %}
+  <div class="modal fade" id="editRecordModal" tabindex="-1" aria-labelledby="editRecordModalLabel" aria-hidden="true">
+    <div class="modal-dialog modal-lg">
+      <div class="modal-content">
+        <div class="modal-header">
+          <h5 class="modal-title" id="editRecordModalLabel">
+            <i class="bi bi-pencil me-2"></i>Редагувати перевірку НСЗУ
+          </h5>
+          <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+        </div>
+        <form id="editRecordForm">
+          <div class="modal-body">
+            <div class="alert alert-danger fade" role="alert" id="editRecordError" style="display: none;">
+              <i class="bi bi-exclamation-triangle me-2"></i><span id="editErrorMessage"></span>
+            </div>
+            <input type="hidden" id="edit_correction_id">
+            <div class="row g-3">
+              <div class="col-md-6">
+                <label class="form-label">Дата <span class="text-danger">*</span></label>
+                <input class="form-control" name="date" id="edit_date" type="date" required>
+              </div>
+              <div class="col-md-6">
+                <label class="form-label">НСЗУ ID <span class="text-danger">*</span></label>
+                <input class="form-control" name="nszu_record_id" id="edit_nszu_record_id" maxlength="100" required>
+              </div>
+              <div class="col-md-6">
+                <label class="form-label">Лікар <span class="text-danger">*</span></label>
+                <input class="form-control" name="doctor" id="edit_doctor" list="edit-doctors-list" autocomplete="off" maxlength="200" required>
+                <datalist id="edit-doctors-list">
+                  {% for d in doctors %}
+                    <option value="{{ d }}">
+                  {% endfor %}
+                </datalist>
+              </div>
+              <div class="col-md-6">
+                <label class="form-label">Статус <span class="text-danger">*</span></label>
+                <select class="form-select" name="status" id="edit_status" required>
+                  {% for s in statuses %}
+                    <option value="{{ s }}">{{ s }}</option>
+                  {% endfor %}
+                </select>
+              </div>
+              <div class="col-12">
+                <label class="form-label">Деталі</label>
+                <textarea class="form-control" name="detail" id="edit_detail" rows="3"></textarea>
+              </div>
+              <div class="col-md-6">
+                <label class="form-label">Фактична сума</label>
+                <input class="form-control" name="fakt_summ" id="edit_fakt_summ" type="text">
+                <small class="form-text text-muted">Можна вводити з комою або крапкою</small>
+              </div>
+              <div class="col-12">
+                <label class="form-label">Коментар</label>
+                <textarea class="form-control" name="comment" id="edit_comment" rows="2"></textarea>
+              </div>
+            </div>
+          </div>
+          <div class="modal-footer">
+            <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Скасувати</button>
+            <button type="button" class="btn btn-primary" id="editSaveBtn">
+              <i class="bi bi-check-lg me-1"></i>Зберегти
             </button>
           </div>
         </form>
@@ -764,6 +834,89 @@
         document.getElementById('export_to_date').value = `${year}-${month}-${lastDay}`;
         document.getElementById('export_status').value = '{{ selected_status }}';
         document.getElementById('export_doctor').value = '{{ selected_doctor }}';
+      });
+    }
+
+    // --- Edit modal logic ---
+    const editModal = document.getElementById('editRecordModal');
+    if (editModal) {
+      const editForm = document.getElementById('editRecordForm');
+      const editError = document.getElementById('editRecordError');
+      const editErrorMsg = document.getElementById('editErrorMessage');
+      const editSaveBtn = document.getElementById('editSaveBtn');
+      const bsEditModal = new bootstrap.Modal(editModal);
+
+      // Open edit modal on pencil button click
+      document.querySelectorAll('.btn-edit-nszu').forEach(function(btn) {
+        btn.addEventListener('click', function() {
+          const corrId = this.dataset.id;
+          document.getElementById('edit_correction_id').value = corrId;
+          editError.style.display = 'none';
+
+          // Fetch correction data
+          fetch(`/nszu/api/${corrId}`, {
+            headers: { 'X-Requested-With': 'XMLHttpRequest' }
+          })
+          .then(r => r.json())
+          .then(data => {
+            document.getElementById('edit_date').value = data.date;
+            document.getElementById('edit_nszu_record_id').value = data.nszu_record_id;
+            document.getElementById('edit_doctor').value = data.doctor;
+            document.getElementById('edit_status').value = data.status;
+            document.getElementById('edit_detail').value = data.detail;
+            document.getElementById('edit_fakt_summ').value = data.fakt_summ;
+            document.getElementById('edit_comment').value = data.comment;
+            editModal.querySelector('.modal-title').innerHTML =
+              '<i class="bi bi-pencil me-2"></i>Редагувати перевірку НСЗУ #' + data.id;
+            bsEditModal.show();
+          })
+          .catch(() => {
+            alert('Помилка завантаження даних');
+          });
+        });
+      });
+
+      // Save edited record
+      editSaveBtn.addEventListener('click', function() {
+        if (!editForm.checkValidity()) {
+          editForm.reportValidity();
+          return;
+        }
+
+        const corrId = document.getElementById('edit_correction_id').value;
+        const formData = new FormData(editForm);
+        const originalText = editSaveBtn.innerHTML;
+        editSaveBtn.innerHTML = '<span class="spinner-border spinner-border-sm me-1"></span>Збереження...';
+        editSaveBtn.disabled = true;
+
+        fetch(`/nszu/api/${corrId}/edit`, {
+          method: 'POST',
+          body: formData,
+          headers: {
+            'X-Requested-With': 'XMLHttpRequest',
+            'X-CSRFToken': getCSRFToken()
+          }
+        })
+        .then(r => r.json())
+        .then(data => {
+          editSaveBtn.innerHTML = originalText;
+          editSaveBtn.disabled = false;
+          if (data.success) {
+            bsEditModal.hide();
+            location.reload();
+          } else {
+            editErrorMsg.textContent = data.error || 'Помилка при збереженні';
+            editError.style.display = 'block';
+            editError.classList.add('show');
+          }
+        })
+        .catch(() => {
+          editSaveBtn.innerHTML = originalText;
+          editSaveBtn.disabled = false;
+          editErrorMsg.textContent = 'Помилка з\'єднання з сервером';
+          editError.style.display = 'block';
+          editError.classList.add('show');
+        });
       });
     }
   });

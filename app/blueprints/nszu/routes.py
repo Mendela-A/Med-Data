@@ -293,90 +293,72 @@ def api_nszu_add():
         return jsonify({'success': False, 'error': 'Помилка при збереженні запису'}), 500
 
 
-@nszu_bp.route('/<int:correction_id>/edit', methods=['GET', 'POST'])
+@nszu_bp.route('/api/<int:correction_id>', methods=['GET'])
 @role_required('editor')
-def nszu_edit(correction_id):
-    """Edit NSZU correction"""
+def api_nszu_get(correction_id):
+    """AJAX endpoint to fetch NSZU correction data for edit modal"""
+    correction = NSZUCorrection.query.get_or_404(correction_id)
+    return jsonify({
+        'id': correction.id,
+        'date': correction.date.strftime('%Y-%m-%d') if correction.date else '',
+        'nszu_record_id': correction.nszu_record_id or '',
+        'doctor': correction.doctor or '',
+        'status': correction.status or '',
+        'detail': correction.detail or '',
+        'fakt_summ': '{:.2f}'.format(correction.fakt_summ) if correction.fakt_summ else '0.00',
+        'comment': correction.comment or '',
+    })
+
+
+@nszu_bp.route('/api/<int:correction_id>/edit', methods=['POST'])
+@role_required('editor')
+def api_nszu_edit(correction_id):
+    """AJAX endpoint for editing NSZU corrections"""
     correction = NSZUCorrection.query.get_or_404(correction_id)
 
-    if request.method == 'POST':
-        # Collect filter params from hidden fields for redirect
-        filter_params = {
-            'month_year': request.form.get('filter_month_year', ''),
-            'status': request.form.get('filter_status', ''),
-            'doctor': request.form.get('filter_doctor', ''),
-            'nszu_record_id': request.form.get('filter_nszu_record_id', ''),
-            'per_page': request.form.get('filter_per_page', ''),
-            'sort_by': request.form.get('filter_sort_by', ''),
-            'sort_order': request.form.get('filter_sort_order', ''),
-        }
+    date_str = request.form.get('date', '').strip()
+    nszu_record_id = request.form.get('nszu_record_id', '').strip()
+    doctor = request.form.get('doctor', '').strip()
+    status = request.form.get('status', '').strip()
+    detail = request.form.get('detail', '').strip()
+    fakt_summ_str = request.form.get('fakt_summ', '').strip()
+    comment = request.form.get('comment', '').strip()
 
-        date_str = request.form.get('date', '').strip()
-        nszu_record_id = request.form.get('nszu_record_id', '').strip()
-        doctor = request.form.get('doctor', '').strip()
-        status = request.form.get('status', '').strip()
-        detail = request.form.get('detail', '').strip()
-        fakt_summ_str = request.form.get('fakt_summ', '').strip()
-        comment = request.form.get('comment', '').strip()
+    if not all([date_str, nszu_record_id, doctor, status]):
+        return jsonify({'success': False, 'error': 'Заповніть усі обов\'язкові поля'}), 400
 
-        # Validate required fields
-        if not all([date_str, nszu_record_id, doctor, status]):
-            flash('Будь ласка, заповніть усі обов\'язкові поля', 'warning')
-            return redirect(url_for('nszu.nszu_edit', correction_id=correction_id, **filter_params))
+    date_obj = parse_date(date_str)
+    if date_obj is None:
+        return jsonify({'success': False, 'error': 'Невірний формат дати'}), 400
 
-        # Parse date
-        date_obj = parse_date(date_str)
-        if date_obj is None:
-            flash('Дата повинна бути у форматі ДД.ММ.РРРР або РРРР-ММ-ДД', 'warning')
-            return redirect(url_for('nszu.nszu_edit', correction_id=correction_id, **filter_params))
+    fakt_summ = 0.0
+    if fakt_summ_str and fakt_summ_str != '-':
+        fakt_summ = parse_numeric(fakt_summ_str, default=0.0)
+        if fakt_summ is None:
+            return jsonify({'success': False, 'error': 'Фактична сума повинна бути числом'}), 400
 
-        # Parse fakt_summ
-        if fakt_summ_str and fakt_summ_str != '-':
-            fakt_summ = parse_numeric(fakt_summ_str, default=0.0)
-            if fakt_summ is None:
-                flash('Фактична сума повинна бути числом', 'warning')
-                return redirect(url_for('nszu.nszu_edit', correction_id=correction_id, **filter_params))
-        else:
-            fakt_summ = 0.00
+    correction.date = date_obj
+    correction.nszu_record_id = nszu_record_id
+    correction.doctor = doctor
+    correction.status = status
+    correction.detail = detail or None
+    correction.fakt_summ = fakt_summ
+    correction.comment = comment or None
+    correction.updated_by = current_user.id
+    correction.updated_at = datetime.now(timezone.utc)
 
-        # Update correction
-        correction.date = date_obj
-        correction.nszu_record_id = nszu_record_id
-        correction.doctor = doctor
-        correction.status = status
-        correction.detail = detail or None
-        correction.fakt_summ = fakt_summ
-        correction.comment = comment or None
-        correction.updated_by = current_user.id
-        correction.updated_at = datetime.now(timezone.utc)
-
+    try:
         db.session.commit()
-
         try:
             log_action(current_user.id, 'nszu.update', 'nszu_correction', correction.id, f'nszu_record_id={nszu_record_id}')
         except Exception:
             current_app.logger.exception('Failed to write audit log for nszu.update')
-
         current_app.logger.info(f'NSZU correction updated: {correction.id} by {current_user.username}')
-        flash(f'Запис перевірки НСЗУ #{correction.id} успішно оновлено', 'success')
-        return redirect(url_for('nszu.nszu_list', **filter_params))
-
-    # GET - render form
-    # Collect filter params from query string to pass to template
-    filter_params = {
-        'filter_month_year': request.args.get('month_year', ''),
-        'filter_status': request.args.get('status', ''),
-        'filter_doctor': request.args.get('doctor', ''),
-        'filter_nszu_record_id': request.args.get('nszu_record_id', ''),
-        'filter_per_page': request.args.get('per_page', ''),
-        'filter_sort_by': request.args.get('sort_by', ''),
-        'filter_sort_order': request.args.get('sort_order', ''),
-    }
-
-    doctors = [d[0] for d in db.session.query(NSZUCorrection.doctor).distinct().filter(NSZUCorrection.doctor != None).order_by(NSZUCorrection.doctor).all()]
-    statuses = ['В обробці', 'Опрацьовано', 'Оплачено', 'Не підлягає оплаті']
-
-    return render_template('nszu_edit.html', correction=correction, doctors=doctors, statuses=statuses, **filter_params)
+        return jsonify({'success': True, 'message': f'Запис #{correction.id} успішно оновлено'})
+    except Exception:
+        db.session.rollback()
+        current_app.logger.exception('Error updating NSZU correction')
+        return jsonify({'success': False, 'error': 'Помилка при збереженні'}), 500
 
 
 @nszu_bp.route('/<int:correction_id>/delete', methods=['POST'])
