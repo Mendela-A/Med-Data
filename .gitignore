@@ -3,12 +3,9 @@ __pycache__/
 *.pyc
 *.pyo
 *.pyd
+venv/
 env/
-venv/
 instance/
-
-# Virtualenv
-venv/
 
 # Distribution
 build/
@@ -19,7 +16,7 @@ dist/
 logs/
 *.log
 
-# Local env files
+# Environment
 .env
 .env.*
 
@@ -29,49 +26,45 @@ logs/
 .DS_Store
 
 # Database
-*.sqlite3
-# local sqlite DB folder (persisted locally, not committed)
 /data/
-app.db
 *.db
+*.db-wal
+*.db-shm
+*.sqlite3
 backups/
 
 # Tests
 .pytest_cache/
 tests/__pycache__/
 
-# Docker
-.dockerignore
-
 # Others
 *.bak
+*.xlsx
+*.txt
+!requirements.txt
 
-# Certs
+# Certs (private keys)
 static/certs/*.key
 static/certs/*.crt
 static/certs/*.pem
 static/certs/*.pfx
 static/certs/*.p12
 
-# Docs
-*.xlsx
-*.txt
-
-# Export data
+# One-time scripts (not in project)
 import_records.py
 test_performance.py
 migrate_add_updater.py
 add_departments.py
 
-# Claude Code персональні налаштування
+# Claude Code
 .claude/settings.local.json
 
-# Merge backup files
+# Merge backups
 *.backup_before_merge_*
 commit_id_before_merge.txt
 backup-*-before-*
 
-# Excel temporary files
+# Excel temp files
 ~$*.xlsx
 ~$*.xls
 ~$*.xlsm

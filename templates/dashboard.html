@@ -30,54 +30,48 @@
   <!-- Toast container for print notifications -->
   <div id="printToastContainer" class="toast-container position-fixed top-0 end-0 p-3" style="z-index: 9999;"></div>
 
-  <div class="d-flex justify-content-between align-items-start mb-3 flex-wrap gap-2">
-    <div>
-      <div class="d-flex align-items-center gap-2 mb-2">
-        <h1 class="h4 mb-0">
-          {% if show_all %}
-            Записи <span class="text-muted fw-normal">(усі періоди)</span>
-          {% elif selected_year and selected_month %}
-            Записи <span class="text-muted fw-normal">({{ ['Січень', 'Лютий', 'Березень', 'Квітень', 'Травень', 'Червень', 'Липень', 'Серпень', 'Вересень', 'Жовтень', 'Листопад', 'Грудень'][selected_month - 1] }} {{ selected_year }})</span>
-          {% else %}
-            Записи <span class="text-muted fw-normal">(поточний місяць)</span>
-          {% endif %}
-        </h1>
-        {% if request.args.get('from_stats') == '1' and current_user.role in ['admin', 'viewer'] %}
-        <a href="{{ url_for('admin.admin_statistics', from_date=request.args.get('from_date', ''), to_date=request.args.get('to_date', '')) }}"
-           class="btn btn-sm btn-outline-secondary">
-          <i class="bi bi-arrow-left me-1"></i>До статистики
-        </a>
-        {% endif %}
-      </div>
-      <div class="d-flex gap-2 flex-wrap align-items-center">
-        <span class="stat-pill stat-pill-total" data-bs-toggle="tooltip" data-bs-title="Загальна кількість записів (з урахуванням фільтрів)">
-          <i class="bi bi-layers"></i>Всього: <strong>{{ count }}</strong>
-        </span>
-        <span class="stat-pill stat-pill-success{% if count_discharged == 0 %} stat-pill-muted{% endif %}" data-bs-toggle="tooltip" data-bs-title="Записи зі статусом 'Виписаний' без дати смерті">
-          <i class="bi bi-check-circle"></i>Виписаних: <strong>{{ count_discharged }}</strong>
-          {% if count > 0 %}<span class="stat-pct">({{ "%.0f"|format(count_discharged / count * 100) }}%)</span>{% endif %}
-        </span>
-        <span class="stat-pill stat-pill-warning{% if count_processing == 0 %} stat-pill-muted{% endif %}" data-bs-toggle="tooltip" data-bs-title="Записи зі статусом 'Опрацьовується' без дати смерті">
-          <i class="bi bi-clock"></i>Опрацьовується: <strong>{{ count_processing }}</strong>
-          {% if count > 0 %}<span class="stat-pct">({{ "%.0f"|format(count_processing / count * 100) }}%)</span>{% endif %}
-        </span>
-        <span class="stat-pill stat-pill-danger{% if count_violations == 0 %} stat-pill-muted{% endif %}" data-bs-toggle="tooltip" data-bs-title="Записи зі статусом 'Порушені вимоги' без дати смерті">
-          <i class="bi bi-exclamation-triangle"></i>Порушення: <strong>{{ count_violations }}</strong>
-          {% if count > 0 %}<span class="stat-pct">({{ "%.0f"|format(count_violations / count * 100) }}%)</span>{% endif %}
-        </span>
-        <span class="stat-pill stat-pill-dark{% if count_deceased == 0 %} stat-pill-muted{% endif %}" data-bs-toggle="tooltip" data-bs-title="Всі записи з датою смерті (незалежно від статусу)">
-          <i class="bi bi-x-circle"></i>Померло: <strong>{{ count_deceased }}</strong>
-          {% if count > 0 %}<span class="stat-pct">({{ "%.0f"|format(count_deceased / count * 100) }}%)</span>{% endif %}
-        </span>
-        <button type="button" class="btn btn-sm btn-link text-muted p-0" data-bs-toggle="popover" data-bs-placement="bottom" data-bs-html="true"
-                data-bs-title="<i class='bi bi-info-circle me-1'></i>Як рахується статистика?"
-                data-bs-content="<ul class='mb-0 ps-3'><li><strong>Померло</strong> — пріоритетна категорія: всі записи з датою смерті</li><li><strong>Виписаних, Опрацьовується, Порушення</strong> — тільки записи БЕЗ дати смерті</li><li><strong>Всього</strong> = сума всіх категорій</li></ul>">
-          <i class="bi bi-question-circle"></i>
-        </button>
-      </div>
-    </div>
+  <div class="d-flex align-items-center gap-2 mb-3 flex-wrap">
+    <h1 class="h4 mb-0 me-1" style="white-space: nowrap;">
+      {% if show_all %}
+        Записи <span class="text-muted fw-normal">(усі)</span>
+      {% elif selected_year and selected_month %}
+        Записи <span class="text-muted fw-normal">({{ ['Січень', 'Лютий', 'Березень', 'Квітень', 'Травень', 'Червень', 'Липень', 'Серпень', 'Вересень', 'Жовтень', 'Листопад', 'Грудень'][selected_month - 1] }} {{ selected_year }})</span>
+      {% else %}
+        Записи <span class="text-muted fw-normal">(поточний місяць)</span>
+      {% endif %}
+    </h1>
+    {% if request.args.get('from_stats') == '1' and current_user.role in ['admin', 'viewer'] %}
+    <a href="{{ url_for('admin.admin_statistics', from_date=request.args.get('from_date', ''), to_date=request.args.get('to_date', '')) }}"
+       class="btn btn-sm btn-outline-secondary">
+      <i class="bi bi-arrow-left me-1"></i>Статистика
+    </a>
+    {% endif %}
+    <span class="stat-pill stat-pill-total" data-bs-toggle="tooltip" data-bs-title="Загальна кількість записів (з урахуванням фільтрів)">
+      <i class="bi bi-layers"></i>Всього: <strong>{{ count }}</strong>
+    </span>
+    <span class="stat-pill stat-pill-success{% if count_discharged == 0 %} stat-pill-muted{% endif %}" data-bs-toggle="tooltip" data-bs-title="Записи зі статусом 'Виписаний' без дати смерті">
+      Виписаних: <strong>{{ count_discharged }}</strong>
+      {% if count > 0 %}<span class="stat-pct">({{ "%.0f"|format(count_discharged / count * 100) }}%)</span>{% endif %}
+    </span>
+    <span class="stat-pill stat-pill-warning{% if count_processing == 0 %} stat-pill-muted{% endif %}" data-bs-toggle="tooltip" data-bs-title="Записи зі статусом 'Опрацьовується' без дати смерті">
+      Опрацьовується: <strong>{{ count_processing }}</strong>
+      {% if count > 0 %}<span class="stat-pct">({{ "%.0f"|format(count_processing / count * 100) }}%)</span>{% endif %}
+    </span>
+    <span class="stat-pill stat-pill-danger{% if count_violations == 0 %} stat-pill-muted{% endif %}" data-bs-toggle="tooltip" data-bs-title="Записи зі статусом 'Порушені вимоги' без дати смерті">
+      Порушення: <strong>{{ count_violations }}</strong>
+      {% if count > 0 %}<span class="stat-pct">({{ "%.0f"|format(count_violations / count * 100) }}%)</span>{% endif %}
+    </span>
+    <span class="stat-pill stat-pill-dark{% if count_deceased == 0 %} stat-pill-muted{% endif %}" data-bs-toggle="tooltip" data-bs-title="Всі записи з датою смерті (незалежно від статусу)">
+      Померло: <strong>{{ count_deceased }}</strong>
+      {% if count > 0 %}<span class="stat-pct">({{ "%.0f"|format(count_deceased / count * 100) }}%)</span>{% endif %}
+    </span>
+    <button type="button" class="btn btn-sm btn-link text-muted p-0" data-bs-toggle="popover" data-bs-placement="bottom" data-bs-html="true"
+            data-bs-title="<i class='bi bi-info-circle me-1'></i>Як рахується статистика?"
+            data-bs-content="<ul class='mb-0 ps-3'><li><strong>Померло</strong> — пріоритетна категорія: всі записи з датою смерті</li><li><strong>Виписаних, Опрацьовується, Порушення</strong> — тільки записи БЕЗ дати смерті</li><li><strong>Всього</strong> = сума всіх категорій</li></ul>">
+      <i class="bi bi-question-circle"></i>
+    </button>
     {% if current_user.role in ['editor', 'admin', 'viewer'] %}
-    <div class="btn-group">
+    <div class="btn-group ms-auto">
       <button type="button" class="btn btn-primary btn-sm dropdown-toggle" data-bs-toggle="dropdown" aria-expanded="false">
         <i class="bi bi-file-earmark-arrow-down me-1"></i>Звіти
       </button>
