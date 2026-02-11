@@ -186,50 +186,48 @@
     <div class="card">
       <div class="card-body p-0">
         <div class="table-responsive">
-          <table class="table table-hover mb-0">
+          <table class="table table-hover mb-0 records-table">
             <thead>
               <tr>
-                {{ sort_th('id', 'ID', '50px') }}
-                {{ sort_th('date', 'Дата', '100px') }}
-                {{ sort_th('nszu_record_id', 'НСЗУ ID', '120px') }}
-                {{ sort_th('doctor', 'Лікар', '150px') }}
-                {{ sort_th('status', 'Статус', '120px') }}
-                <th style="width: 25%;">Деталі</th>
-                <th style="width: 20%;">Коментар</th>
-                {{ sort_th('fakt_summ', 'Факт. сума', '100px') }}
+                {{ sort_th('date', 'Дата') }}
+                {{ sort_th('nszu_record_id', 'НСЗУ ID') }}
+                {{ sort_th('doctor', 'Лікар') }}
+                {{ sort_th('status', 'Статус') }}
+                <th>Деталі</th>
+                <th>Коментар</th>
+                {{ sort_th('fakt_summ', 'Сума') }}
                 {% if current_user.role in ['editor', 'admin'] %}
-                  <th style="width: 100px;">Оновив</th>
-                  <th style="width: 130px;">Оновлено</th>
-                  <th style="width: 100px;">Дія</th>
+                  <th>Оновив</th>
+                  <th>Оновлено</th>
+                  <th>Дія</th>
                 {% endif %}
               </tr>
             </thead>
             <tbody>
               {% for c in corrections %}
                 <tr>
-                  <td>{{ c.id }}</td>
-                  <td>{{ c.date.strftime('%d.%m.%Y') if c.date else '' }}</td>
-                  <td><small>{{ c.nszu_record_id }}</small></td>
-                  <td>{{ c.doctor }}</td>
-                  <td>
+                  <td class="text-nowrap">{{ c.date.strftime('%d.%m.%Y') if c.date else '' }}</td>
+                  <td class="text-nowrap"><small>{{ c.nszu_record_id }}</small></td>
+                  <td class="text-nowrap">{{ c.doctor }}</td>
+                  <td class="text-nowrap">
                     {% if c.status == 'Оплачено' %}
-                      <span class="badge nszu-status nszu-status-paid">{{ c.status }}</span>
+                      <span class="badge badge-table bg-success">{{ c.status }}</span>
                     {% elif c.status == 'Опрацьовано' %}
-                      <span class="badge nszu-status nszu-status-processed">{{ c.status }}</span>
+                      <span class="badge badge-table bg-warning text-dark">{{ c.status }}</span>
                     {% elif c.status == 'В обробці' %}
-                      <span class="badge nszu-status nszu-status-pending">{{ c.status }}</span>
+                      <span class="badge badge-table bg-secondary">{{ c.status }}</span>
                     {% elif c.status == 'Не підлягає оплаті' %}
-                      <span class="badge nszu-status nszu-status-rejected">{{ c.status }}</span>
+                      <span class="badge badge-table bg-danger">{{ c.status }}</span>
                     {% else %}
-                      <span class="badge nszu-status nszu-status-pending">{{ c.status }}</span>
+                      <span class="badge badge-table bg-secondary">{{ c.status }}</span>
                     {% endif %}
                   </td>
-                  <td>{{ c.detail[:200] if c.detail else '' }}{% if c.detail and c.detail|length > 200 %}...{% endif %}</td>
-                  <td>{{ c.comment[:150] if c.comment else '' }}{% if c.comment and c.comment|length > 150 %}...{% endif %}</td>
-                  <td>{{ '{:.2f}'.format(c.fakt_summ) if c.fakt_summ else '0.00' }}</td>
+                  <td class="nszu-col-detail">{{ c.detail[:200] if c.detail else '' }}{% if c.detail and c.detail|length > 200 %}...{% endif %}</td>
+                  <td class="nszu-col-comment">{{ c.comment[:150] if c.comment else '' }}{% if c.comment and c.comment|length > 150 %}...{% endif %}</td>
+                  <td class="text-nowrap text-end">{{ '{:.2f}'.format(c.fakt_summ) if c.fakt_summ else '0.00' }}</td>
                   {% if current_user.role in ['editor', 'admin'] %}
-                    <td>{{ c.updater.username if c.updater else (c.creator.username if c.creator else '') }}</td>
-                    <td>{{ c.updated_at.strftime('%d.%m.%Y %H:%M') if c.updated_at else (c.created_at.strftime('%d.%m.%Y %H:%M') if c.created_at else '') }}</td>
+                    <td class="text-nowrap">{{ c.updater.username if c.updater else (c.creator.username if c.creator else '') }}</td>
+                    <td class="text-nowrap">{{ c.updated_at.strftime('%d.%m.%Y %H:%M') if c.updated_at else (c.created_at.strftime('%d.%m.%Y %H:%M') if c.created_at else '') }}</td>
                     <td>
                       <div class="d-flex gap-1">
                         <a href="{{ url_for('nszu.nszu_edit', correction_id=c.id, month_year='%04d-%02d'|format(selected_year, selected_month), status=selected_status, doctor=selected_doctor, nszu_record_id=nszu_record_id_q, per_page=pagination.per_page, sort_by=sort_by, sort_order=sort_order) }}" class="btn btn-sm btn-outline-primary" title="Редагувати">
