@@ -28,7 +28,7 @@ def create_app(config_class=None):
     app.config.from_object(config_class)
 
     # Initialize extensions
-    from app.extensions import init_extensions, login_manager
+    from app.extensions import init_extensions, login_manager, db
     init_extensions(app)
 
     # User loader callback
@@ -36,7 +36,7 @@ def create_app(config_class=None):
 
     @login_manager.user_loader
     def load_user(user_id):
-        return User.query.get(int(user_id))
+        return db.session.get(User, int(user_id))
 
     # Register blueprints
     # Auth blueprint (migrated)
@@ -58,7 +58,6 @@ def create_app(config_class=None):
     # CLI commands for database management
     import click
     from models import log_action
-    from app.extensions import db
 
     @app.cli.command('init-db')
     def init_db():
@@ -71,6 +70,9 @@ def create_app(config_class=None):
     @click.argument('password')
     def create_admin(username, password):
         """Create an admin user: flask create-admin <username> <password>"""
+        if len(password) < 8:
+            click.echo('Error: Password must be at least 8 characters.')
+            return
         if User.query.filter_by(username=username).first():
             click.echo('User already exists.')
             return
@@ -92,6 +94,9 @@ def create_app(config_class=None):
     @click.argument('role', type=click.Choice(['admin', 'editor', 'operator', 'viewer'], case_sensitive=False))
     def create_user(username, password, role):
         """Create a user with specified role: flask create-user <username> <password> <role>"""
+        if len(password) < 8:
+            click.echo('Error: Password must be at least 8 characters.')
+            return
         if User.query.filter_by(username=username).first():
             click.echo('User already exists.')
             return
@@ -159,9 +164,12 @@ def create_app(config_class=None):
 
     @app.cli.command('init-db-with-admin')
     @click.option('--username', default='admin', help='Admin username')
-    @click.option('--password', default='admin', help='Admin password')
+    @click.option('--password', required=True, help='Admin password (min 8 chars)')
     def init_db_with_admin(username, password):
         """Create database tables and an admin user if not present."""
+        if len(password) < 8:
+            click.echo('Error: Password must be at least 8 characters.')
+            return
         db.create_all()
         if not User.query.filter_by(username=username).first():
             u = User(username=username, role='admin')

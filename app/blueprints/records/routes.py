@@ -13,7 +13,7 @@ from sqlalchemy import func
 from app.extensions import db, cache
 from models import Record, User, Department, log_action
 from decorators import role_required
-from utils import parse_date, parse_integer, parse_numeric
+from utils import parse_date, parse_integer, parse_numeric, clear_dropdown_cache
 from . import records_bp
 
 
@@ -40,13 +40,6 @@ def get_distinct_departments():
     return [d[0] for d in db.session.query(Record.discharge_department).distinct()
             .filter(Record.discharge_department != None)
             .order_by(Record.discharge_department).all()]
-
-
-def clear_dropdown_cache():
-    """Clear all dropdown caches - call after adding/editing records"""
-    cache.delete_memoized(get_distinct_statuses)
-    cache.delete_memoized(get_distinct_physicians)
-    cache.delete_memoized(get_distinct_departments)
 
 
 # Routes
@@ -253,7 +246,6 @@ def export():
     from openpyxl import Workbook
     from openpyxl.styles import Font, PatternFill, Alignment
     from openpyxl.utils import get_column_letter
-    from datetime import datetime
 
     export_mode = request.form.get('export_mode', 'month').strip()
 
@@ -400,7 +392,7 @@ def export():
             try:
                 if len(str(cell.value)) > max_length:
                     max_length = len(str(cell.value))
-            except:
+            except Exception:
                 pass
         adjusted_width = min(max_length + 2, 50)
         ws.column_dimensions[column].width = adjusted_width
@@ -432,9 +424,6 @@ def export():
 @role_required('editor', 'viewer')
 def print_records():
     """Generate PDF print for records with filters"""
-    from datetime import datetime
-    from io import BytesIO
-
     try:
         from_str = request.form.get('from_date', '').strip()
         to_str = request.form.get('to_date', '').strip()
@@ -541,7 +530,6 @@ def add_record():
             return redirect(url_for('records.add_record'))
 
         # validate date format: accept DD.MM.YYYY or YYYY-MM-DD (HTML date input)
-        from datetime import datetime
         date_of_discharge = parse_date(date_str)
         if date_of_discharge is None:
             flash('Дата виписки повинна бути у форматі ДД.ММ.РРРР або РРРР-ММ-ДД', 'warning')
@@ -694,11 +682,9 @@ def api_add_record():
 @role_required('editor')
 def api_edit_record(record_id):
     """AJAX endpoint for editing records"""
-    from datetime import datetime
-
     current_app.logger.info(f'API edit_record called by {current_user.username} for record {record_id}')
 
-    r = Record.query.get_or_404(record_id)
+    r = db.get_or_404(Record, record_id)
 
     date_str = request.form.get('date_of_discharge', '').strip()
     full_name = request.form.get('full_name', '').strip()
@@ -778,7 +764,7 @@ def api_edit_record(record_id):
 @role_required('editor')
 def edit_record(record_id):
 
-    r = Record.query.get_or_404(record_id)
+    r = db.get_or_404(Record, record_id)
 
     if request.method == 'POST':
         # gather form fields
@@ -797,7 +783,6 @@ def edit_record(record_id):
             flash('Будь ласка, заповніть усі обов\'язкові поля', 'warning')
             return redirect(url_for('records.edit_record', record_id=record_id))
 
-        from datetime import datetime
         date_of_discharge = parse_date(date_str)
         if date_of_discharge is None:
             flash('Дата виписки повинна бути у форматі ДД.ММ.РРРР або РРРР-ММ-ДД', 'warning')
@@ -834,7 +819,13 @@ def edit_record(record_id):
         r.updated_by = current_user.id
         r.updated_at = datetime.now(timezone.utc)
 
-        db.session.commit()
+        try:
+            db.session.commit()
+        except Exception:
+            db.session.rollback()
+            current_app.logger.exception('Failed to update record')
+            flash('Помилка при збереженні змін', 'danger')
+            return redirect(url_for('records.edit_record', record_id=record_id))
         # Clear dropdown cache after editing record
         clear_dropdown_cache()
         try:
@@ -863,17 +854,19 @@ def edit_record(record_id):
 @records_bp.route('/records/<int:record_id>/delete', methods=['POST'])
 @role_required('admin')
 def delete_record(record_id):
-    r = Record.query.get_or_404(record_id)
+    r = db.get_or_404(Record, record_id)
+    saved_id = r.id
+    saved_name = r.full_name
     db.session.delete(r)
     db.session.commit()
     # Clear dropdown cache after deleting record
     clear_dropdown_cache()
     try:
-        log_action(current_user.id, 'record.delete', 'record', r.id, f'full_name={r.full_name}')
+        log_action(current_user.id, 'record.delete', 'record', saved_id, f'full_name={saved_name}')
     except Exception:
         current_app.logger.exception('Failed to write audit log for record.delete')
-    current_app.logger.info(f'Record deleted: {r.id} by {current_user.username}')
-    flash(f'Запис #{r.id} ({r.full_name}) видалено', 'danger')
+    current_app.logger.info(f'Record deleted: {saved_id} by {current_user.username}')
+    flash(f'Запис #{saved_id} ({saved_name}) видалено', 'danger')
     # preserve filters from form (if any)
     params = {}
     for k in ('discharge_status', 'treating_physician', 'discharge_department', 'history', 'full_name'):

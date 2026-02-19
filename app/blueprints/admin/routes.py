@@ -33,6 +33,9 @@ def admin_create_user():
     if not username or not password:
         flash('Ім\'я користувача та пароль обов\'язкові', 'warning')
         return redirect(url_for('admin.admin_users'))
+    if len(password) < 8:
+        flash('Пароль повинен містити щонайменше 8 символів', 'warning')
+        return redirect(url_for('admin.admin_users'))
     if User.query.filter_by(username=username).first():
         flash('Ім\'я користувача вже зайнято', 'warning')
         return redirect(url_for('admin.admin_users'))
@@ -54,7 +57,7 @@ def admin_create_user():
 @admin_bp.route('/users/<int:user_id>/edit', methods=['GET', 'POST'])
 @role_required('admin')
 def admin_edit_user(user_id):
-    u = User.query.get_or_404(user_id)
+    u = db.get_or_404(User, user_id)
 
     if request.method == 'POST':
         username = request.form.get('username', '').strip()
@@ -71,6 +74,10 @@ def admin_edit_user(user_id):
             flash('Ім\'я користувача вже зайнято', 'warning')
             return redirect(url_for('admin.admin_edit_user', user_id=user_id))
 
+        if password and len(password) < 8:
+            flash('Пароль повинен містити щонайменше 8 символів', 'warning')
+            return redirect(url_for('admin.admin_edit_user', user_id=user_id))
+
         # Update username
         old_username = u.username
         u.username = username
@@ -83,7 +90,13 @@ def admin_edit_user(user_id):
         if role in ['operator', 'editor', 'admin', 'viewer']:
             u.role = role
 
-        db.session.commit()
+        try:
+            db.session.commit()
+        except Exception:
+            db.session.rollback()
+            current_app.logger.exception('Failed to update user')
+            flash('Помилка при збереженні змін', 'danger')
+            return redirect(url_for('admin.admin_edit_user', user_id=user_id))
 
         try:
             details = f'username={old_username}->{username}, role={role}'
@@ -105,15 +118,23 @@ def admin_delete_user(user_id):
     if current_user.id == user_id:
         flash('Ви не можете видалити самого себе', 'danger')
         return redirect(url_for('admin.admin_users'))
-    u = User.query.get_or_404(user_id)
-    db.session.delete(u)
-    db.session.commit()
+    u = db.get_or_404(User, user_id)
+    saved_id = u.id
+    saved_username = u.username
     try:
-        log_action(current_user.id, 'user.delete', 'user', u.id, f'username={u.username}')
+        db.session.delete(u)
+        db.session.commit()
+    except Exception:
+        db.session.rollback()
+        current_app.logger.exception('Failed to delete user')
+        flash('Помилка при видаленні користувача', 'danger')
+        return redirect(url_for('admin.admin_users'))
+    try:
+        log_action(current_user.id, 'user.delete', 'user', saved_id, f'username={saved_username}')
     except Exception:
         current_app.logger.exception('Failed to write audit log for user.delete')
-    current_app.logger.info(f'User deleted: {u.username} by {current_user.username}')
-    flash(f'Користувача {u.username} видалено', 'danger')
+    current_app.logger.info(f'User deleted: {saved_username} by {current_user.username}')
+    flash(f'Користувача {saved_username} видалено', 'danger')
     return redirect(url_for('admin.admin_users'))
 
 
@@ -152,7 +173,7 @@ def admin_create_department():
 @admin_bp.route('/departments/<int:dept_id>/delete', methods=['POST'])
 @role_required('admin')
 def admin_delete_department(dept_id):
-    d = Department.query.get_or_404(dept_id)
+    d = db.get_or_404(Department, dept_id)
     # prevent deletion if department in use
     in_use = Record.query.filter(Record.discharge_department == d.name).count()
     if in_use:

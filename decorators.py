@@ -33,7 +33,7 @@ def role_required(*roles):
                 allowed_roles.append('admin')
             if user_role not in allowed_roles:
                 flash('Доступ заборонено', 'danger')
-                return redirect(url_for('index'))
+                return redirect(url_for('records.index'))
             return f(*args, **kwargs)
         return decorated_function
     return decorator

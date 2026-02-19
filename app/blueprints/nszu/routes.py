@@ -8,13 +8,20 @@ from flask_login import login_required, current_user
 from datetime import datetime, timezone
 from calendar import monthrange
 from io import BytesIO
-import locale
 
 from app.extensions import db
 from models import NSZUCorrection, User, log_action
 from decorators import role_required
 from utils import parse_date, parse_numeric
 from . import nszu_bp
+
+NSZU_STATUSES = ['В обробці', 'Опрацьовано', 'Оплачено', 'Не підлягає оплаті']
+
+UKRAINIAN_MONTHS = {
+    1: 'Січень', 2: 'Лютий', 3: 'Березень', 4: 'Квітень',
+    5: 'Травень', 6: 'Червень', 7: 'Липень', 8: 'Серпень',
+    9: 'Вересень', 10: 'Жовтень', 11: 'Листопад', 12: 'Грудень'
+}
 
 
 @nszu_bp.route('')
@@ -59,7 +66,7 @@ def nszu_list():
     q = q.filter(*conditions)
 
     # Get distinct values for filters
-    statuses = ['В обробці', 'Опрацьовано', 'Оплачено', 'Не підлягає оплаті']
+    statuses = NSZU_STATUSES
     doctors = [d[0] for d in db.session.query(NSZUCorrection.doctor).distinct().filter(NSZUCorrection.doctor != None).order_by(NSZUCorrection.doctor).all()]
 
     # Sorting
@@ -114,15 +121,8 @@ def nszu_list():
     status_stats = {stat.status: {'count': stat.count, 'sum': float(stat.total_sum or 0)} for stat in filtered_stats}
     total_filtered_sum = sum(stat['sum'] for stat in status_stats.values())
 
-    # Format current month for display
-    try:
-        locale.setlocale(locale.LC_TIME, 'uk_UA.UTF-8')
-    except locale.Error:
-        try:
-            locale.setlocale(locale.LC_TIME, 'Ukrainian_Ukraine.1251')
-        except locale.Error:
-            pass
-    current_month = datetime(year, month, 1).strftime('%B %Y')
+    # Format current month for display (thread-safe, no locale dependency)
+    current_month = f"{UKRAINIAN_MONTHS[month]} {year}"
 
     # Calculate navigation months
     now = datetime.now()
@@ -179,6 +179,10 @@ def nszu_add():
             flash('Будь ласка, заповніть усі обов\'язкові поля (дата, НСЗУ ID, лікар)', 'warning')
             return redirect(url_for('nszu.nszu_add'))
 
+        if status not in NSZU_STATUSES:
+            flash('Невірний статус', 'warning')
+            return redirect(url_for('nszu.nszu_add'))
+
         # Parse date
         date_obj = parse_date(date_str)
         if date_obj is None:
@@ -222,7 +226,7 @@ def nszu_add():
     # GET - render form
     # Get distinct doctors for autocomplete
     doctors = [d[0] for d in db.session.query(NSZUCorrection.doctor).distinct().filter(NSZUCorrection.doctor != None).order_by(NSZUCorrection.doctor).all()]
-    statuses = ['В обробці', 'Опрацьовано', 'Оплачено', 'Не підлягає оплаті']
+    statuses = NSZU_STATUSES
 
     return render_template('nszu_add.html', doctors=doctors, statuses=statuses)
 
@@ -244,6 +248,9 @@ def api_nszu_add():
     # Validate required fields
     if not all([date_str, nszu_record_id, doctor]):
         return jsonify({'success': False, 'error': 'Будь ласка, заповніть усі обов\'язкові поля (дата, НСЗУ ID, лікар)'}), 400
+
+    if status not in NSZU_STATUSES:
+        return jsonify({'success': False, 'error': 'Невірний статус'}), 400
 
     # Parse date
     date_obj = parse_date(date_str)
@@ -297,7 +304,7 @@ def api_nszu_add():
 @role_required('editor')
 def api_nszu_get(correction_id):
     """AJAX endpoint to fetch NSZU correction data for edit modal"""
-    correction = NSZUCorrection.query.get_or_404(correction_id)
+    correction = db.get_or_404(NSZUCorrection, correction_id)
     return jsonify({
         'id': correction.id,
         'date': correction.date.strftime('%Y-%m-%d') if correction.date else '',
@@ -314,7 +321,7 @@ def api_nszu_get(correction_id):
 @role_required('editor')
 def api_nszu_edit(correction_id):
     """AJAX endpoint for editing NSZU corrections"""
-    correction = NSZUCorrection.query.get_or_404(correction_id)
+    correction = db.get_or_404(NSZUCorrection, correction_id)
 
     date_str = request.form.get('date', '').strip()
     nszu_record_id = request.form.get('nszu_record_id', '').strip()
@@ -326,6 +333,9 @@ def api_nszu_edit(correction_id):
 
     if not all([date_str, nszu_record_id, doctor, status]):
         return jsonify({'success': False, 'error': 'Заповніть усі обов\'язкові поля'}), 400
+
+    if status not in NSZU_STATUSES:
+        return jsonify({'success': False, 'error': 'Невірний статус'}), 400
 
     date_obj = parse_date(date_str)
     if date_obj is None:
@@ -365,7 +375,7 @@ def api_nszu_edit(correction_id):
 @role_required('admin')
 def nszu_delete(correction_id):
     """Delete NSZU correction (admin only)"""
-    correction = NSZUCorrection.query.get_or_404(correction_id)
+    correction = db.get_or_404(NSZUCorrection, correction_id)
     nszu_id = correction.nszu_record_id
 
     db.session.delete(correction)
