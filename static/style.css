@@ -360,6 +360,9 @@ h1, h2, h3, h4, h5, h6,
   border-bottom: 2px solid var(--color-border);
   border-top: none;
   white-space: nowrap;
+  position: sticky;
+  top: 0;
+  z-index: 10;
 }
 
 .table tbody td {

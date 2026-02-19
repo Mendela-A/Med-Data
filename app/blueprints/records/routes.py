@@ -13,7 +13,7 @@ from sqlalchemy import func
 from app.extensions import db, cache
 from models import Record, User, Department, log_action
 from decorators import role_required
-from utils import parse_date, parse_integer, parse_numeric, clear_dropdown_cache
+from utils import parse_date, parse_integer, parse_numeric, clear_dropdown_cache, get_user_map
 from . import records_bp
 
 
@@ -50,7 +50,6 @@ def index():
     if current_user.role == 'viewer' and not request.args:
         return redirect(url_for('admin.admin_statistics'))
 
-    from datetime import datetime, timezone, timedelta
     # Use Kyiv timezone (UTC+2, or UTC+3 during DST) for correct month detection
     # Simple approach: use UTC+2 as base (covers most of the year)
     kyiv_tz = timezone(timedelta(hours=2))
@@ -207,7 +206,7 @@ def index():
     records = pagination.items
 
     # user mapping for created_by / updated_by
-    user_map = {u.id: u.username for u in User.query.all()}
+    user_map = get_user_map()
 
     # Format month_filter_value for HTML5 month input (YYYY-MM)
     month_filter_value = f"{selected_year:04d}-{selected_month:02d}" if selected_year and selected_month else ""
@@ -330,7 +329,7 @@ def export():
     use_write_only = current_user.role == 'viewer'
 
     # user mapping for creator/updater names
-    user_map = {u.id: u.username for u in User.query.all()}
+    user_map = get_user_map()
 
     wb = Workbook()
     ws = wb.active
@@ -413,6 +412,7 @@ def export():
     # Audit log
     try:
         log_action(current_user.id, 'records.export', 'export', None, log_details)
+        db.session.commit()
     except Exception:
         current_app.logger.exception('Failed to write audit log for export')
     current_app.logger.info(f'Export by {getattr(current_user, "username", "unknown")}: {log_details} write_only={use_write_only}')
@@ -472,7 +472,7 @@ def print_records():
         return redirect(url_for('records.index'))
 
     # Get user mapping
-    user_map = {u.id: u.username for u in User.query.all()}
+    user_map = get_user_map()
 
     # Render HTML template for print
     html_string = render_template('print_records.html',
@@ -503,6 +503,7 @@ def print_records():
     try:
         log_details = f'from={from_d} to={to_d} status={discharge_status} count={len(records)}'
         log_action(current_user.id, 'records.print', 'print', None, log_details)
+        db.session.commit()
     except Exception:
         current_app.logger.exception('Failed to write audit log for records.print')
 
@@ -573,6 +574,7 @@ def add_record():
         clear_dropdown_cache()
         try:
             log_action(current_user.id, 'record.create', 'record', r.id, f'full_name={r.full_name}')
+            db.session.commit()
         except Exception:
             current_app.logger.exception('Failed to write audit log for record.create')
         current_app.logger.info(f'Record created: {r.id} by {current_user.username}')
@@ -598,8 +600,6 @@ def add_record():
 @role_required('operator')
 def api_add_record():
     """AJAX endpoint for adding records with support for 'save and add another'"""
-    from datetime import datetime
-
     current_app.logger.info(f'API add_record called by {current_user.username}')
 
     date_str = request.form.get('date_of_discharge', '').strip()
@@ -660,6 +660,7 @@ def api_add_record():
         # Audit log
         try:
             log_action(current_user.id, 'record.create', 'record', r.id, f'full_name={r.full_name}')
+            db.session.commit()
         except Exception:
             current_app.logger.exception('Failed to write audit log for record.create')
 
@@ -742,6 +743,7 @@ def api_edit_record(record_id):
         # Audit log
         try:
             log_action(current_user.id, 'record.update', 'record', r.id, f'full_name={r.full_name}')
+            db.session.commit()
         except Exception:
             current_app.logger.exception('Failed to write audit log for record.update')
 
@@ -830,6 +832,7 @@ def edit_record(record_id):
         clear_dropdown_cache()
         try:
             log_action(current_user.id, 'record.update', 'record', r.id, f'full_name={r.full_name}')
+            db.session.commit()
         except Exception:
             current_app.logger.exception('Failed to write audit log for record.update')
         current_app.logger.info(f'Record updated: {r.id} by {current_user.username}')
@@ -863,6 +866,7 @@ def delete_record(record_id):
     clear_dropdown_cache()
     try:
         log_action(current_user.id, 'record.delete', 'record', saved_id, f'full_name={saved_name}')
+        db.session.commit()
     except Exception:
         current_app.logger.exception('Failed to write audit log for record.delete')
     current_app.logger.info(f'Record deleted: {saved_id} by {current_user.username}')

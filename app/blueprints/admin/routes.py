@@ -47,6 +47,7 @@ def admin_create_user():
     # audit & log
     try:
         log_action(current_user.id, 'user.create', 'user', u.id, f'role={role}')
+        db.session.commit()
     except Exception:
         current_app.logger.exception('Failed to write audit log for user.create')
     current_app.logger.info(f'User created: {username} by {current_user.username}')
@@ -103,6 +104,7 @@ def admin_edit_user(user_id):
             if password:
                 details += ', password_changed=True'
             log_action(current_user.id, 'user.update', 'user', u.id, details)
+            db.session.commit()
         except Exception:
             current_app.logger.exception('Failed to write audit log for user.update')
         current_app.logger.info(f'User updated: {u.username} by {current_user.username}')
@@ -131,6 +133,7 @@ def admin_delete_user(user_id):
         return redirect(url_for('admin.admin_users'))
     try:
         log_action(current_user.id, 'user.delete', 'user', saved_id, f'username={saved_username}')
+        db.session.commit()
     except Exception:
         current_app.logger.exception('Failed to write audit log for user.delete')
     current_app.logger.info(f'User deleted: {saved_username} by {current_user.username}')
@@ -163,6 +166,7 @@ def admin_create_department():
     clear_dropdown_cache()
     try:
         log_action(current_user.id, 'department.create', 'department', d.id, f'name={name}')
+        db.session.commit()
     except Exception:
         current_app.logger.exception('Failed to write audit log for department.create')
     current_app.logger.info(f'Department created: {name} by {current_user.username}')
@@ -185,6 +189,7 @@ def admin_delete_department(dept_id):
     clear_dropdown_cache()
     try:
         log_action(current_user.id, 'department.delete', 'department', d.id, f'name={d.name}')
+        db.session.commit()
     except Exception:
         current_app.logger.exception('Failed to write audit log for department.delete')
     current_app.logger.info(f'Department deleted: {d.name} by {current_user.username}')
@@ -347,4 +352,70 @@ def admin_statistics():
         period_label=period_label,
         from_date=from_date,
         to_date=to_date,
+    )
+
+
+# Audit Log Route
+@admin_bp.route('/audit')
+@role_required('admin')
+def admin_audit():
+    """View audit log with filters and pagination."""
+    from utils import get_user_map
+
+    # Filters
+    action_filter = request.args.get('action', '').strip()
+    actor_filter = request.args.get('actor', '').strip()
+    from_str = request.args.get('from_date', '').strip()
+    to_str = request.args.get('to_date', '').strip()
+
+    q = Audit.query
+
+    if action_filter:
+        q = q.filter(Audit.action.contains(action_filter))
+    if actor_filter:
+        try:
+            actor_id = int(actor_filter)
+            q = q.filter(Audit.actor_id == actor_id)
+        except ValueError:
+            pass
+    if from_str:
+        try:
+            from_date = date.fromisoformat(from_str)
+            q = q.filter(Audit.created_at >= datetime.combine(from_date, datetime.min.time()))
+        except ValueError:
+            pass
+    if to_str:
+        try:
+            to_date = date.fromisoformat(to_str)
+            q = q.filter(Audit.created_at < datetime.combine(to_date + timedelta(days=1), datetime.min.time()))
+        except ValueError:
+            pass
+
+    q = q.order_by(Audit.created_at.desc())
+
+    # Pagination
+    page = request.args.get('page', 1, type=int)
+    per_page = request.args.get('per_page', 50, type=int)
+    per_page = min(per_page, 200)
+
+    pagination = q.paginate(page=page, per_page=per_page, error_out=False)
+    logs = pagination.items
+
+    # Distinct actions for filter dropdown
+    actions = [a[0] for a in db.session.query(Audit.action).distinct().order_by(Audit.action).all()]
+
+    user_map = get_user_map()
+    users = User.query.order_by(User.username).all()
+
+    return render_template(
+        'admin_audit.html',
+        logs=logs,
+        pagination=pagination,
+        actions=actions,
+        users=users,
+        user_map=user_map,
+        action_filter=action_filter,
+        actor_filter=actor_filter,
+        from_date=from_str,
+        to_date=to_str,
     )

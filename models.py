@@ -156,8 +156,7 @@ class NSZUCorrection(db.Model):
 
 
 def log_action(actor_id, action, target_type=None, target_id=None, details=None):
-    """Create an audit log entry and commit it."""
+    """Create an audit log entry. Caller is responsible for committing."""
     a = Audit(actor_id=actor_id, action=action, target_type=target_type, target_id=target_id, details=details)
     db.session.add(a)
-    db.session.commit()
     return a

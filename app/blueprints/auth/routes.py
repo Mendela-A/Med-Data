@@ -82,6 +82,7 @@ def change_password():
 
     try:
         log_action(current_user.id, 'user.password_change', 'user', current_user.id, 'self-service')
+        db.session.commit()
     except Exception:
         pass
 

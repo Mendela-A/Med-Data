@@ -12,7 +12,7 @@ from io import BytesIO
 from app.extensions import db
 from models import NSZUCorrection, User, log_action
 from decorators import role_required
-from utils import parse_date, parse_numeric
+from utils import parse_date, parse_numeric, get_user_map
 from . import nszu_bp
 
 NSZU_STATUSES = ['В обробці', 'Опрацьовано', 'Оплачено', 'Не підлягає оплаті']
@@ -216,6 +216,7 @@ def nszu_add():
 
         try:
             log_action(current_user.id, 'nszu.create', 'nszu_correction', correction.id, f'nszu_record_id={nszu_record_id}')
+            db.session.commit()
         except Exception:
             current_app.logger.exception('Failed to write audit log for nszu.create')
 
@@ -284,6 +285,7 @@ def api_nszu_add():
 
         try:
             log_action(current_user.id, 'nszu.create', 'nszu_correction', correction.id, f'nszu_record_id={nszu_record_id}')
+            db.session.commit()
         except Exception:
             current_app.logger.exception('Failed to write audit log for nszu.create')
 
@@ -361,6 +363,7 @@ def api_nszu_edit(correction_id):
         db.session.commit()
         try:
             log_action(current_user.id, 'nszu.update', 'nszu_correction', correction.id, f'nszu_record_id={nszu_record_id}')
+            db.session.commit()
         except Exception:
             current_app.logger.exception('Failed to write audit log for nszu.update')
         current_app.logger.info(f'NSZU correction updated: {correction.id} by {current_user.username}')
@@ -383,6 +386,7 @@ def nszu_delete(correction_id):
 
     try:
         log_action(current_user.id, 'nszu.delete', 'nszu_correction', correction_id, f'nszu_record_id={nszu_id}')
+        db.session.commit()
     except Exception:
         current_app.logger.exception('Failed to write audit log for nszu.delete')
 
@@ -467,7 +471,7 @@ def nszu_export():
         cell.alignment = Alignment(horizontal='center', vertical='center')
 
     # Get user mapping
-    user_map = {u.id: u.username for u in User.query.all()}
+    user_map = get_user_map()
 
     # Add data
     for c in q.order_by(NSZUCorrection.date.desc()).all():
@@ -510,6 +514,7 @@ def nszu_export():
     try:
         log_details = f'from={from_d} to={to_d} status={status_filter} doctor={doctor_filter} count={total_count}'
         log_action(current_user.id, 'nszu.export', 'export', None, log_details)
+        db.session.commit()
     except Exception:
         current_app.logger.exception('Failed to write audit log for nszu.export')
 

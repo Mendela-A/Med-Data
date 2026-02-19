@@ -5,6 +5,22 @@ from datetime import datetime, date
 from typing import Optional
 
 
+def get_user_map():
+    """Return cached {user_id: username} mapping. Cleared together with dropdown cache."""
+    try:
+        from app.extensions import cache
+        cached = cache.get('_user_map')
+        if cached is not None:
+            return cached
+        from models import User
+        user_map = {u.id: u.username for u in User.query.all()}
+        cache.set('_user_map', user_map, timeout=300)
+        return user_map
+    except Exception:
+        from models import User
+        return {u.id: u.username for u in User.query.all()}
+
+
 def clear_dropdown_cache():
     """
     Clear all dropdown caches - call after adding/editing records.
