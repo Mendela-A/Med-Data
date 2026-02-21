@@ -1,12 +1,14 @@
 import pytest
 import datetime
-from app import create_app, db
+from app import create_app
+from models import db
 from models import User, Record, Department
 
 @pytest.fixture
 def app():
     app = create_app()
     app.config['TESTING'] = True
+    app.config['WTF_CSRF_ENABLED'] = False
     app.config['SQLALCHEMY_DATABASE_URI'] = 'sqlite:///:memory:'
     with app.app_context():
         db.create_all()
@@ -83,7 +85,7 @@ def test_month_year_filter(app, client):
         db.session.commit()
 
         client.post('/login', data={'username': 'ed', 'password': 'pass'}, follow_redirects=True)
-        rv = client.get('/', query_string={'month': '1', 'year': '2025'})
+        rv = client.get('/', query_string={'month_filter': '2025-01'})
         txt = rv.get_data(as_text=True)
         assert 'Jan Record' in txt
         assert 'Now Record' not in txt

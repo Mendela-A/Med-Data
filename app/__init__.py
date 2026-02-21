@@ -68,6 +68,7 @@ def create_app(config_class=None):
     # CLI commands for database management
     import click
     from models import log_action
+    from constants import VALID_ROLES
 
     @app.cli.command('init-db')
     def init_db():
@@ -89,20 +90,16 @@ def create_app(config_class=None):
         u = User(username=username, role='admin')
         u.set_password(password)
         db.session.add(u)
+        db.session.flush()  # assigns u.id
+        log_action(None, 'user.create', 'user', u.id, 'created by CLI')
         db.session.commit()
-        # audit (CLI-created)
-        try:
-            log_action(None, 'user.create', 'user', u.id, 'created by CLI')
-            db.session.commit()
-        except Exception:
-            app.logger.exception('Failed to write audit log for create-admin')
         app.logger.info(f'Admin user created by CLI: {username}')
         click.echo(f'Created admin user {username}')
 
     @app.cli.command('create-user')
     @click.argument('username')
     @click.argument('password')
-    @click.argument('role', type=click.Choice(['admin', 'editor', 'operator', 'viewer'], case_sensitive=False))
+    @click.argument('role', type=click.Choice(list(VALID_ROLES), case_sensitive=False))
     def create_user(username, password, role):
         """Create a user with specified role: flask create-user <username> <password> <role>"""
         if len(password) < 8:
@@ -114,13 +111,9 @@ def create_app(config_class=None):
         u = User(username=username, role=role.lower())
         u.set_password(password)
         db.session.add(u)
+        db.session.flush()  # assigns u.id
+        log_action(None, 'user.create', 'user', u.id, f'created by CLI with role={role}')
         db.session.commit()
-        # audit (CLI-created)
-        try:
-            log_action(None, 'user.create', 'user', u.id, f'created by CLI with role={role}')
-            db.session.commit()
-        except Exception:
-            app.logger.exception('Failed to write audit log for create-user')
         app.logger.info(f'User created by CLI: {username} with role {role}')
         click.echo(f'Created {role} user {username}')
 
@@ -187,12 +180,9 @@ def create_app(config_class=None):
             u = User(username=username, role='admin')
             u.set_password(password)
             db.session.add(u)
+            db.session.flush()  # assigns u.id
+            log_action(None, 'user.create', 'user', u.id, 'created by init-db-with-admin')
             db.session.commit()
-            try:
-                log_action(None, 'user.create', 'user', u.id, 'created by init-db-with-admin')
-                db.session.commit()
-            except Exception:
-                app.logger.exception('Failed to write audit log for init-db-with-admin')
             app.logger.info(f'Admin user created during init: {username}')
             click.echo(f'Created admin user {username}')
         click.echo('Initialized the database (with admin).')

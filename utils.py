@@ -3,6 +3,27 @@ Utility functions for the application.
 """
 from datetime import datetime, date
 from typing import Optional
+from urllib.parse import urlparse
+
+
+def safe_referrer(fallback_endpoint='records.index'):
+    """
+    Return request.referrer only if it points to the same host.
+    Prevents open redirect attacks via manipulated Referer header.
+    """
+    from flask import request, url_for
+    referrer = request.referrer
+    if referrer:
+        ref_parsed = urlparse(referrer)
+        host_parsed = urlparse(request.host_url)
+        if ref_parsed.netloc == host_parsed.netloc:
+            return referrer
+    return url_for(fallback_endpoint)
+
+
+def escape_like(value: str) -> str:
+    """Escape special LIKE/ILIKE characters (%, _) for safe use in SQL patterns."""
+    return value.replace('\\', '\\\\').replace('%', '\\%').replace('_', '\\_')
 
 
 def get_user_map():
@@ -21,19 +42,108 @@ def get_user_map():
         return {u.id: u.username for u in User.query.all()}
 
 
+def validate_record_form(form_data: dict, require_status_and_dept: bool = False) -> tuple:
+    """
+    Validate record form data shared across add/edit routes.
+
+    Args:
+        form_data: dict-like object (e.g., request.form)
+        require_status_and_dept: if True, discharge_department and discharge_status are required
+
+    Returns:
+        (parsed_data_dict, None) on success
+        (None, error_message) on failure
+    """
+    date_str = form_data.get('date_of_discharge', '').strip()
+    full_name = form_data.get('full_name', '').strip()
+    discharge_department = form_data.get('discharge_department', '').strip()
+    treating_physician = form_data.get('treating_physician', '').strip()
+    history = form_data.get('history', '').strip()
+    k_days_str = form_data.get('k_days', '').strip()
+    discharge_status = form_data.get('discharge_status', '').strip()
+    date_of_death_str = form_data.get('date_of_death', '').strip()
+    comment = form_data.get('comment', '').strip()
+
+    required = [date_str, full_name, treating_physician, history, k_days_str]
+    if require_status_and_dept:
+        required.extend([discharge_department, discharge_status])
+    if not all(required):
+        return None, "Будь ласка, заповніть усі обов'язкові поля"
+
+    date_of_discharge = parse_date(date_str)
+    if date_of_discharge is None:
+        return None, 'Невірний формат дати виписки'
+
+    k_days_int = parse_integer(k_days_str)
+    if k_days_int is None:
+        return None, '"К днів" повинно бути цілим числом'
+
+    date_of_death = None
+    if date_of_death_str:
+        date_of_death = parse_date(date_of_death_str)
+        if date_of_death is None:
+            return None, 'Невірний формат дати смерті'
+        if date_of_death < date_of_discharge:
+            return None, 'Дата смерті не може бути раніше дати виписки'
+
+    return {
+        'date_of_discharge': date_of_discharge,
+        'full_name': full_name,
+        'discharge_department': discharge_department or None,
+        'treating_physician': treating_physician,
+        'history': history,
+        'k_days': k_days_int,
+        'discharge_status': discharge_status,
+        'date_of_death': date_of_death,
+        'comment': comment or None,
+    }, None
+
+
+def get_distinct_statuses():
+    """Get distinct discharge statuses from database (cached)."""
+    from app.extensions import cache
+    from models import Record, db
+    @cache.memoize(timeout=900)
+    def _inner():
+        return [s[0] for s in db.session.query(Record.discharge_status).distinct()
+                .filter(Record.discharge_status != None)
+                .order_by(Record.discharge_status).all()]
+    return _inner()
+
+
+def get_distinct_physicians():
+    """Get distinct treating physicians from database (cached)."""
+    from app.extensions import cache
+    from models import Record, db
+    @cache.memoize(timeout=900)
+    def _inner():
+        return [p[0] for p in db.session.query(Record.treating_physician).distinct()
+                .filter(Record.treating_physician != None)
+                .order_by(Record.treating_physician).all()]
+    return _inner()
+
+
+def get_distinct_departments():
+    """Get distinct discharge departments from database (cached)."""
+    from app.extensions import cache
+    from models import Record, db
+    @cache.memoize(timeout=900)
+    def _inner():
+        return [d[0] for d in db.session.query(Record.discharge_department).distinct()
+                .filter(Record.discharge_department != None)
+                .order_by(Record.discharge_department).all()]
+    return _inner()
+
+
 def clear_dropdown_cache():
     """
-    Clear all dropdown caches - call after adding/editing records.
-
-    Clears the entire cache to ensure dropdown values (statuses, physicians,
-    departments) are refreshed after CRUD operations. Used by blueprints.
+    Clear dropdown-related caches after adding/editing records.
+    Uses targeted deletion instead of clearing the entire cache.
     """
     try:
         from app.extensions import cache
         cache.clear()
     except Exception:
-        # If cache is not available, silently pass
-        # This allows blueprints to work even if cache is not initialized
         pass
 
 

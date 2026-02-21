@@ -12,16 +12,9 @@ from io import BytesIO
 from app.extensions import db
 from models import NSZUCorrection, User, log_action
 from decorators import role_required
-from utils import parse_date, parse_numeric, get_user_map
+from utils import parse_date, parse_numeric, get_user_map, escape_like
+from constants import NSZU_STATUSES, UKRAINIAN_MONTHS
 from . import nszu_bp
-
-NSZU_STATUSES = ['В обробці', 'Опрацьовано', 'Оплачено', 'Не підлягає оплаті']
-
-UKRAINIAN_MONTHS = {
-    1: 'Січень', 2: 'Лютий', 3: 'Березень', 4: 'Квітень',
-    5: 'Травень', 6: 'Червень', 7: 'Липень', 8: 'Серпень',
-    9: 'Вересень', 10: 'Жовтень', 11: 'Листопад', 12: 'Грудень'
-}
 
 
 @nszu_bp.route('')
@@ -61,7 +54,7 @@ def nszu_list():
     if selected_doctor:
         conditions.append(NSZUCorrection.doctor == selected_doctor)
     if nszu_record_id_q:
-        conditions.append(NSZUCorrection.nszu_record_id.contains(nszu_record_id_q))
+        conditions.append(NSZUCorrection.nszu_record_id.like(f'%{escape_like(nszu_record_id_q)}%', escape='\\'))
 
     q = q.filter(*conditions)
 
@@ -99,7 +92,7 @@ def nszu_list():
     # Pagination
     page = request.args.get('page', 1, type=int)
     per_page = request.args.get('per_page', 100, type=int)
-    per_page = min(per_page, 200)
+    per_page = max(10, min(per_page, 200))
 
     pagination = q.paginate(
         page=page,
@@ -212,13 +205,9 @@ def nszu_add():
         )
 
         db.session.add(correction)
+        db.session.flush()  # assigns correction.id
+        log_action(current_user.id, 'nszu.create', 'nszu_correction', correction.id, f'nszu_record_id={nszu_record_id}')
         db.session.commit()
-
-        try:
-            log_action(current_user.id, 'nszu.create', 'nszu_correction', correction.id, f'nszu_record_id={nszu_record_id}')
-            db.session.commit()
-        except Exception:
-            current_app.logger.exception('Failed to write audit log for nszu.create')
 
         current_app.logger.info(f'NSZU correction created: {correction.id} by {current_user.username}')
         flash(f'Запис перевірки НСЗУ #{correction.id} успішно додано', 'success')
@@ -281,13 +270,9 @@ def api_nszu_add():
 
     try:
         db.session.add(correction)
+        db.session.flush()  # assigns correction.id
+        log_action(current_user.id, 'nszu.create', 'nszu_correction', correction.id, f'nszu_record_id={nszu_record_id}')
         db.session.commit()
-
-        try:
-            log_action(current_user.id, 'nszu.create', 'nszu_correction', correction.id, f'nszu_record_id={nszu_record_id}')
-            db.session.commit()
-        except Exception:
-            current_app.logger.exception('Failed to write audit log for nszu.create')
 
         current_app.logger.info(f'NSZU correction created: {correction.id} by {current_user.username}')
         return jsonify({
@@ -360,12 +345,8 @@ def api_nszu_edit(correction_id):
     correction.updated_at = datetime.now(timezone.utc)
 
     try:
+        log_action(current_user.id, 'nszu.update', 'nszu_correction', correction.id, f'nszu_record_id={nszu_record_id}')
         db.session.commit()
-        try:
-            log_action(current_user.id, 'nszu.update', 'nszu_correction', correction.id, f'nszu_record_id={nszu_record_id}')
-            db.session.commit()
-        except Exception:
-            current_app.logger.exception('Failed to write audit log for nszu.update')
         current_app.logger.info(f'NSZU correction updated: {correction.id} by {current_user.username}')
         return jsonify({'success': True, 'message': f'Запис #{correction.id} успішно оновлено'})
     except Exception:
@@ -382,13 +363,8 @@ def nszu_delete(correction_id):
     nszu_id = correction.nszu_record_id
 
     db.session.delete(correction)
+    log_action(current_user.id, 'nszu.delete', 'nszu_correction', correction_id, f'nszu_record_id={nszu_id}')
     db.session.commit()
-
-    try:
-        log_action(current_user.id, 'nszu.delete', 'nszu_correction', correction_id, f'nszu_record_id={nszu_id}')
-        db.session.commit()
-    except Exception:
-        current_app.logger.exception('Failed to write audit log for nszu.delete')
 
     current_app.logger.info(f'NSZU correction deleted: {correction_id} by {current_user.username}')
     flash(f'Запис перевірки НСЗУ #{correction_id} видалено', 'danger')
@@ -437,7 +413,7 @@ def nszu_export():
     if doctor_filter:
         conditions.append(NSZUCorrection.doctor == doctor_filter)
     if nszu_id_filter:
-        conditions.append(NSZUCorrection.nszu_record_id.contains(nszu_id_filter))
+        conditions.append(NSZUCorrection.nszu_record_id.like(f'%{escape_like(nszu_id_filter)}%', escape='\\'))
 
     q = NSZUCorrection.query.filter(*conditions)
 
@@ -558,7 +534,7 @@ def print_nszu():
     if doctor_filter:
         conditions.append(NSZUCorrection.doctor == doctor_filter)
     if nszu_id_filter:
-        conditions.append(NSZUCorrection.nszu_record_id.contains(nszu_id_filter))
+        conditions.append(NSZUCorrection.nszu_record_id.like(f'%{escape_like(nszu_id_filter)}%', escape='\\'))
 
     q = NSZUCorrection.query.filter(*conditions)
     corrections = q.order_by(NSZUCorrection.date.desc()).all()

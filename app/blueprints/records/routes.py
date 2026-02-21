@@ -10,36 +10,14 @@ from io import BytesIO
 from sqlalchemy.orm import joinedload
 from sqlalchemy import func
 
-from app.extensions import db, cache
+from app.extensions import db
 from models import Record, User, Department, log_action
 from decorators import role_required
-from utils import parse_date, parse_integer, parse_numeric, clear_dropdown_cache, get_user_map
+from utils import (parse_date, parse_integer, parse_numeric, clear_dropdown_cache,
+                   get_user_map, escape_like, validate_record_form,
+                   get_distinct_statuses, get_distinct_physicians, get_distinct_departments)
+from constants import STATUS_PROCESSING, STATUS_DISCHARGED, STATUS_VIOLATIONS
 from . import records_bp
-
-
-# Cached helper functions for dropdown values
-@cache.memoize(timeout=900)
-def get_distinct_statuses():
-    """Get distinct discharge statuses from database"""
-    return [s[0] for s in db.session.query(Record.discharge_status).distinct()
-            .filter(Record.discharge_status != None)
-            .order_by(Record.discharge_status).all()]
-
-
-@cache.memoize(timeout=900)
-def get_distinct_physicians():
-    """Get distinct treating physicians from database"""
-    return [p[0] for p in db.session.query(Record.treating_physician).distinct()
-            .filter(Record.treating_physician != None)
-            .order_by(Record.treating_physician).all()]
-
-
-@cache.memoize(timeout=900)
-def get_distinct_departments():
-    """Get distinct discharge departments from database"""
-    return [d[0] for d in db.session.query(Record.discharge_department).distinct()
-            .filter(Record.discharge_department != None)
-            .order_by(Record.discharge_department).all()]
 
 
 # Routes
@@ -139,9 +117,9 @@ def index():
     if selected_department:
         conditions.append(Record.discharge_department == selected_department)
     if history_q:
-        conditions.append(Record.history.contains(history_q))
+        conditions.append(Record.history.like(f'%{escape_like(history_q)}%', escape='\\'))
     if full_name_q:
-        conditions.append(Record.full_name.ilike(f'%{full_name_q}%'))
+        conditions.append(Record.full_name.ilike(f'%{escape_like(full_name_q)}%', escape='\\'))
     if has_death_date:
         conditions.append(Record.date_of_death != None)
     if conditions:
@@ -193,14 +171,14 @@ def index():
 
     # Other counts: EXCLUDE records with date_of_death
     q_alive = q.filter(Record.date_of_death == None)
-    count_discharged = q_alive.filter(Record.discharge_status == 'Виписаний').count()
-    count_processing = q_alive.filter(Record.discharge_status == 'Опрацьовується').count()
-    count_violations = q_alive.filter(Record.discharge_status == 'Порушені вимоги').count()
+    count_discharged = q_alive.filter(Record.discharge_status == STATUS_DISCHARGED).count()
+    count_processing = q_alive.filter(Record.discharge_status == STATUS_PROCESSING).count()
+    count_violations = q_alive.filter(Record.discharge_status == STATUS_VIOLATIONS).count()
 
     # Pagination
     page = request.args.get('page', 1, type=int)
     per_page = request.args.get('per_page', 100, type=int)
-    per_page = min(per_page, 200)
+    per_page = max(10, min(per_page, 200))
 
     pagination = q.paginate(page=page, per_page=per_page, error_out=False)
     records = pagination.items
@@ -314,9 +292,9 @@ def export():
     if discharge_department:
         conditions.append(Record.discharge_department == discharge_department)
     if history_q:
-        conditions.append(Record.history.contains(history_q))
+        conditions.append(Record.history.like(f'%{escape_like(history_q)}%', escape='\\'))
     if full_name_q:
-        conditions.append(Record.full_name.contains(full_name_q))
+        conditions.append(Record.full_name.ilike(f'%{escape_like(full_name_q)}%', escape='\\'))
 
     q = Record.query.filter(*conditions)
     records = q.order_by(Record.date_of_discharge.desc()).all()
@@ -460,9 +438,9 @@ def print_records():
     if discharge_department:
         conditions.append(Record.discharge_department == discharge_department)
     if history_q:
-        conditions.append(Record.history.contains(history_q))
+        conditions.append(Record.history.like(f'%{escape_like(history_q)}%', escape='\\'))
     if full_name_q:
-        conditions.append(Record.full_name.contains(full_name_q))
+        conditions.append(Record.full_name.ilike(f'%{escape_like(full_name_q)}%', escape='\\'))
 
     q = Record.query.filter(*conditions)
     records = q.order_by(Record.date_of_discharge.desc()).all()
@@ -516,67 +494,29 @@ def print_records():
 def add_record():
 
     if request.method == 'POST':
-        date_str = request.form.get('date_of_discharge', '').strip()
-        full_name = request.form.get('full_name', '').strip()
-        discharge_department = request.form.get('discharge_department', '').strip()
-        treating_physician = request.form.get('treating_physician', '').strip()
-        history = request.form.get('history', '').strip()
-        k_days = request.form.get('k_days', '').strip()
-        date_of_death_str = request.form.get('date_of_death', '').strip()
-
-        # date_of_death (if provided) will indicate death; validate format if present
-        # discharge_department is optional (may not exist yet); require other main fields
-        if not all([date_str, full_name, treating_physician, history, k_days]):
-            flash('Будь ласка, заповніть усі обов\'язкові поля (виключаючи відділення)', 'warning')
+        data, error = validate_record_form(request.form)
+        if error:
+            flash(error, 'warning')
             return redirect(url_for('records.add_record'))
 
-        # validate date format: accept DD.MM.YYYY or YYYY-MM-DD (HTML date input)
-        date_of_discharge = parse_date(date_str)
-        if date_of_discharge is None:
-            flash('Дата виписки повинна бути у форматі ДД.ММ.РРРР або РРРР-ММ-ДД', 'warning')
-            return redirect(url_for('records.add_record'))
-
-        # validate k_days integer
-        k_days_int = parse_integer(k_days)
-        if k_days_int is None:
-            flash('"К днів" повинно бути цілим числом', 'warning')
-            return redirect(url_for('records.add_record'))
-
-        # date_of_death handling: if given, validate format
-        date_of_death = None
-        if date_of_death_str:
-            date_of_death = parse_date(date_of_death_str)
-            if date_of_death is None:
-                flash('Дата смерті повинна бути у форматі ДД.ММ.РРРР або РРРР-ММ-ДД', 'warning')
-                return redirect(url_for('records.add_record'))
-
-            # Logical validation: death date should not be before discharge date
-            if date_of_death < date_of_discharge:
-                flash('Дата смерті не може бути раніше дати виписки', 'warning')
-                return redirect(url_for('records.add_record'))
-
-        # Create new record with status "Опрацьовується"
         r = Record(
-            date_of_discharge=date_of_discharge,
-            full_name=full_name,
-            discharge_department=discharge_department or None,
-            treating_physician=treating_physician,
-            history=history,
-            k_days=k_days_int,
-            discharge_status='Опрацьовується',
-            date_of_death=date_of_death,
+            date_of_discharge=data['date_of_discharge'],
+            full_name=data['full_name'],
+            discharge_department=data['discharge_department'],
+            treating_physician=data['treating_physician'],
+            history=data['history'],
+            k_days=data['k_days'],
+            discharge_status=STATUS_PROCESSING,
+            date_of_death=data['date_of_death'],
             created_by=current_user.id,
             updated_by=current_user.id
         )
         db.session.add(r)
+        db.session.flush()  # assigns r.id
+        log_action(current_user.id, 'record.create', 'record', r.id, f'full_name={r.full_name}')
         db.session.commit()
         # Clear dropdown cache so newly added values appear in dropdowns
         clear_dropdown_cache()
-        try:
-            log_action(current_user.id, 'record.create', 'record', r.id, f'full_name={r.full_name}')
-            db.session.commit()
-        except Exception:
-            current_app.logger.exception('Failed to write audit log for record.create')
         current_app.logger.info(f'Record created: {r.id} by {current_user.username}')
         flash(f'Запис "{r.full_name}" успішно додано', 'success')
         # preserve filters from form (if any)
@@ -602,67 +542,32 @@ def api_add_record():
     """AJAX endpoint for adding records with support for 'save and add another'"""
     current_app.logger.info(f'API add_record called by {current_user.username}')
 
-    date_str = request.form.get('date_of_discharge', '').strip()
-    full_name = request.form.get('full_name', '').strip()
-    discharge_department = request.form.get('discharge_department', '').strip()
-    treating_physician = request.form.get('treating_physician', '').strip()
-    history = request.form.get('history', '').strip()
-    k_days = request.form.get('k_days', '').strip()
-    date_of_death_str = request.form.get('date_of_death', '').strip()
-    comment = request.form.get('comment', '').strip()
+    data, error = validate_record_form(request.form)
+    if error:
+        return jsonify({'success': False, 'error': error}), 400
 
-    # Validate required fields
-    if not all([date_str, full_name, treating_physician, history, k_days]):
-        return jsonify({'success': False, 'error': 'Будь ласка, заповніть усі обов\'язкові поля'}), 400
-
-    # Parse date_of_discharge
-    date_of_discharge = parse_date(date_str)
-    if date_of_discharge is None:
-        return jsonify({'success': False, 'error': 'Невірний формат дати виписки'}), 400
-
-    # Validate k_days
-    k_days_int = parse_integer(k_days)
-    if k_days_int is None:
-        return jsonify({'success': False, 'error': '"К днів" повинно бути цілим числом'}), 400
-
-    # Parse date_of_death if provided
-    date_of_death = None
-    if date_of_death_str:
-        date_of_death = parse_date(date_of_death_str)
-        if date_of_death is None:
-            return jsonify({'success': False, 'error': 'Невірний формат дати смерті'}), 400
-
-        if date_of_death < date_of_discharge:
-            return jsonify({'success': False, 'error': 'Дата смерті не може бути раніше дати виписки'}), 400
-
-    # Create record with status "Опрацьовується"
     r = Record(
-        date_of_discharge=date_of_discharge,
-        full_name=full_name,
-        discharge_department=discharge_department or None,
-        treating_physician=treating_physician,
-        history=history,
-        k_days=k_days_int,
-        discharge_status='Опрацьовується',
-        date_of_death=date_of_death,
-        comment=comment or None,
+        date_of_discharge=data['date_of_discharge'],
+        full_name=data['full_name'],
+        discharge_department=data['discharge_department'],
+        treating_physician=data['treating_physician'],
+        history=data['history'],
+        k_days=data['k_days'],
+        discharge_status=STATUS_PROCESSING,
+        date_of_death=data['date_of_death'],
+        comment=data['comment'],
         created_by=current_user.id,
         updated_by=current_user.id
     )
 
     try:
         db.session.add(r)
+        db.session.flush()  # assigns r.id
+        log_action(current_user.id, 'record.create', 'record', r.id, f'full_name={r.full_name}')
         db.session.commit()
 
         # Clear dropdown cache
         clear_dropdown_cache()
-
-        # Audit log
-        try:
-            log_action(current_user.id, 'record.create', 'record', r.id, f'full_name={r.full_name}')
-            db.session.commit()
-        except Exception:
-            current_app.logger.exception('Failed to write audit log for record.create')
 
         current_app.logger.info(f'Record created via AJAX: {r.id} by {current_user.username}')
 
@@ -687,65 +592,28 @@ def api_edit_record(record_id):
 
     r = db.get_or_404(Record, record_id)
 
-    date_str = request.form.get('date_of_discharge', '').strip()
-    full_name = request.form.get('full_name', '').strip()
-    discharge_department = request.form.get('discharge_department', '').strip()
-    treating_physician = request.form.get('treating_physician', '').strip()
-    history = request.form.get('history', '').strip()
-    k_days = request.form.get('k_days', '').strip()
-    discharge_status = request.form.get('discharge_status', '').strip()
-    date_of_death_str = request.form.get('date_of_death', '').strip()
-    comment = request.form.get('comment', '').strip()
+    data, error = validate_record_form(request.form, require_status_and_dept=True)
+    if error:
+        return jsonify({'success': False, 'error': error}), 400
 
-    # Validate required fields
-    if not all([date_str, full_name, discharge_department, treating_physician, history, k_days, discharge_status]):
-        return jsonify({'success': False, 'error': 'Будь ласка, заповніть усі обов\'язкові поля'}), 400
-
-    # Parse date_of_discharge
-    date_of_discharge = parse_date(date_str)
-    if date_of_discharge is None:
-        return jsonify({'success': False, 'error': 'Невірний формат дати виписки'}), 400
-
-    # Validate k_days
-    k_days_int = parse_integer(k_days)
-    if k_days_int is None:
-        return jsonify({'success': False, 'error': '"К днів" повинно бути цілим числом'}), 400
-
-    # Parse date_of_death if provided
-    date_of_death = None
-    if date_of_death_str:
-        date_of_death = parse_date(date_of_death_str)
-        if date_of_death is None:
-            return jsonify({'success': False, 'error': 'Невірний формат дати смерті'}), 400
-
-        if date_of_death < date_of_discharge:
-            return jsonify({'success': False, 'error': 'Дата смерті не може бути раніше дати виписки'}), 400
-
-    # Apply changes
-    r.date_of_discharge = date_of_discharge
-    r.full_name = full_name
-    r.discharge_department = discharge_department
-    r.treating_physician = treating_physician
-    r.history = history
-    r.k_days = k_days_int
-    r.discharge_status = discharge_status
-    r.date_of_death = date_of_death
-    r.comment = comment or None
+    r.date_of_discharge = data['date_of_discharge']
+    r.full_name = data['full_name']
+    r.discharge_department = data['discharge_department']
+    r.treating_physician = data['treating_physician']
+    r.history = data['history']
+    r.k_days = data['k_days']
+    r.discharge_status = data['discharge_status']
+    r.date_of_death = data['date_of_death']
+    r.comment = data['comment']
     r.updated_by = current_user.id
     r.updated_at = datetime.now(timezone.utc)
 
     try:
+        log_action(current_user.id, 'record.update', 'record', r.id, f'full_name={r.full_name}')
         db.session.commit()
 
         # Clear dropdown cache
         clear_dropdown_cache()
-
-        # Audit log
-        try:
-            log_action(current_user.id, 'record.update', 'record', r.id, f'full_name={r.full_name}')
-            db.session.commit()
-        except Exception:
-            current_app.logger.exception('Failed to write audit log for record.update')
 
         current_app.logger.info(f'Record updated via AJAX: {r.id} by {current_user.username}')
 
@@ -769,59 +637,25 @@ def edit_record(record_id):
     r = db.get_or_404(Record, record_id)
 
     if request.method == 'POST':
-        # gather form fields
-        date_str = request.form.get('date_of_discharge', '').strip()
-        full_name = request.form.get('full_name', '').strip()
-        discharge_department = request.form.get('discharge_department', '').strip()
-        treating_physician = request.form.get('treating_physician', '').strip()
-        history = request.form.get('history', '').strip()
-        k_days = request.form.get('k_days', '').strip()
-        discharge_status = request.form.get('discharge_status', '').strip()
-        date_of_death_str = request.form.get('date_of_death', '').strip()
-        comment = request.form.get('comment', '').strip()
-
-        # validate presence of main fields (status is optional; only required when it is 'Помер')
-        if not all([date_str, full_name, discharge_department, treating_physician, history, k_days, discharge_status]):
-            flash('Будь ласка, заповніть усі обов\'язкові поля', 'warning')
+        data, error = validate_record_form(request.form, require_status_and_dept=True)
+        if error:
+            flash(error, 'warning')
             return redirect(url_for('records.edit_record', record_id=record_id))
 
-        date_of_discharge = parse_date(date_str)
-        if date_of_discharge is None:
-            flash('Дата виписки повинна бути у форматі ДД.ММ.РРРР або РРРР-ММ-ДД', 'warning')
-            return redirect(url_for('records.edit_record', record_id=record_id))
-
-        k_days_int = parse_integer(k_days)
-        if k_days_int is None:
-            flash('"К днів" повинно бути цілим числом', 'warning')
-            return redirect(url_for('records.edit_record', record_id=record_id))
-
-        # date_of_death handling
-        date_of_death = None
-
-        if date_of_death_str:
-            date_of_death = parse_date(date_of_death_str)
-            if date_of_death is None:
-                flash('Дата смерті повинна бути у форматі ДД.ММ.РРРР або РРРР-ММ-ДД', 'warning')
-                return redirect(url_for('records.edit_record', record_id=record_id))
-
-            if date_of_death < date_of_discharge:
-                flash('Дата смерті не може бути раніше дати виписки', 'warning')
-                return redirect(url_for('records.edit_record', record_id=record_id))
-
-        # apply changes
-        r.date_of_discharge = date_of_discharge
-        r.full_name = full_name
-        r.discharge_department = discharge_department
-        r.treating_physician = treating_physician
-        r.history = history
-        r.k_days = k_days_int
-        r.discharge_status = discharge_status
-        r.date_of_death = date_of_death
-        r.comment = comment
+        r.date_of_discharge = data['date_of_discharge']
+        r.full_name = data['full_name']
+        r.discharge_department = data['discharge_department']
+        r.treating_physician = data['treating_physician']
+        r.history = data['history']
+        r.k_days = data['k_days']
+        r.discharge_status = data['discharge_status']
+        r.date_of_death = data['date_of_death']
+        r.comment = data['comment']
         r.updated_by = current_user.id
         r.updated_at = datetime.now(timezone.utc)
 
         try:
+            log_action(current_user.id, 'record.update', 'record', r.id, f'full_name={r.full_name}')
             db.session.commit()
         except Exception:
             db.session.rollback()
@@ -830,11 +664,6 @@ def edit_record(record_id):
             return redirect(url_for('records.edit_record', record_id=record_id))
         # Clear dropdown cache after editing record
         clear_dropdown_cache()
-        try:
-            log_action(current_user.id, 'record.update', 'record', r.id, f'full_name={r.full_name}')
-            db.session.commit()
-        except Exception:
-            current_app.logger.exception('Failed to write audit log for record.update')
         current_app.logger.info(f'Record updated: {r.id} by {current_user.username}')
         flash(f'Запис #{r.id} ({r.full_name}) успішно оновлено', 'success')
         params = {}
@@ -861,14 +690,10 @@ def delete_record(record_id):
     saved_id = r.id
     saved_name = r.full_name
     db.session.delete(r)
+    log_action(current_user.id, 'record.delete', 'record', saved_id, f'full_name={saved_name}')
     db.session.commit()
     # Clear dropdown cache after deleting record
     clear_dropdown_cache()
-    try:
-        log_action(current_user.id, 'record.delete', 'record', saved_id, f'full_name={saved_name}')
-        db.session.commit()
-    except Exception:
-        current_app.logger.exception('Failed to write audit log for record.delete')
     current_app.logger.info(f'Record deleted: {saved_id} by {current_user.username}')
     flash(f'Запис #{saved_id} ({saved_name}) видалено', 'danger')
     # preserve filters from form (if any)

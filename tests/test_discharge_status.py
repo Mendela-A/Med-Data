@@ -1,11 +1,13 @@
 import pytest
-from app import create_app, db
+from app import create_app
+from models import db
 from models import User, Record, Department
 
 @pytest.fixture
 def app():
     app = create_app()
     app.config['TESTING'] = True
+    app.config['WTF_CSRF_ENABLED'] = False
     # Use an isolated in-memory database for tests to avoid touching local data/app.db
     app.config['SQLALCHEMY_DATABASE_URI'] = 'sqlite:///:memory:'
     with app.app_context():
@@ -81,7 +83,7 @@ def test_editor_can_view_and_set_discharge_status(app, client):
         client.post('/records/add', data=data, follow_redirects=True)
         r = Record.query.filter_by(full_name='Editor Edit Test').first()
         assert r is not None
-        client.get('/logout')
+        client.post('/logout')
 
         # Login as editor and GET edit page
         client.post('/login', data={'username': 'ed', 'password': 'pass'}, follow_redirects=True)

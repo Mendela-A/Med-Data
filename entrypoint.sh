@@ -4,9 +4,9 @@ set -e
 # ensure FLASK_APP
 export FLASK_APP=${FLASK_APP:-app.py}
 
-# Ensure data dir exists
-mkdir -p /app/data
-mkdir -p /app/logs
+# Ensure data dir exists (may already exist from Dockerfile with correct ownership)
+mkdir -p /app/data 2>/dev/null || true
+mkdir -p /app/logs 2>/dev/null || true
 
 # Initialize DB if not present or missing expected tables
 if [ ! -f /app/data/app.db ]; then

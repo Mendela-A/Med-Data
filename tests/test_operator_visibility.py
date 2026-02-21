@@ -1,11 +1,13 @@
 import pytest, datetime
-from app import create_app, db
+from app import create_app
+from models import db
 from models import User, Record, Department
 
 @pytest.fixture
 def app():
     app = create_app()
     app.config['TESTING'] = True
+    app.config['WTF_CSRF_ENABLED'] = False
     # Use an isolated in-memory database for tests to avoid touching local data/app.db
     app.config['SQLALCHEMY_DATABASE_URI'] = 'sqlite:///:memory:'
     with app.app_context():
@@ -76,7 +78,7 @@ def test_operators_can_see_each_others_records(app, client):
             'k_days': '1'
         }
         client.post('/records/add', data=data, follow_redirects=True)
-        client.get('/logout')
+        client.post('/logout')
         # login as op2 and assert the record is visible
         client.post('/login', data={'username': 'op2', 'password': 'pass'}, follow_redirects=True)
         rv = client.get('/')

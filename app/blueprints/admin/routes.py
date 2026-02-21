@@ -11,7 +11,8 @@ from sqlalchemy import extract, case, func
 from app.extensions import db
 from models import User, Department, Audit, Record, log_action
 from decorators import role_required
-from utils import clear_dropdown_cache
+from utils import clear_dropdown_cache, escape_like
+from constants import VALID_ROLES, STATUS_DISCHARGED, STATUS_PROCESSING
 from . import admin_bp
 
 
@@ -30,6 +31,10 @@ def admin_create_user():
     password = request.form.get('password', '').strip()
     role = request.form.get('role', '').strip() or 'operator'
 
+    if role not in VALID_ROLES:
+        flash('Невірна роль користувача', 'warning')
+        return redirect(url_for('admin.admin_users'))
+
     if not username or not password:
         flash('Ім\'я користувача та пароль обов\'язкові', 'warning')
         return redirect(url_for('admin.admin_users'))
@@ -43,13 +48,9 @@ def admin_create_user():
     u = User(username=username, role=role)
     u.set_password(password)
     db.session.add(u)
+    db.session.flush()  # assigns u.id
+    log_action(current_user.id, 'user.create', 'user', u.id, f'role={role}')
     db.session.commit()
-    # audit & log
-    try:
-        log_action(current_user.id, 'user.create', 'user', u.id, f'role={role}')
-        db.session.commit()
-    except Exception:
-        current_app.logger.exception('Failed to write audit log for user.create')
     current_app.logger.info(f'User created: {username} by {current_user.username}')
     flash(f'Користувача {username} ({role}) успішно створено', 'success')
     return redirect(url_for('admin.admin_users'))
@@ -88,16 +89,8 @@ def admin_edit_user(user_id):
             u.set_password(password)
 
         # Update role
-        if role in ['operator', 'editor', 'admin', 'viewer']:
+        if role in VALID_ROLES:
             u.role = role
-
-        try:
-            db.session.commit()
-        except Exception:
-            db.session.rollback()
-            current_app.logger.exception('Failed to update user')
-            flash('Помилка при збереженні змін', 'danger')
-            return redirect(url_for('admin.admin_edit_user', user_id=user_id))
 
         try:
             details = f'username={old_username}->{username}, role={role}'
@@ -106,7 +99,10 @@ def admin_edit_user(user_id):
             log_action(current_user.id, 'user.update', 'user', u.id, details)
             db.session.commit()
         except Exception:
-            current_app.logger.exception('Failed to write audit log for user.update')
+            db.session.rollback()
+            current_app.logger.exception('Failed to update user')
+            flash('Помилка при збереженні змін', 'danger')
+            return redirect(url_for('admin.admin_edit_user', user_id=user_id))
         current_app.logger.info(f'User updated: {u.username} by {current_user.username}')
         flash(f'Користувача {u.username} успішно оновлено', 'success')
         return redirect(url_for('admin.admin_users'))
@@ -125,17 +121,13 @@ def admin_delete_user(user_id):
     saved_username = u.username
     try:
         db.session.delete(u)
+        log_action(current_user.id, 'user.delete', 'user', saved_id, f'username={saved_username}')
         db.session.commit()
     except Exception:
         db.session.rollback()
         current_app.logger.exception('Failed to delete user')
         flash('Помилка при видаленні користувача', 'danger')
         return redirect(url_for('admin.admin_users'))
-    try:
-        log_action(current_user.id, 'user.delete', 'user', saved_id, f'username={saved_username}')
-        db.session.commit()
-    except Exception:
-        current_app.logger.exception('Failed to write audit log for user.delete')
     current_app.logger.info(f'User deleted: {saved_username} by {current_user.username}')
     flash(f'Користувача {saved_username} видалено', 'danger')
     return redirect(url_for('admin.admin_users'))
@@ -161,14 +153,11 @@ def admin_create_department():
         return redirect(url_for('admin.admin_departments'))
     d = Department(name=name)
     db.session.add(d)
+    db.session.flush()  # assigns d.id
+    log_action(current_user.id, 'department.create', 'department', d.id, f'name={name}')
     db.session.commit()
     # Clear dropdown cache after creating department
     clear_dropdown_cache()
-    try:
-        log_action(current_user.id, 'department.create', 'department', d.id, f'name={name}')
-        db.session.commit()
-    except Exception:
-        current_app.logger.exception('Failed to write audit log for department.create')
     current_app.logger.info(f'Department created: {name} by {current_user.username}')
     flash(f'Відділення "{name}" успішно створено', 'success')
     return redirect(url_for('admin.admin_departments'))
@@ -183,17 +172,15 @@ def admin_delete_department(dept_id):
     if in_use:
         flash(f'Неможливо видалити відділення "{d.name}" - використовується в {in_use} записах', 'danger')
         return redirect(url_for('admin.admin_departments'))
+    saved_id = d.id
+    saved_name = d.name
     db.session.delete(d)
+    log_action(current_user.id, 'department.delete', 'department', saved_id, f'name={saved_name}')
     db.session.commit()
     # Clear dropdown cache after deleting department
     clear_dropdown_cache()
-    try:
-        log_action(current_user.id, 'department.delete', 'department', d.id, f'name={d.name}')
-        db.session.commit()
-    except Exception:
-        current_app.logger.exception('Failed to write audit log for department.delete')
-    current_app.logger.info(f'Department deleted: {d.name} by {current_user.username}')
-    flash(f'Відділення "{d.name}" видалено', 'danger')
+    current_app.logger.info(f'Department deleted: {saved_name} by {current_user.username}')
+    flash(f'Відділення "{saved_name}" видалено', 'danger')
     return redirect(url_for('admin.admin_departments'))
 
 
@@ -275,8 +262,8 @@ def admin_statistics():
     dept_stats = db.session.query(
         Record.discharge_department,
         func.sum(case((Record.date_of_death.isnot(None), 1), else_=0)).label('deceased'),
-        func.sum(case(((Record.discharge_status == 'Виписаний') & (Record.date_of_death.is_(None)), 1), else_=0)).label('discharged'),
-        func.sum(case(((Record.discharge_status == 'Опрацьовується') & (Record.date_of_death.is_(None)), 1), else_=0)).label('processing')
+        func.sum(case(((Record.discharge_status == STATUS_DISCHARGED) & (Record.date_of_death.is_(None)), 1), else_=0)).label('discharged'),
+        func.sum(case(((Record.discharge_status == STATUS_PROCESSING) & (Record.date_of_death.is_(None)), 1), else_=0)).label('processing')
     ).filter(
         Record.discharge_department.isnot(None),
         Record.date_of_discharge.isnot(None),
@@ -297,8 +284,8 @@ def admin_statistics():
     # 3. Overall status distribution (OPTIMIZED: Single query)
     current_stats = db.session.query(
         func.sum(case((Record.date_of_death.isnot(None), 1), else_=0)).label('deceased'),
-        func.sum(case(((Record.discharge_status == 'Виписаний') & (Record.date_of_death.is_(None)), 1), else_=0)).label('discharged'),
-        func.sum(case(((Record.discharge_status == 'Опрацьовується') & (Record.date_of_death.is_(None)), 1), else_=0)).label('processing')
+        func.sum(case(((Record.discharge_status == STATUS_DISCHARGED) & (Record.date_of_death.is_(None)), 1), else_=0)).label('discharged'),
+        func.sum(case(((Record.discharge_status == STATUS_PROCESSING) & (Record.date_of_death.is_(None)), 1), else_=0)).label('processing')
     ).filter(
         Record.date_of_discharge.isnot(None),
         Record.date_of_discharge >= from_date,
@@ -307,8 +294,8 @@ def admin_statistics():
 
     status_distribution = {
         'Помер': current_stats.deceased or 0,
-        'Виписаний': current_stats.discharged or 0,
-        'Опрацьовується': current_stats.processing or 0
+        STATUS_DISCHARGED: current_stats.discharged or 0,
+        STATUS_PROCESSING: current_stats.processing or 0
     }
 
     total_records = sum(status_distribution.values())
@@ -321,8 +308,8 @@ def admin_statistics():
 
     prev_stats = db.session.query(
         func.sum(case((Record.date_of_death.isnot(None), 1), else_=0)).label('deceased'),
-        func.sum(case(((Record.discharge_status == 'Виписаний') & (Record.date_of_death.is_(None)), 1), else_=0)).label('discharged'),
-        func.sum(case(((Record.discharge_status == 'Опрацьовується') & (Record.date_of_death.is_(None)), 1), else_=0)).label('processing')
+        func.sum(case(((Record.discharge_status == STATUS_DISCHARGED) & (Record.date_of_death.is_(None)), 1), else_=0)).label('discharged'),
+        func.sum(case(((Record.discharge_status == STATUS_PROCESSING) & (Record.date_of_death.is_(None)), 1), else_=0)).label('processing')
     ).filter(
         Record.date_of_discharge.isnot(None),
         Record.date_of_discharge >= prev_from,
@@ -336,8 +323,8 @@ def admin_statistics():
 
     trends = {
         'total': total_records - prev_total,
-        'processing': status_distribution['Опрацьовується'] - prev_processing,
-        'discharged': status_distribution['Виписаний'] - prev_discharged,
+        'processing': status_distribution[STATUS_PROCESSING] - prev_processing,
+        'discharged': status_distribution[STATUS_DISCHARGED] - prev_discharged,
         'deceased': status_distribution['Помер'] - prev_deceased
     }
 
@@ -371,7 +358,7 @@ def admin_audit():
     q = Audit.query
 
     if action_filter:
-        q = q.filter(Audit.action.contains(action_filter))
+        q = q.filter(Audit.action.like(f'%{escape_like(action_filter)}%', escape='\\'))
     if actor_filter:
         try:
             actor_id = int(actor_filter)
@@ -396,7 +383,7 @@ def admin_audit():
     # Pagination
     page = request.args.get('page', 1, type=int)
     per_page = request.args.get('per_page', 50, type=int)
-    per_page = min(per_page, 200)
+    per_page = max(10, min(per_page, 200))
 
     pagination = q.paginate(page=page, per_page=per_page, error_out=False)
     logs = pagination.items

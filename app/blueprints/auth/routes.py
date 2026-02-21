@@ -6,9 +6,13 @@ Authentication routes
 from flask import render_template, redirect, url_for, flash, request
 from flask_login import login_user, logout_user, login_required, current_user
 
-from app.extensions import db, limiter
+from app.extensions import db, limiter, bcrypt
 from models import User, log_action
+from utils import safe_referrer
 from . import auth_bp
+
+# Pre-computed dummy hash for timing-safe login (prevents username enumeration)
+_DUMMY_HASH = bcrypt.generate_password_hash('dummy-timing-placeholder').decode('utf-8')
 
 
 @auth_bp.route('/login', methods=['GET', 'POST'])
@@ -28,7 +32,10 @@ def login():
         password = request.form.get('password')
         user = User.query.filter_by(username=username).first()
 
-        if user and user.check_password(password):
+        if user is None:
+            # Perform dummy hash check to equalize timing (prevents username enumeration)
+            bcrypt.check_password_hash(_DUMMY_HASH, password)
+        elif user.check_password(password):
             login_user(user)
             return redirect(url_for('records.index'))
 
@@ -38,7 +45,7 @@ def login():
     return render_template('login.html')
 
 
-@auth_bp.route('/logout')
+@auth_bp.route('/logout', methods=['POST'])
 @login_required
 def logout():
     """
@@ -49,6 +56,7 @@ def logout():
 
 
 @auth_bp.route('/change-password', methods=['POST'])
+@limiter.limit("5 per minute")
 @login_required
 def change_password():
     """Allow the current user to change their own password."""
@@ -58,33 +66,28 @@ def change_password():
 
     if not all([current_password, new_password, confirm_password]):
         flash('Будь ласка, заповніть усі поля', 'warning')
-        return redirect(request.referrer or url_for('records.index'))
+        return redirect(safe_referrer())
 
     if not current_user.check_password(current_password):
         flash('Поточний пароль невірний', 'danger')
-        return redirect(request.referrer or url_for('records.index'))
+        return redirect(safe_referrer())
 
     if len(new_password) < 8:
         flash('Новий пароль повинен містити щонайменше 8 символів', 'warning')
-        return redirect(request.referrer or url_for('records.index'))
+        return redirect(safe_referrer())
 
     if new_password != confirm_password:
         flash('Паролі не співпадають', 'warning')
-        return redirect(request.referrer or url_for('records.index'))
+        return redirect(safe_referrer())
 
     current_user.set_password(new_password)
-    try:
-        db.session.commit()
-    except Exception:
-        db.session.rollback()
-        flash('Помилка при збереженні пароля', 'danger')
-        return redirect(request.referrer or url_for('records.index'))
-
     try:
         log_action(current_user.id, 'user.password_change', 'user', current_user.id, 'self-service')
         db.session.commit()
     except Exception:
-        pass
+        db.session.rollback()
+        flash('Помилка при збереженні пароля', 'danger')
+        return redirect(safe_referrer())
 
     flash('Пароль успішно змінено', 'success')
     return redirect(url_for('records.index'))
