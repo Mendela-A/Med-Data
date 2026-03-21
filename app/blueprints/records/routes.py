@@ -353,7 +353,7 @@ def export():
                 r.k_days,
                 r.discharge_status or '',
                 r.adsj or '',
-                float(r.suma) if r.suma is not None else '',
+                f"{int(r.suma):,}".replace(",", " ") if r.suma is not None else '',
                 r.date_of_death.strftime('%d.%m.%Y') if r.date_of_death else '',
                 r.comment or '',
                 r.created_at.strftime('%d.%m.%Y %H:%M') if r.created_at else '',
@@ -464,7 +464,7 @@ def print_records():
                                  discharge_department=discharge_department,
                                  user_map=user_map,
                                  generated_by=current_user.username,
-                                 generated_at=datetime.now())
+                                 generated_at=datetime.now(timezone(timedelta(hours=2))))
 
     # Generate PDF
     try:

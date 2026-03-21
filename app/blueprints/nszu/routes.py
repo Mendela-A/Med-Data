@@ -5,7 +5,7 @@ NSZU Corrections routes
 
 from flask import render_template, redirect, url_for, flash, request, current_app, send_file, jsonify
 from flask_login import login_required, current_user
-from datetime import datetime, timezone
+from datetime import datetime, timezone, timedelta
 from calendar import monthrange
 from io import BytesIO
 
@@ -552,7 +552,7 @@ def print_nszu():
                                  doctor_filter=doctor_filter,
                                  nszu_id_filter=nszu_id_filter,
                                  generated_by=current_user.username,
-                                 generated_at=datetime.now())
+                                 generated_at=datetime.now(timezone(timedelta(hours=2))))
 
     # Generate PDF with WeasyPrint
     try:
