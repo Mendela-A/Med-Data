@@ -3,7 +3,7 @@
 Authentication routes
 """
 
-from flask import render_template, redirect, url_for, flash, request
+from flask import render_template, redirect, url_for, flash, request, session
 from flask_login import login_user, logout_user, login_required, current_user
 
 from app.extensions import db, limiter, bcrypt
@@ -36,6 +36,7 @@ def login():
             # Perform dummy hash check to equalize timing (prevents username enumeration)
             bcrypt.check_password_hash(_DUMMY_HASH, password)
         elif user.check_password(password):
+            session.permanent = True
             login_user(user)
             return redirect(url_for('records.index'))
 

@@ -317,7 +317,7 @@ def export():
     if use_write_only:
         headers = ['ID', 'Дата виписки', 'ПІБ', 'Відділення', 'Лікар', 'Історія хвороби', 'К днів', 'Статус виписки']
     else:
-        headers = ['ID', 'Дата виписки', 'ПІБ', 'Відділення', 'Лікар', 'Історія хвороби', 'К днів', 'Статус виписки', 'Дата смерті', 'Коментар', 'Створено', 'Оновлено', 'Автор', 'Редактор']
+        headers = ['ID', 'Дата виписки', 'ПІБ', 'Відділення', 'Лікар', 'Історія хвороби', 'К днів', 'Статус виписки', 'АДСЖ', 'Сума', 'Дата смерті', 'Коментар', 'Створено', 'Оновлено', 'Автор', 'Редактор']
 
     ws.append(headers)
 
@@ -352,6 +352,8 @@ def export():
                 r.history,
                 r.k_days,
                 r.discharge_status or '',
+                r.adsj or '',
+                float(r.suma) if r.suma is not None else '',
                 r.date_of_death.strftime('%d.%m.%Y') if r.date_of_death else '',
                 r.comment or '',
                 r.created_at.strftime('%d.%m.%Y %H:%M') if r.created_at else '',
@@ -508,6 +510,7 @@ def add_record():
             k_days=data['k_days'],
             discharge_status=STATUS_PROCESSING,
             date_of_death=data['date_of_death'],
+            comment=data['comment'],
             created_by=current_user.id,
             updated_by=current_user.id
         )
@@ -605,6 +608,8 @@ def api_edit_record(record_id):
     r.discharge_status = data['discharge_status']
     r.date_of_death = data['date_of_death']
     r.comment = data['comment']
+    r.adsj = data['adsj']
+    r.suma = data['suma']
     r.updated_by = current_user.id
     r.updated_at = datetime.now(timezone.utc)
 
@@ -651,6 +656,8 @@ def edit_record(record_id):
         r.discharge_status = data['discharge_status']
         r.date_of_death = data['date_of_death']
         r.comment = data['comment']
+        r.adsj = data['adsj']
+        r.suma = data['suma']
         r.updated_by = current_user.id
         r.updated_at = datetime.now(timezone.utc)
 

@@ -17,4 +17,4 @@ class Config:
     SESSION_COOKIE_HTTPONLY = True
     SESSION_COOKIE_SAMESITE = 'Lax'
     SESSION_COOKIE_SECURE = os.environ.get('FLASK_ENV') == 'production'
-    PERMANENT_SESSION_LIFETIME = 3600  # 1 hour
+    PERMANENT_SESSION_LIFETIME = 28800  # 8 hours
