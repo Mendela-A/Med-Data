@@ -93,7 +93,14 @@
         <div class="row g-3 mb-3">
           <div class="col-sm-6 col-md-4 col-xl-2">
             <label class="form-label small mb-1"><i class="bi bi-calendar-month me-1"></i>Місяць</label>
-            <input class="form-control form-control-sm" type="month" name="month_filter" value="{{ month_filter_value }}" id="month_filter">
+            <div class="month-picker" data-value="{{ month_filter_value }}" data-min="2020-01">
+              <input type="hidden" name="month_filter" id="month_filter" class="mp-hidden-input" value="{{ month_filter_value }}">
+              <button type="button" class="form-control form-control-sm text-start month-picker-toggle d-flex align-items-center justify-content-between">
+                <span><i class="bi bi-calendar-month me-1"></i><span class="mp-label"></span></span>
+                <i class="bi bi-chevron-down small text-muted ms-1 mp-chevron"></i>
+              </button>
+              <div class="month-picker-panel shadow-sm border rounded-3 p-2 d-none"></div>
+            </div>
           </div>
 
           <div class="col-sm-6 col-md-4 col-xl-2">
@@ -180,6 +187,10 @@
                 {{ sort_th('discharge_status', 'Статус') }}
                 {{ sort_th('date_of_death', 'Дата смерті') }}
                 <th>Коментар</th>
+                {% if current_user.role in ['editor', 'admin', 'viewer'] %}
+                  <th>АДСГ</th>
+                  <th>Сума</th>
+                {% endif %}
                 {% if current_user.role in ['editor', 'admin'] %}
                   <th>Змінив</th>
                   <th>Змінено</th>
@@ -225,6 +236,10 @@
               {% endif %}
             </td>
             <td>{{ r.comment or '' }}</td>
+            {% if current_user.role in ['editor', 'admin', 'viewer'] %}
+              <td>{{ r.adsj or '' }}</td>
+              <td>{{ r.suma | format_suma }}</td>
+            {% endif %}
             {% if current_user.role in ['editor', 'admin'] %}
               <td>{{ r.updater.username if r.updater else (r.creator.username if r.creator else r.updated_by or r.created_by) }}</td>
               <td>{{ r.updated_at.strftime('%d.%m.%Y %H:%M') if r.updated_at else (r.created_at.strftime('%d.%m.%Y %H:%M') if r.created_at else '') }}</td>
@@ -244,6 +259,8 @@
                     data-discharge-status="{{ r.discharge_status or '' }}"
                     data-date-of-death="{{ r.date_of_death.strftime('%Y-%m-%d') if r.date_of_death else '' }}"
                     data-comment="{{ r.comment or '' }}"
+                    data-adsj="{{ r.adsj or '' }}"
+                    data-suma="{{ r.suma if r.suma is not none else '' }}"
                     title="Редагувати">
                     <i class="bi bi-pencil"></i>Змінити
                   </button>
@@ -566,6 +583,16 @@
               <div class="col-12">
                 <label for="edit_comment" class="form-label">Коментар</label>
                 <textarea class="form-control" id="edit_comment" name="comment" rows="2"></textarea>
+              </div>
+
+              <div class="col-md-6">
+                <label for="edit_adsj" class="form-label">АДСГ</label>
+                <input type="text" class="form-control" id="edit_adsj" name="adsj" maxlength="200">
+              </div>
+
+              <div class="col-md-6">
+                <label for="edit_suma" class="form-label">Сума</label>
+                <input type="number" step="0.01" class="form-control" id="edit_suma" name="suma">
               </div>
             </div>
           </form>
@@ -916,6 +943,8 @@
       const dischargeStatus = editBtn.dataset.dischargeStatus;
       const dateOfDeath = editBtn.dataset.dateOfDeath;
       const comment = editBtn.dataset.comment;
+      const adsj = editBtn.dataset.adsj;
+      const suma = editBtn.dataset.suma;
 
       // Populate form fields
       document.getElementById('edit_record_id').value = recordId;
@@ -928,6 +957,8 @@
       document.getElementById('edit_discharge_status').value = dischargeStatus;
       document.getElementById('edit_date_of_death').value = dateOfDeath;
       document.getElementById('edit_comment').value = comment;
+      document.getElementById('edit_adsj').value = adsj;
+      document.getElementById('edit_suma').value = suma;
 
       // Update modal title
       document.getElementById('editRecordModalLabel').textContent = `Редагувати запис #${recordId}`;

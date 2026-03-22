@@ -65,8 +65,14 @@
         <div class="row g-3 mb-3">
           <div class="col-sm-6 col-md-4 col-xl-2">
             <label class="form-label small mb-1"><i class="bi bi-calendar-month me-1"></i>Місяць</label>
-            <input type="month" class="form-control form-control-sm" name="month_year"
-                   value="{{ '%04d-%02d'|format(selected_year, selected_month) }}" min="2020-01">
+            <div class="month-picker" data-value="{{ '%04d-%02d'|format(selected_year, selected_month) }}" data-min="2020-01">
+              <input type="hidden" name="month_year" class="mp-hidden-input" value="{{ '%04d-%02d'|format(selected_year, selected_month) }}">
+              <button type="button" class="form-control form-control-sm text-start month-picker-toggle d-flex align-items-center justify-content-between">
+                <span><i class="bi bi-calendar-month me-1"></i><span class="mp-label"></span></span>
+                <i class="bi bi-chevron-down small text-muted ms-1 mp-chevron"></i>
+              </button>
+              <div class="month-picker-panel shadow-sm border rounded-3 p-2 d-none"></div>
+            </div>
           </div>
 
           <div class="col-sm-6 col-md-4 col-xl-2">

@@ -869,3 +869,85 @@ td .badge {
 input[list]::-webkit-calendar-picker-indicator { opacity: 0.6; cursor: pointer; }
 input[list]:focus::-webkit-calendar-picker-indicator { opacity: 1; }
 
+/* ===== Month Picker ===== */
+.month-picker { position: relative; }
+.month-picker-toggle {
+  cursor: pointer;
+  background: var(--bs-body-bg, #fff);
+  user-select: none;
+  white-space: nowrap;
+  overflow: hidden;
+}
+.month-picker-toggle:focus {
+  outline: 0;
+  border-color: var(--color-primary);
+  box-shadow: 0 0 0 0.2rem rgba(15, 118, 110, 0.2);
+}
+.mp-chevron {
+  transition: transform 0.2s ease;
+  flex-shrink: 0;
+}
+.month-picker-panel {
+  position: absolute;
+  top: calc(100% + 4px);
+  left: 0;
+  z-index: 1050;
+  min-width: 228px;
+  background: #fff;
+  border-color: var(--color-border) !important;
+}
+.mp-year-nav {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 8px;
+  padding-bottom: 6px;
+  border-bottom: 1px solid var(--color-border);
+}
+.mp-year-btn {
+  border: 1px solid transparent;
+  background: none;
+  padding: 2px 8px;
+  border-radius: var(--radius-sm);
+  cursor: pointer;
+  color: var(--color-primary);
+  line-height: 1.4;
+  transition: background .15s;
+}
+.mp-year-btn:hover:not(:disabled) { background: var(--color-primary-light); border-color: var(--color-primary-medium); }
+.mp-year-btn:disabled { opacity: 0.3; cursor: default; }
+.mp-year-label { font-weight: 600; font-size: .9rem; color: var(--color-text); }
+.mp-month-grid {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 4px;
+}
+.mp-month-btn {
+  border: 1px solid transparent;
+  border-radius: var(--radius-sm);
+  padding: 6px 4px;
+  font-size: .78rem;
+  cursor: pointer;
+  background: none;
+  transition: background .15s, border-color .15s, color .15s;
+  text-align: center;
+  color: var(--color-text);
+  font-family: var(--font-sans);
+}
+.mp-month-btn:hover:not(:disabled):not(.active) {
+  background: var(--color-primary-light);
+  border-color: var(--color-primary-medium);
+}
+.mp-month-btn.active {
+  background: var(--color-primary);
+  color: #fff;
+  border-color: var(--color-primary);
+  font-weight: 600;
+}
+.mp-month-btn.disabled,
+.mp-month-btn:disabled {
+  opacity: 0.35;
+  cursor: default;
+  pointer-events: none;
+}
+
