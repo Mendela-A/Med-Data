@@ -205,6 +205,29 @@
   </div>
 </div>
 
+<!-- KPI Card: Total ADSJ suma -->
+<div class="row mb-3 g-3">
+  <div class="col-md-4 col-sm-6">
+    <div class="card stat-card h-100">
+      <div class="card-body">
+        <div class="d-flex justify-content-between align-items-start mb-2">
+          <div>
+            <h6 class="card-subtitle text-muted mb-1" style="font-size: 0.85rem;">
+              <i class="bi bi-cash-stack me-1"></i>Загальна сума (АДСГ)
+            </h6>
+            <h3 class="mb-0 text-info">{{ adsj_total_suma|format_suma }}</h3>
+          </div>
+          <span class="badge bg-info-subtle text-info">грн</span>
+        </div>
+        <div class="progress" style="height: 4px;">
+          <div class="progress-bar bg-info" role="progressbar" style="width: 100%"></div>
+        </div>
+        <small class="text-muted" style="font-size: 0.75rem;">за обраний період</small>
+      </div>
+    </div>
+  </div>
+</div>
+
 <!-- Section 2: Status distribution by department -->
 <div class="card mb-4">
   <div class="card-body">
@@ -356,6 +379,56 @@
     {% else %}
     <div class="text-center py-4">
       <i class="bi bi-building text-muted" style="font-size: 2rem;"></i>
+      <p class="text-muted mt-2 mb-0">Немає даних за обраний період</p>
+    </div>
+    {% endif %}
+  </div>
+</div>
+
+<!-- Section: АДСГ group breakdown -->
+<div class="card mb-4">
+  <div class="card-body">
+    <h2 class="h6 mb-3">
+      <i class="bi bi-tags me-2"></i>Розподіл по групах АДСГ
+    </h2>
+
+    {% if adsj_stats %}
+    <div class="table-responsive">
+      <table class="table table-hover table-sm" id="adsjTable">
+        <thead>
+          <tr>
+            <th class="sortable-header" data-column="group" data-type="text" title="Натисніть для сортування">
+              Група АДСГ <i class="bi bi-chevron-expand sort-icon"></i>
+            </th>
+            <th class="sortable-header text-center" data-column="count" data-type="number" title="Натисніть для сортування">
+              К-сть записів <i class="bi bi-chevron-expand sort-icon"></i>
+            </th>
+            <th class="sortable-header text-end" data-column="suma" data-type="number" title="Натисніть для сортування">
+              Сума <i class="bi bi-chevron-expand sort-icon"></i>
+            </th>
+          </tr>
+        </thead>
+        <tbody id="adsjTableBody">
+          {% for row in adsj_stats %}
+          <tr{% if row.group_name == 'Без групи' %} class="table-secondary fst-italic"{% endif %}>
+            <td>{{ row.group_name }}</td>
+            <td class="text-center">{{ row.count }}</td>
+            <td class="text-end">{{ (row.total_suma or 0)|format_suma }}</td>
+          </tr>
+          {% endfor %}
+        </tbody>
+        <tfoot>
+          <tr>
+            <th>Всього</th>
+            <th class="text-center">{{ adsj_total_count }}</th>
+            <th class="text-end">{{ adsj_total_suma|format_suma }}</th>
+          </tr>
+        </tfoot>
+      </table>
+    </div>
+    {% else %}
+    <div class="text-center py-4">
+      <i class="bi bi-tags text-muted" style="font-size: 2rem;"></i>
       <p class="text-muted mt-2 mb-0">Немає даних за обраний період</p>
     </div>
     {% endif %}
@@ -547,6 +620,69 @@
       if (currentSort.column && currentSort.order) {
         sortTable(currentSort.column, currentSort.order);
       }
+    }
+
+    // АДСГ table sorting
+    const adsjTable = document.getElementById('adsjTable');
+    const adsjTableBody = document.getElementById('adsjTableBody');
+
+    if (adsjTable && adsjTableBody) {
+      let adsjSort = { column: 'group', order: 'asc' };
+
+      function getAdsjCellValue(row, column) {
+        switch (column) {
+          case 'group':
+            return row.cells[0].textContent.trim();
+          case 'count':
+            return parseInt(row.cells[1].textContent.trim()) || 0;
+          case 'suma': {
+            const text = row.cells[2].textContent.trim().replace(/\s/g, '');
+            return parseFloat(text.replace(',', '.')) || 0;
+          }
+          default:
+            return row.cells[0].textContent.trim();
+        }
+      }
+
+      function sortAdsjTable(column, order) {
+        const rows = Array.from(adsjTableBody.querySelectorAll('tr'));
+        const normalRows = rows.filter(r => !r.classList.contains('table-secondary'));
+        const noGroupRows = rows.filter(r => r.classList.contains('table-secondary'));
+
+        normalRows.sort((a, b) => {
+          const aVal = getAdsjCellValue(a, column);
+          const bVal = getAdsjCellValue(b, column);
+          let cmp = typeof aVal === 'string' ? aVal.localeCompare(bVal, 'uk') : aVal - bVal;
+          return order === 'asc' ? cmp : -cmp;
+        });
+
+        [...normalRows, ...noGroupRows].forEach(row => adsjTableBody.appendChild(row));
+
+        adsjTable.querySelectorAll('.sortable-header').forEach(h => {
+          h.classList.remove('sorted-asc', 'sorted-desc');
+          if (h.dataset.column === column) {
+            h.classList.add(order === 'asc' ? 'sorted-asc' : 'sorted-desc');
+          }
+        });
+
+        adsjSort = { column, order };
+      }
+
+      adsjTable.querySelectorAll('.sortable-header').forEach(header => {
+        header.addEventListener('click', function() {
+          const column = this.dataset.column;
+          let order = 'desc';
+          if (adsjSort.column === column) {
+            order = adsjSort.order === 'asc' ? 'desc' : 'asc';
+          } else if (column === 'group') {
+            order = 'asc';
+          }
+          sortAdsjTable(column, order);
+        });
+      });
+
+      // Apply initial sort
+      sortAdsjTable('group', 'asc');
     }
   });
 </script>

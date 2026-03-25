@@ -68,6 +68,14 @@
           <label class="form-label">Коментар</label>
           <textarea class="form-control" name="comment" rows="2">{{ r.comment or '' }}</textarea>
         </div>
+        <div class="col-auto">
+          <label class="form-label">АДСГ</label>
+          <input type="text" class="form-control" name="adsj" value="{{ r.adsj or '' }}" maxlength="200">
+        </div>
+        <div class="col-auto">
+          <label class="form-label">Сума</label>
+          <input type="number" step="0.01" class="form-control input-xsmall" name="suma" value="{{ r.suma if r.suma is not none else '' }}">
+        </div>
         <div class="col-12">
           <div class="d-flex gap-2">
             <button class="btn btn-primary" type="submit"><i class="bi bi-check-lg me-1"></i>Зберегти</button>

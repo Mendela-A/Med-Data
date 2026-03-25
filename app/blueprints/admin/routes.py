@@ -281,6 +281,33 @@ def admin_statistics():
 
     dept_list = sorted(status_by_dept.keys())
 
+    # АДСЖ group breakdown
+    adsj_raw = db.session.query(
+        func.coalesce(
+            func.nullif(func.trim(Record.adsj), ''),
+            'Без групи'
+        ).label('group_name'),
+        func.count(Record.id).label('count'),
+        func.sum(Record.suma).label('total_suma')
+    ).filter(
+        Record.date_of_discharge.isnot(None),
+        Record.date_of_discharge >= from_date,
+        Record.date_of_discharge < query_end
+    ).group_by(
+        func.coalesce(
+            func.nullif(func.trim(Record.adsj), ''),
+            'Без групи'
+        )
+    ).all()
+
+    adsj_stats = sorted(
+        [r for r in adsj_raw if r.group_name != 'Без групи'],
+        key=lambda r: r.group_name
+    ) + [r for r in adsj_raw if r.group_name == 'Без групи']
+
+    adsj_total_count = sum(r.count for r in adsj_stats)
+    adsj_total_suma = sum(r.total_suma or 0 for r in adsj_stats)
+
     # 3. Overall status distribution (OPTIMIZED: Single query)
     current_stats = db.session.query(
         func.sum(case((Record.date_of_death.isnot(None), 1), else_=0)).label('deceased'),
@@ -339,6 +366,9 @@ def admin_statistics():
         period_label=period_label,
         from_date=from_date,
         to_date=to_date,
+        adsj_stats=adsj_stats,
+        adsj_total_count=adsj_total_count,
+        adsj_total_suma=adsj_total_suma,
     )
 
 

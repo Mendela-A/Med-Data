@@ -63,6 +63,8 @@ def validate_record_form(form_data: dict, require_status_and_dept: bool = False)
     discharge_status = form_data.get('discharge_status', '').strip()
     date_of_death_str = form_data.get('date_of_death', '').strip()
     comment = form_data.get('comment', '').strip()
+    adsj = form_data.get('adsj', '').strip() if require_status_and_dept else ''
+    suma_str = form_data.get('suma', '').strip() if require_status_and_dept else ''
 
     required = [date_str, full_name, treating_physician, history, k_days_str]
     if require_status_and_dept:
@@ -86,6 +88,8 @@ def validate_record_form(form_data: dict, require_status_and_dept: bool = False)
         if date_of_death < date_of_discharge:
             return None, 'Дата смерті не може бути раніше дати виписки'
 
+    suma = parse_numeric(suma_str) if suma_str else None
+
     return {
         'date_of_discharge': date_of_discharge,
         'full_name': full_name,
@@ -96,6 +100,8 @@ def validate_record_form(form_data: dict, require_status_and_dept: bool = False)
         'discharge_status': discharge_status,
         'date_of_death': date_of_death,
         'comment': comment or None,
+        'adsj': adsj or None,
+        'suma': suma,
     }, None
 
 

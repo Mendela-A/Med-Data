@@ -44,11 +44,12 @@ tests/__pycache__/
 !requirements.txt
 
 # Certs (private keys)
-certs/*.key
-certs/*.crt
-certs/*.pem
-certs/*.pfx
-certs/*.p12
+certs/
+static/certs/
+*.key
+*.pem
+*.pfx
+*.p12
 
 # One-time scripts (not in project)
 import_records.py

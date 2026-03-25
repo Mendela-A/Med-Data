@@ -187,4 +187,12 @@ def create_app(config_class=None):
             click.echo(f'Created admin user {username}')
         click.echo('Initialized the database (with admin).')
 
+    # Jinja2 filter: format suma as "20 000" (no decimals, space thousands separator)
+    def _format_suma(value):
+        if value is None:
+            return ''
+        return f"{int(value):,}".replace(",", " ")
+
+    app.jinja_env.filters['format_suma'] = _format_suma
+
     return app

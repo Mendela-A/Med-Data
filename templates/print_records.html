@@ -159,15 +159,17 @@
         }
 
         .col-narrow { width: 3%; }
-        .col-date { width: 7%; }
-        .col-name { width: 15%; }
-        .col-department { width: 12%; }
-        .col-doctor { width: 12%; }
-        .col-history { width: 6%; }
-        .col-days { width: 5%; }
-        .col-status { width: 10%; }
-        .col-death { width: 7%; }
-        .col-comment { width: 15%; }
+        .col-date { width: 6%; }
+        .col-name { width: 13%; }
+        .col-department { width: 10%; }
+        .col-doctor { width: 10%; }
+        .col-history { width: 5%; }
+        .col-days { width: 4%; }
+        .col-status { width: 9%; }
+        .col-death { width: 6%; }
+        .col-comment { width: 12%; }
+        .col-adsj { width: 12%; }
+        .col-suma { width: 7%; }
         .col-user { width: 8%; }
 
         /* Page break control */
@@ -231,6 +233,8 @@
                 <th class="col-status">Статус</th>
                 <th class="col-death">Дата смерті</th>
                 <th class="col-comment">Коментар</th>
+                <th class="col-adsj">АДСГ</th>
+                <th class="col-suma">Сума</th>
             </tr>
         </thead>
         <tbody>
@@ -258,12 +262,14 @@
                 </td>
                 <td class="col-death">{{ r.date_of_death.strftime('%d.%m.%Y') if r.date_of_death else '' }}</td>
                 <td class="col-comment">{{ r.comment[:200] if r.comment else '' }}</td>
+                <td class="col-adsj">{{ r.adsj or '' }}</td>
+                <td class="col-suma">{{ r.suma | format_suma }}</td>
             </tr>
             {% endfor %}
         </tbody>
         <tfoot>
             <tr style="background-color: #f0fdfa; font-weight: bold;">
-                <td colspan="10" style="text-align: right; border-top: 2px solid #0f766e;">Всього записів: {{ records|length }}</td>
+                <td colspan="12" style="text-align: right; border-top: 2px solid #0f766e;">Всього записів: {{ records|length }}</td>
             </tr>
         </tfoot>
     </table>
