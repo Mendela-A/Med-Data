@@ -24,6 +24,21 @@ services:
       timeout: 10s
       retries: 3
 
+  tg-bot:
+    build: .
+    container_name: tg_bot
+    command: python scripts/tg_bot.py
+    environment:
+      - TELEGRAM_BOT_TOKEN=${TELEGRAM_BOT_TOKEN}
+      - TELEGRAM_GROUP_ID=${TELEGRAM_GROUP_ID}
+      - DATABASE_URL=sqlite:////app/data/app.db
+    volumes:
+      - ./data:/app/data:ro
+    depends_on:
+      web:
+        condition: service_healthy
+    restart: unless-stopped
+
   nginx:
     image: nginx:stable
     container_name: nginx
