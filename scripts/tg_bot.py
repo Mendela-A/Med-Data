@@ -75,7 +75,7 @@ def get_records_for_dept(dept: str) -> list[dict]:
     with _connect() as conn:
         rows = conn.execute(
             """
-            SELECT history, discharge_status, treating_physician, comment
+            SELECT history, discharge_status, discharge_department, comment
             FROM   records
             WHERE  discharge_department = ?
               AND  discharge_status IN (?, ?)
@@ -107,18 +107,18 @@ def format_dept_report(dept: str, records: list[dict]) -> list[str]:
         ]
 
     W_HIST = max(6, min(14, max(len(r["history"] or "—") for r in records)))
-    W_PHYS = max(8, min(18, max(len(r["treating_physician"] or "—") for r in records)))
+    W_DEPT = max(8, min(20, max(len(r["discharge_department"] or "—") for r in records)))
     W_COMM = max(8, min(22, max(len((r["comment"] or "—").strip()) for r in records)))
 
-    header = f"{'Іст. №'.ljust(W_HIST)} │ {'Лікар'.ljust(W_PHYS)} │ Коментар"
-    sep = "─" * (W_HIST + 3 + W_PHYS + 3 + W_COMM)
+    header = f"{'Іст. №'.ljust(W_HIST)} │ {'Відділення'.ljust(W_DEPT)} │ Коментар"
+    sep = "─" * (W_HIST + 3 + W_DEPT + 3 + W_COMM)
 
     data_rows: list[tuple[str, str]] = []
     for r in records:
         hist = html.escape(_col(r["history"], W_HIST))
-        phys = html.escape(_col(r["treating_physician"], W_PHYS))
+        dept_col = html.escape(_col(r["discharge_department"], W_DEPT))
         comm = html.escape(_col(r["comment"], W_COMM))
-        line = f"{hist} │ {phys} │ {comm}"
+        line = f"{hist} │ {dept_col} │ {comm}"
         data_rows.append((r["discharge_status"], line))
 
     total = len(records)
