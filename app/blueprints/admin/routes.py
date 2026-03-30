@@ -12,7 +12,7 @@ from app.extensions import db
 from models import User, Department, Audit, Record, log_action
 from decorators import role_required
 from utils import clear_dropdown_cache, escape_like
-from constants import VALID_ROLES, STATUS_DISCHARGED, STATUS_PROCESSING
+from constants import VALID_ROLES, STATUS_DISCHARGED, STATUS_PROCESSING, STATUS_VIOLATIONS
 from . import admin_bp
 
 
@@ -263,7 +263,8 @@ def admin_statistics():
         Record.discharge_department,
         func.sum(case((Record.date_of_death.isnot(None), 1), else_=0)).label('deceased'),
         func.sum(case(((Record.discharge_status == STATUS_DISCHARGED) & (Record.date_of_death.is_(None)), 1), else_=0)).label('discharged'),
-        func.sum(case(((Record.discharge_status == STATUS_PROCESSING) & (Record.date_of_death.is_(None)), 1), else_=0)).label('processing')
+        func.sum(case(((Record.discharge_status == STATUS_PROCESSING) & (Record.date_of_death.is_(None)), 1), else_=0)).label('processing'),
+        func.sum(case(((Record.discharge_status == STATUS_VIOLATIONS) & (Record.date_of_death.is_(None)), 1), else_=0)).label('violations')
     ).filter(
         Record.discharge_department.isnot(None),
         Record.date_of_discharge.isnot(None),
@@ -272,11 +273,12 @@ def admin_statistics():
     ).group_by(Record.discharge_department).all()
 
     status_by_dept = {}
-    for dept, deceased, discharged, processing in dept_stats:
+    for dept, deceased, discharged, processing, violations in dept_stats:
         status_by_dept[dept] = {
             'Помер': deceased or 0,
             'Виписаний': discharged or 0,
-            'Опрацьовується': processing or 0
+            'Опрацьовується': processing or 0,
+            'Порушені вимоги': violations or 0
         }
 
     dept_list = sorted(status_by_dept.keys())
@@ -312,7 +314,8 @@ def admin_statistics():
     current_stats = db.session.query(
         func.sum(case((Record.date_of_death.isnot(None), 1), else_=0)).label('deceased'),
         func.sum(case(((Record.discharge_status == STATUS_DISCHARGED) & (Record.date_of_death.is_(None)), 1), else_=0)).label('discharged'),
-        func.sum(case(((Record.discharge_status == STATUS_PROCESSING) & (Record.date_of_death.is_(None)), 1), else_=0)).label('processing')
+        func.sum(case(((Record.discharge_status == STATUS_PROCESSING) & (Record.date_of_death.is_(None)), 1), else_=0)).label('processing'),
+        func.sum(case(((Record.discharge_status == STATUS_VIOLATIONS) & (Record.date_of_death.is_(None)), 1), else_=0)).label('violations')
     ).filter(
         Record.date_of_discharge.isnot(None),
         Record.date_of_discharge >= from_date,
@@ -322,7 +325,8 @@ def admin_statistics():
     status_distribution = {
         'Помер': current_stats.deceased or 0,
         STATUS_DISCHARGED: current_stats.discharged or 0,
-        STATUS_PROCESSING: current_stats.processing or 0
+        STATUS_PROCESSING: current_stats.processing or 0,
+        STATUS_VIOLATIONS: current_stats.violations or 0
     }
 
     total_records = sum(status_distribution.values())
@@ -336,7 +340,8 @@ def admin_statistics():
     prev_stats = db.session.query(
         func.sum(case((Record.date_of_death.isnot(None), 1), else_=0)).label('deceased'),
         func.sum(case(((Record.discharge_status == STATUS_DISCHARGED) & (Record.date_of_death.is_(None)), 1), else_=0)).label('discharged'),
-        func.sum(case(((Record.discharge_status == STATUS_PROCESSING) & (Record.date_of_death.is_(None)), 1), else_=0)).label('processing')
+        func.sum(case(((Record.discharge_status == STATUS_PROCESSING) & (Record.date_of_death.is_(None)), 1), else_=0)).label('processing'),
+        func.sum(case(((Record.discharge_status == STATUS_VIOLATIONS) & (Record.date_of_death.is_(None)), 1), else_=0)).label('violations')
     ).filter(
         Record.date_of_discharge.isnot(None),
         Record.date_of_discharge >= prev_from,
@@ -346,13 +351,15 @@ def admin_statistics():
     prev_deceased = prev_stats.deceased or 0
     prev_discharged = prev_stats.discharged or 0
     prev_processing = prev_stats.processing or 0
-    prev_total = prev_deceased + prev_discharged + prev_processing
+    prev_violations = prev_stats.violations or 0
+    prev_total = prev_deceased + prev_discharged + prev_processing + prev_violations
 
     trends = {
         'total': total_records - prev_total,
         'processing': status_distribution[STATUS_PROCESSING] - prev_processing,
         'discharged': status_distribution[STATUS_DISCHARGED] - prev_discharged,
-        'deceased': status_distribution['Помер'] - prev_deceased
+        'deceased': status_distribution['Помер'] - prev_deceased,
+        'violations': status_distribution[STATUS_VIOLATIONS] - prev_violations
     }
 
     return render_template(
