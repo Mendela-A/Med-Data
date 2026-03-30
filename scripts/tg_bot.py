@@ -184,7 +184,7 @@ def departments_kb(departments: list[str]) -> InlineKeyboardBuilder:
         cb = f"dept:{dept[:50]}"
         kb.button(text=dept, callback_data=cb)
     kb.button(text="◀ Назад", callback_data="main_menu")
-    kb.adjust(1)
+    kb.adjust(2)
     return kb
 
 
