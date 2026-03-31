@@ -34,7 +34,7 @@ services:
       - DATABASE_URL=sqlite:////app/data/app.db
       - SECRET_KEY=${SECRET_KEY}
     volumes:
-      - ./data:/app/data:ro
+      - ./data:/app/data
     restart: unless-stopped
 
   nginx:
