@@ -50,6 +50,33 @@ MAX_LEN = 4096  # ліміт Telegram на одне повідомлення
 
 STATUS_PROCESSING = "Опрацьовується"
 STATUS_VIOLATIONS = "Порушені вимоги"
+
+DEPT_EMOJI: dict[str, str] = {
+    "Гастроентерологічне": "💊",
+    "Гінекологічне":       "🌸",
+    "Ендокринологічне":    "🧬",
+    "Кардіологічне":       "❤️",
+    "НЕМД":                "🚑",
+    "Неврологічне":        "🧠",
+    "Нейрохірургічне":     "🧠",
+    "Нефрологічне":        "🫘",
+    "Отоларингологічне":   "👂",
+    "Офтальмологічне":     "👁️",
+    "Паліативне":          "🕊️",
+    "Педіатричне":         "👶",
+    "Пульмонологічне":     "🫁",
+    "Реабілітаційне":      "💪",
+    "Реанімаційне":        "🚨",
+    "Терапевтичне":        "💊",
+    "Травматологічне":     "🩹",
+    "Урологічне":          "💧",
+    "Хірургічне":          "⚕️",
+}
+
+
+def dept_emoji(name: str) -> str:
+    return DEPT_EMOJI.get(name, "🏥")
+
 # ─────────────────────────────────────────────────────────────────────────────
 
 router = Router()
@@ -182,7 +209,7 @@ def departments_kb(departments: list[str]) -> InlineKeyboardBuilder:
     for dept in departments:
         # callback_data обмежений 64 байтами — обрізаємо якщо потрібно
         cb = f"dept:{dept[:50]}"
-        kb.button(text=f"🏥 {dept}", callback_data=cb)
+        kb.button(text=f"{dept_emoji(dept)} {dept}", callback_data=cb)
     kb.button(text="◀️ Головне меню", callback_data="main_menu")
     kb.adjust(2)
     return kb
