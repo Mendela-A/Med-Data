@@ -16,20 +16,21 @@ Env vars:
 
 import asyncio
 import html
+import logging
 import os
 import sqlite3
+from contextlib import closing
 from datetime import date
 from pathlib import Path
 
 from aiogram import Bot, Dispatcher, F, Router
 from aiogram.enums import ChatType, ParseMode
 from aiogram.filters import CommandStart
-from aiogram.types import (
-    CallbackQuery,
-    InlineKeyboardButton,
-    Message,
-)
+from aiogram.types import CallbackQuery, Message
 from aiogram.utils.keyboard import InlineKeyboardBuilder
+
+logging.basicConfig(level=logging.INFO)
+log = logging.getLogger(__name__)
 
 # ── Конфігурація ──────────────────────────────────────────────────────────────
 BOT_TOKEN = os.environ.get("TELEGRAM_BOT_TOKEN", "")
@@ -40,7 +41,10 @@ if not BOT_TOKEN:
 if not GROUP_ID_RAW:
     raise RuntimeError("TELEGRAM_GROUP_ID environment variable is required")
 
-GROUP_ID = int(GROUP_ID_RAW)
+try:
+    GROUP_ID = int(GROUP_ID_RAW)
+except ValueError:
+    raise RuntimeError(f"TELEGRAM_GROUP_ID must be an integer, got: {GROUP_ID_RAW!r}")
 
 _db_url = os.environ.get("DATABASE_URL", "sqlite:///data/app.db")
 DB_PATH = Path(
@@ -104,16 +108,15 @@ def _connect() -> sqlite3.Connection:
 
 
 def get_departments() -> list[str]:
-    with _connect() as conn:
+    with closing(_connect()) as conn:
         rows = conn.execute(
             "SELECT name FROM departments ORDER BY name"
         ).fetchall()
     return [r["name"] for r in rows]
 
 
-def get_records_for_dept(dept: str) -> list[dict]:
-    date_from, date_to = violations_date_range()
-    with _connect() as conn:
+def get_records_for_dept(dept: str, date_from: str, date_to: str) -> list[dict]:
+    with closing(_connect()) as conn:
         rows = conn.execute(
             """
             SELECT history, discharge_status, discharge_department, comment
@@ -145,7 +148,11 @@ def _col(value: str | None, width: int) -> str:
     return (s[: width - 1] + "…") if len(s) > width else s.ljust(width)
 
 
-def format_dept_report(dept: str, records: list[dict]) -> list[str]:
+def format_dept_report(
+    dept: str,
+    records: list[dict],
+    date_from: str,
+) -> list[str]:
     """Повертає список повідомлень (пагінація якщо > MAX_LEN)."""
     if not records:
         return [
@@ -170,7 +177,6 @@ def format_dept_report(dept: str, records: list[dict]) -> list[str]:
 
     total = len(records)
     viol_count = sum(1 for s, _ in data_rows if s == STATUS_VIOLATIONS)
-    date_from, _ = violations_date_range()
     viol_month = f"{date_from[5:7]}.{date_from[:4]}"
 
     def make_chunk(rows: list[tuple[str, str]], page: str = "") -> str:
@@ -215,7 +221,8 @@ async def is_group_member(bot: Bot, user_id: int) -> bool:
     try:
         member = await bot.get_chat_member(GROUP_ID, user_id)
         return member.status not in ("left", "kicked", "banned")
-    except Exception:
+    except Exception as e:
+        log.warning("is_group_member check failed for user %s: %s", user_id, e)
         return False
 
 
@@ -230,8 +237,11 @@ def main_menu_kb() -> InlineKeyboardBuilder:
 def departments_kb(departments: list[str]) -> InlineKeyboardBuilder:
     kb = InlineKeyboardBuilder()
     for dept in departments:
-        # callback_data обмежений 64 байтами — обрізаємо якщо потрібно
-        cb = f"dept:{dept[:50]}"
+        cb = f"dept:{dept}"
+        # Telegram обмежує callback_data до 64 байт
+        if len(cb.encode()) > 64:
+            log.warning("callback_data too long for dept %r, truncating", dept)
+            cb = cb.encode()[:64].decode(errors="ignore")
         kb.button(text=f"{dept_emoji(dept)} {dept}", callback_data=cb)
     kb.button(text="◀️ Головне меню", callback_data="main_menu")
     kb.adjust(2)
@@ -261,6 +271,9 @@ async def cmd_start(message: Message) -> None:
 
 @router.callback_query(F.data == "main_menu")
 async def cb_main_menu(query: CallbackQuery) -> None:
+    if not query.message:
+        await query.answer("Повідомлення недоступне.", show_alert=True)
+        return
     if not await is_group_member(query.bot, query.from_user.id):
         await query.answer("⛔ Немає доступу", show_alert=True)
         return
@@ -274,11 +287,20 @@ async def cb_main_menu(query: CallbackQuery) -> None:
 
 @router.callback_query(F.data == "dept_list")
 async def cb_dept_list(query: CallbackQuery) -> None:
+    if not query.message:
+        await query.answer("Повідомлення недоступне.", show_alert=True)
+        return
     if not await is_group_member(query.bot, query.from_user.id):
         await query.answer("⛔ Немає доступу", show_alert=True)
         return
 
-    departments = get_departments()
+    try:
+        departments = get_departments()
+    except Exception as e:
+        log.error("get_departments failed: %s", e)
+        await query.answer("⚠️ Помилка з'єднання з базою даних.", show_alert=True)
+        return
+
     if not departments:
         await query.answer("Відділень не знайдено.", show_alert=True)
         return
@@ -292,13 +314,24 @@ async def cb_dept_list(query: CallbackQuery) -> None:
 
 @router.callback_query(F.data.startswith("dept:"))
 async def cb_dept(query: CallbackQuery) -> None:
+    if not query.message:
+        await query.answer("Повідомлення недоступне.", show_alert=True)
+        return
     if not await is_group_member(query.bot, query.from_user.id):
         await query.answer("⛔ Немає доступу", show_alert=True)
         return
 
     dept = query.data[len("dept:"):]
-    records = get_records_for_dept(dept)
-    chunks = format_dept_report(dept, records)
+    date_from, date_to = violations_date_range()
+
+    try:
+        records = get_records_for_dept(dept, date_from, date_to)
+    except Exception as e:
+        log.error("get_records_for_dept failed for dept %r: %s", dept, e)
+        await query.answer("⚠️ Помилка з'єднання з базою даних.", show_alert=True)
+        return
+
+    chunks = format_dept_report(dept, records, date_from)
 
     # Перше повідомлення — редагуємо поточне
     await query.message.edit_text(
@@ -322,17 +355,17 @@ async def cb_dept(query: CallbackQuery) -> None:
 # Ігнорувати всі повідомлення в групі (не відповідати)
 @router.message(F.chat.type.in_({ChatType.GROUP, ChatType.SUPERGROUP}))
 async def ignore_group(_: Message) -> None:
-    return
+    pass
 
 
 # ── Entry point ───────────────────────────────────────────────────────────────
 
 async def main() -> None:
-    bot = Bot(token=BOT_TOKEN, default=None)
+    bot = Bot(token=BOT_TOKEN)
     dp = Dispatcher()
     dp.include_router(router)
 
-    print(f"Bot started. DB: {DB_PATH}. Group ID: {GROUP_ID}")
+    log.info("Bot started. DB: %s. Group ID: %s", DB_PATH, GROUP_ID)
     await dp.start_polling(bot)
 
 
