@@ -103,7 +103,7 @@ def format_dept_report(dept: str, records: list[dict]) -> list[str]:
     if not records:
         return [
             f"🏥 <b>{html.escape(dept)}</b>\n\n"
-            "Записів зі статусами «Опрацьовується» або «Порушені вимоги» немає."
+            "✅ Записів зі статусами «Опрацьовується» або «Порушені вимоги» немає."
         ]
 
     W_HIST = max(6, min(14, max(len(r["history"] or "—") for r in records)))
@@ -182,15 +182,15 @@ def departments_kb(departments: list[str]) -> InlineKeyboardBuilder:
     for dept in departments:
         # callback_data обмежений 64 байтами — обрізаємо якщо потрібно
         cb = f"dept:{dept[:50]}"
-        kb.button(text=dept, callback_data=cb)
-    kb.button(text="◀ Назад", callback_data="main_menu")
+        kb.button(text=f"🏥 {dept}", callback_data=cb)
+    kb.button(text="◀️ Головне меню", callback_data="main_menu")
     kb.adjust(2)
     return kb
 
 
 def back_to_depts_kb() -> InlineKeyboardBuilder:
     kb = InlineKeyboardBuilder()
-    kb.button(text="◀ До відділень", callback_data="dept_list")
+    kb.button(text="🏥 До відділень", callback_data="dept_list")
     return kb
 
 
@@ -203,8 +203,8 @@ async def cmd_start(message: Message) -> None:
         return
 
     await message.answer(
-        f"Привіт, {html.escape(message.from_user.first_name)}!\n"
-        "Оберіть дію:",
+        f"👋 Привіт, {html.escape(message.from_user.first_name)}!\n\n"
+        "📋 Оберіть дію нижче:",
         reply_markup=main_menu_kb().as_markup(),
     )
 
@@ -216,7 +216,7 @@ async def cb_main_menu(query: CallbackQuery) -> None:
         return
 
     await query.message.edit_text(
-        "Оберіть дію:",
+        "📋 Оберіть дію нижче:",
         reply_markup=main_menu_kb().as_markup(),
     )
     await query.answer()
@@ -234,7 +234,7 @@ async def cb_dept_list(query: CallbackQuery) -> None:
         return
 
     await query.message.edit_text(
-        "Оберіть відділення:",
+        "🏥 Оберіть відділення:",
         reply_markup=departments_kb(departments).as_markup(),
     )
     await query.answer()
