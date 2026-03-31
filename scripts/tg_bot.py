@@ -171,7 +171,7 @@ def format_dept_report(dept: str, records: list[dict]) -> list[str]:
     total = len(records)
     viol_count = sum(1 for s, _ in data_rows if s == STATUS_VIOLATIONS)
     date_from, _ = violations_date_range()
-    viol_month = f"{date_from[8:10]}.{date_from[5:7]}"
+    viol_month = f"{date_from[5:7]}.{date_from[:4]}"
 
     def make_chunk(rows: list[tuple[str, str]], page: str = "") -> str:
         viol_info = f" · ❌ {viol_count} пор. за {viol_month}" if viol_count else ""
