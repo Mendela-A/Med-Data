@@ -18,6 +18,7 @@ import asyncio
 import html
 import os
 import sqlite3
+from datetime import date
 from pathlib import Path
 
 from aiogram import Bot, Dispatcher, F, Router
@@ -77,6 +78,18 @@ DEPT_EMOJI: dict[str, str] = {
 def dept_emoji(name: str) -> str:
     return DEPT_EMOJI.get(name, "🏥")
 
+
+def violations_date_range() -> tuple[str, str]:
+    """Повертає (date_from, date_to_excl) для фільтра 'Порушені вимоги':
+    від першого числа поточного місяця до першого числа наступного (не включно)."""
+    today = date.today()
+    date_from = today.replace(day=1)
+    if today.month == 12:
+        date_to = date(today.year + 1, 1, 1)
+    else:
+        date_to = date(today.year, today.month + 1, 1)
+    return date_from.isoformat(), date_to.isoformat()
+
 # ─────────────────────────────────────────────────────────────────────────────
 
 router = Router()
@@ -99,21 +112,28 @@ def get_departments() -> list[str]:
 
 
 def get_records_for_dept(dept: str) -> list[dict]:
+    date_from, date_to = violations_date_range()
     with _connect() as conn:
         rows = conn.execute(
             """
             SELECT history, discharge_status, discharge_department, comment
             FROM   records
             WHERE  discharge_department = ?
-              AND  discharge_status IN (?, ?)
-            ORDER  BY
-                CASE discharge_status
-                    WHEN ? THEN 0
-                    ELSE 1
-                END,
+              AND (
+                discharge_status = ?
+                OR (
+                  discharge_status = ?
+                  AND date_of_discharge >= ?
+                  AND date_of_discharge < ?
+                )
+              )
+            ORDER BY
+                CASE discharge_status WHEN ? THEN 0 ELSE 1 END,
                 history
             """,
-            (dept, STATUS_VIOLATIONS, STATUS_PROCESSING, STATUS_VIOLATIONS),
+            (dept, STATUS_PROCESSING,
+             STATUS_VIOLATIONS, date_from, date_to,
+             STATUS_VIOLATIONS),
         ).fetchall()
     return [dict(r) for r in rows]
 
@@ -150,11 +170,14 @@ def format_dept_report(dept: str, records: list[dict]) -> list[str]:
 
     total = len(records)
     viol_count = sum(1 for s, _ in data_rows if s == STATUS_VIOLATIONS)
+    date_from, _ = violations_date_range()
+    viol_month = f"{date_from[8:10]}.{date_from[5:7]}"
 
     def make_chunk(rows: list[tuple[str, str]], page: str = "") -> str:
+        viol_info = f" · ❌ {viol_count} пор. за {viol_month}" if viol_count else ""
         title = (
             f"🏥 <b>{html.escape(dept)}</b> · {total} записів"
-            f"{f' · ❌ {viol_count} порушень' if viol_count else ''}"
+            f"{viol_info}"
             f"{page}\n"
         )
         formatted_lines = []
