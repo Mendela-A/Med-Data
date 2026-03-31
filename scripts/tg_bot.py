@@ -52,6 +52,7 @@ DB_PATH = Path(
 )
 
 MAX_LEN = 4096  # ліміт Telegram на одне повідомлення
+DELETE_AFTER = 24 * 3600  # секунд — авто-видалення звітів
 
 STATUS_PROCESSING = "Опрацьовується"
 STATUS_VIOLATIONS = "Порушені вимоги"
@@ -95,6 +96,14 @@ def violations_date_range() -> tuple[str, str]:
     return date_from.isoformat(), date_to.isoformat()
 
 # ─────────────────────────────────────────────────────────────────────────────
+
+async def _delete_later(bot: Bot, chat_id: int, message_id: int) -> None:
+    await asyncio.sleep(DELETE_AFTER)
+    try:
+        await bot.delete_message(chat_id, message_id)
+    except Exception:
+        pass  # вже видалено або недоступне
+
 
 router = Router()
 
@@ -334,20 +343,22 @@ async def cb_dept(query: CallbackQuery) -> None:
     chunks = format_dept_report(dept, records, date_from)
 
     # Перше повідомлення — редагуємо поточне
-    await query.message.edit_text(
+    edited = await query.message.edit_text(
         chunks[0],
         parse_mode=ParseMode.HTML,
         reply_markup=back_to_depts_kb().as_markup() if len(chunks) == 1 else None,
     )
+    asyncio.create_task(_delete_later(query.bot, edited.chat.id, edited.message_id))
 
     # Додаткові сторінки — нові повідомлення
     for i, chunk in enumerate(chunks[1:], start=1):
         is_last = i == len(chunks) - 1
-        await query.message.answer(
+        sent = await query.message.answer(
             chunk,
             parse_mode=ParseMode.HTML,
             reply_markup=back_to_depts_kb().as_markup() if is_last else None,
         )
+        asyncio.create_task(_delete_later(query.bot, sent.chat.id, sent.message_id))
 
     await query.answer()
 
