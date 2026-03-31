@@ -35,9 +35,6 @@ services:
       - SECRET_KEY=${SECRET_KEY}
     volumes:
       - ./data:/app/data:ro
-    depends_on:
-      web:
-        condition: service_healthy
     restart: unless-stopped
 
   nginx:
