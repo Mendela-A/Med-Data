@@ -1,0 +1,119 @@
+{% extends "base.html" %}
+{% block title %}Форма 016 — Звіт стаціонару{% endblock %}
+
+{% block content %}
+<div class="d-flex align-items-center justify-content-between mb-3 flex-wrap gap-2">
+  <h4 class="mb-0">
+    <i class="bi bi-clipboard2-data me-2 text-primary"></i>Форма 016 — Звіт про роботу стаціонару
+  </h4>
+  <span class="badge bg-secondary fs-6">{{ period_label }}</span>
+</div>
+
+{# Date range form #}
+<form method="get" class="row g-2 align-items-end mb-4">
+  <div class="col-auto">
+    <label class="form-label mb-1 small">Від</label>
+    <input type="date" name="from_date" class="form-control form-control-sm"
+           value="{{ from_date.isoformat() }}">
+  </div>
+  <div class="col-auto">
+    <label class="form-label mb-1 small">До</label>
+    <input type="date" name="to_date" class="form-control form-control-sm"
+           value="{{ to_date.isoformat() }}">
+  </div>
+  <div class="col-auto">
+    <button type="submit" class="btn btn-primary btn-sm">
+      <i class="bi bi-funnel me-1"></i>Застосувати
+    </button>
+  </div>
+  <div class="col-auto ms-auto">
+    <a href="{{ url_for('statisty.form016_export', from_date=from_date.isoformat(), to_date=to_date.isoformat()) }}"
+       class="btn btn-success btn-sm">
+      <i class="bi bi-file-earmark-excel me-1"></i>Excel
+    </a>
+    <a href="{{ url_for('statisty.form007', from_date=from_date.isoformat(), to_date=to_date.isoformat()) }}"
+       class="btn btn-outline-secondary btn-sm ms-1">
+      <i class="bi bi-calendar3 me-1"></i>Форма 007 (по днях)
+    </a>
+  </div>
+</form>
+
+{% if table %}
+<div class="table-responsive">
+  <table class="table table-sm table-bordered table-hover align-middle" style="font-size: 0.85rem;">
+    <thead class="table-light">
+      <tr>
+        <th rowspan="2" class="align-middle">Відділення</th>
+        <th rowspan="2" class="text-center align-middle" title="Ліжковий фонд (план)">Ліжок<br>(план)</th>
+        <th rowspan="2" class="text-center align-middle" title="Поступило за період (за датою поступлення)">Поступило</th>
+        <th rowspan="2" class="text-center align-middle" title="Проліковано = виписано + померло">Проліковано</th>
+        <th rowspan="2" class="text-center align-middle">Ліжко-<br>днів</th>
+        <th rowspan="2" class="text-center align-middle">Померло</th>
+        <th rowspan="2" class="text-center align-middle">Летальність<br>%</th>
+        <th colspan="3" class="text-center table-secondary">Показники (потребують ліжковий фонд)</th>
+      </tr>
+      <tr>
+        <th class="text-center table-secondary" title="Середній ліжко-день = ліжко-дні / проліковано">Сер.<br>ліжко-день</th>
+        <th class="text-center table-secondary" title="Зайнятість = ліжко-дні / (ліжок × днів)">Зайнятість<br>ліжка</th>
+        <th class="text-center table-secondary" title="Оборот = проліковано / ліжок">Оборот<br>ліжка</th>
+      </tr>
+    </thead>
+    <tbody>
+      {% for row in table %}
+      <tr>
+        <td>{{ row.dept }}</td>
+        <td class="text-center">{{ row.capacity or '—' }}</td>
+        <td class="text-center">
+          {% if row.admitted %}{{ row.admitted }}
+          {% else %}<span class="text-muted" title="Дата поступлення не заповнена">—</span>{% endif %}
+        </td>
+        <td class="text-center fw-semibold">{{ row.treated }}</td>
+        <td class="text-center">{{ row.bed_days }}</td>
+        <td class="text-center {% if row.deaths %}text-danger{% endif %}">{{ row.deaths }}</td>
+        <td class="text-center {% if row.mortality_pct %}text-danger{% endif %}">
+          {{ row.mortality_pct if row.mortality_pct is not none else '—' }}
+        </td>
+        <td class="text-center table-secondary">{{ row.avg_los if row.avg_los is not none else '—' }}</td>
+        <td class="text-center table-secondary">
+          {% if row.occupancy is not none %}{{ row.occupancy }}
+          {% else %}<span class="text-muted" title="Заповніть ліжковий фонд відділення">—</span>{% endif %}
+        </td>
+        <td class="text-center table-secondary">
+          {% if row.turnover is not none %}{{ row.turnover }}
+          {% else %}<span class="text-muted" title="Заповніть ліжковий фонд відділення">—</span>{% endif %}
+        </td>
+      </tr>
+      {% endfor %}
+    </tbody>
+    <tfoot class="table-dark">
+      <tr>
+        <td colspan="2"><strong>Разом</strong></td>
+        <td class="text-center">{{ totals.admitted or '—' }}</td>
+        <td class="text-center fw-bold">{{ totals.treated }}</td>
+        <td class="text-center fw-bold">{{ totals.bed_days }}</td>
+        <td class="text-center fw-bold {% if totals.deaths %}text-danger{% endif %}">{{ totals.deaths }}</td>
+        <td class="text-center {% if totals.mortality_pct %}text-danger{% endif %}">
+          {{ totals.mortality_pct if totals.mortality_pct is not none else '—' }}
+        </td>
+        <td class="text-center">{{ totals.avg_los if totals.avg_los is not none else '—' }}</td>
+        <td class="text-center">—</td>
+        <td class="text-center">—</td>
+      </tr>
+    </tfoot>
+  </table>
+</div>
+
+<div class="alert alert-info py-2 small mt-2">
+  <i class="bi bi-info-circle me-1"></i>
+  <strong>Показники зайнятості та обороту ліжка</strong> обчислюються лише якщо заповнено
+  <strong>ліжковий фонд</strong> відділення
+  (<a href="{{ url_for('admin.admin_departments') }}">Відділення → редагування</a>).
+  <strong>Поступило</strong> — за датою поступлення; якщо поле порожнє — показано «—».
+</div>
+
+{% else %}
+<div class="alert alert-secondary">
+  <i class="bi bi-inbox me-2"></i>Немає записів за обраний період.
+</div>
+{% endif %}
+{% endblock %}

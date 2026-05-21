@@ -1,0 +1,94 @@
+{% extends "base.html" %}
+{% block title %}Форма 007 — Рух хворих{% endblock %}
+
+{% block content %}
+<div class="d-flex align-items-center justify-content-between mb-3 flex-wrap gap-2">
+  <h4 class="mb-0">
+    <i class="bi bi-calendar3 me-2 text-primary"></i>Форма 007 — Рух хворих по днях
+  </h4>
+  <span class="badge bg-secondary fs-6">{{ period_label }}</span>
+</div>
+
+<form method="get" class="row g-2 align-items-end mb-4">
+  <div class="col-auto">
+    <label class="form-label mb-1 small">Місяць</label>
+    <input type="month" name="from_date" class="form-control form-control-sm"
+           value="{{ from_date.strftime('%Y-%m') }}">
+    <input type="hidden" name="to_date" value="{{ to_date.isoformat() }}">
+  </div>
+  <div class="col-auto">
+    <button type="submit" class="btn btn-primary btn-sm">
+      <i class="bi bi-funnel me-1"></i>Застосувати
+    </button>
+  </div>
+  <div class="col-auto ms-auto">
+    <a href="{{ url_for('statisty.form016', from_date=from_date.isoformat(), to_date=to_date.isoformat()) }}"
+       class="btn btn-outline-secondary btn-sm">
+      <i class="bi bi-clipboard2-data me-1"></i>Форма 016 (зведена)
+    </a>
+  </div>
+</form>
+
+{% if depts %}
+{% for dept in depts %}
+<h6 class="fw-semibold mt-4 mb-2">{{ dept }}</h6>
+<div class="table-responsive mb-3">
+  <table class="table table-sm table-bordered align-middle" style="font-size: 0.82rem; min-width: 600px;">
+    <thead class="table-light">
+      <tr>
+        <th class="text-center" style="width:90px;">Дата</th>
+        <th class="text-center">Поступило</th>
+        <th class="text-center">Виписано</th>
+        <th class="text-center">Померло</th>
+        <th class="text-center">Ліжко-днів</th>
+      </tr>
+    </thead>
+    <tbody>
+      {% set dept_total = {'admitted': 0, 'discharged': 0, 'deaths': 0, 'bed_days': 0} %}
+      {% for day in all_days %}
+        {% set entry = data.get(dept, {}).get(day.isoformat(), {}) %}
+        {% set admitted  = entry.get('admitted', 0) %}
+        {% set discharged = entry.get('discharged', 0) %}
+        {% set deaths    = entry.get('deaths', 0) %}
+        {% set bed_days  = entry.get('bed_days', 0) %}
+        {% if admitted or discharged or deaths or bed_days %}
+        <tr>
+          <td class="text-center text-nowrap">{{ day.strftime('%d.%m') }}</td>
+          <td class="text-center">{{ admitted or '—' }}</td>
+          <td class="text-center">{{ discharged or '—' }}</td>
+          <td class="text-center {% if deaths %}text-danger{% endif %}">{{ deaths or '—' }}</td>
+          <td class="text-center">{{ bed_days or '—' }}</td>
+        </tr>
+        {# accumulate totals #}
+        {% if dept_total.update({'admitted': dept_total.admitted + admitted,
+                                 'discharged': dept_total.discharged + discharged,
+                                 'deaths': dept_total.deaths + deaths,
+                                 'bed_days': dept_total.bed_days + bed_days}) %}{% endif %}
+        {% endif %}
+      {% endfor %}
+    </tbody>
+    <tfoot class="table-secondary fw-semibold">
+      <tr>
+        <td class="text-center">Разом</td>
+        <td class="text-center">{{ dept_total.admitted or '—' }}</td>
+        <td class="text-center">{{ dept_total.discharged or '—' }}</td>
+        <td class="text-center {% if dept_total.deaths %}text-danger{% endif %}">{{ dept_total.deaths or '—' }}</td>
+        <td class="text-center">{{ dept_total.bed_days or '—' }}</td>
+      </tr>
+    </tfoot>
+  </table>
+</div>
+{% endfor %}
+
+<div class="alert alert-info py-2 small mt-3">
+  <i class="bi bi-info-circle me-1"></i>
+  <strong>Поступило</strong> — відображається лише якщо в записі заповнено <em>дату поступлення</em>.
+  Рядки без руху за день не відображаються.
+</div>
+
+{% else %}
+<div class="alert alert-secondary">
+  <i class="bi bi-inbox me-2"></i>Немає записів за обраний місяць.
+</div>
+{% endif %}
+{% endblock %}

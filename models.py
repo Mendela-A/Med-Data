@@ -78,6 +78,7 @@ class Record(db.Model):
     )
 
     id = db.Column(db.Integer, primary_key=True)
+    date_of_admission = db.Column(db.Date, nullable=True, index=True)  # "дата_поступлення" (для Форми 007)
     date_of_discharge = db.Column(db.Date, nullable=True)  # "дата_виписки"
     full_name = db.Column(db.String(200), nullable=False)  # "ПІБ"
     discharge_department = db.Column(db.String(200), nullable=True)  # "відділення_виписки"
@@ -119,6 +120,7 @@ class Department(db.Model):
     __tablename__ = 'departments'
     id = db.Column(db.Integer, primary_key=True)
     name = db.Column(db.String(200), nullable=False, unique=True, index=True)
+    bed_capacity = db.Column(db.Integer, nullable=True)  # ліжковий фонд (для Форми 016)
     created_at = db.Column(db.DateTime, default=lambda: datetime.now(timezone.utc))
 
     def __repr__(self):

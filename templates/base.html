@@ -40,6 +40,9 @@
         <a href="{{ url_for('admin.admin_statistics') }}" class="topnav-link{% if request.endpoint == 'admin.admin_statistics' %} active{% endif %}">
           <i class="bi bi-bar-chart-line"></i><span>Статистика</span>
         </a>
+        <a href="{{ url_for('statisty.form016') }}" class="topnav-link{% if request.endpoint and request.endpoint.startswith('statisty.') %} active{% endif %}">
+          <i class="bi bi-clipboard2-data"></i><span>Статисти</span>
+        </a>
       {% endif %}
       {% if current_user.role == 'admin' %}
         <div class="topnav-divider"></div>
