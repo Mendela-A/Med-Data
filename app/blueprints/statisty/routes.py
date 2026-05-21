@@ -50,11 +50,219 @@ def _period_label(from_date, to_date):
     last_day = calendar.monthrange(from_date.year, from_date.month)[1]
     if from_date.day == 1 and to_date == date(from_date.year, from_date.month, last_day):
         return f"{months_ua[from_date.month]} {from_date.year}"
-    return f"{from_date.strftime('%d.%m.%Y')} — {to_date.strftime('%d.%m.%Y')}"
 
+
+def _get_form016_data(from_date, to_date):
+    # Check if DailyReport data exists for this period
+    dr_count = DailyReport.query.filter(
+        DailyReport.report_date >= from_date,
+        DailyReport.report_date <= to_date,
+    ).count()
+
+    data_source = 'daily_report' if dr_count > 0 else 'records'
+    depts = Department.query.order_by(Department.row_no.nullslast(), Department.name).all()
+
+    table = []
+    totals = {k: 0 for k in ['beds_total', 'beds_renovation', 'patients_start',
+                               'admitted_total', 'admitted_rural', 'admitted_children',
+                               'transferred_in', 'transferred_out', 'discharged_total',
+                               'discharged_to_other', 'deaths', 'patients_end',
+                               'patients_end_rural', 'mothers_with_children',
+                               'free_male', 'free_female', 'free_total']}
+
+    if data_source == 'daily_report':
+        # Fetch all daily reports for the period
+        reports = DailyReport.query.filter(
+            DailyReport.report_date >= from_date,
+            DailyReport.report_date <= to_date
+        ).order_by(DailyReport.report_date.asc()).all()
+
+        # Group by department
+        reports_by_dept = {}
+        for r in reports:
+            reports_by_dept.setdefault(r.department_id, []).append(r)
+
+        for dept in depts:
+            dept_reports = reports_by_dept.get(dept.id, [])
+            if not dept_reports:
+                row = {
+                    'dept': dept, 'beds_total': None, 'beds_renovation': None, 'patients_start': None,
+                    'admitted_total': 0, 'admitted_rural': 0, 'admitted_children': 0,
+                    'transferred_in': 0, 'transferred_out': 0, 'discharged_total': 0,
+                    'discharged_to_other': 0, 'deaths': 0, 'patients_end': None,
+                    'patients_end_rural': None, 'mothers_with_children': 0,
+                    'free_male': None, 'free_female': None, 'free_total': None,
+                }
+            else:
+                first_report = dept_reports[0]
+                last_report = dept_reports[-1]
+
+                row = {
+                    'dept': dept,
+                    'beds_total': last_report.beds_total,
+                    'beds_renovation': last_report.beds_renovation,
+                    'patients_start': first_report.patients_start,
+                    'admitted_total': sum(r.admitted_total or 0 for r in dept_reports),
+                    'admitted_rural': sum(r.admitted_rural or 0 for r in dept_reports),
+                    'admitted_children': sum(r.admitted_children or 0 for r in dept_reports),
+                    'transferred_in': sum(r.transferred_in or 0 for r in dept_reports),
+                    'transferred_out': sum(r.transferred_out or 0 for r in dept_reports),
+                    'discharged_total': sum(r.discharged_total or 0 for r in dept_reports),
+                    'discharged_to_other': sum(r.discharged_to_other or 0 for r in dept_reports),
+                    'deaths': sum(r.deaths or 0 for r in dept_reports),
+                    'patients_end': last_report.patients_end,
+                    'patients_end_rural': last_report.patients_end_rural,
+                    'mothers_with_children': sum(r.mothers_with_children or 0 for r in dept_reports),
+                    'free_male': last_report.free_male,
+                    'free_female': last_report.free_female,
+                    'free_total': last_report.free_total,
+                }
+            table.append(row)
+            for k in totals:
+                v = row[k]
+                if v is not None:
+                    totals[k] += v
+    else:
+        # Fallback from patient records
+        # 1. Admitted
+        admitted_counts = db.session.query(
+            Record.discharge_department,
+            func.count(Record.id)
+        ).filter(
+            Record.date_of_admission >= from_date,
+            Record.date_of_admission <= to_date
+        ).group_by(Record.discharge_department).all()
+        admitted_map = {d: c for d, c in admitted_counts if d}
+
+        # 2. Discharged
+        discharged_counts = db.session.query(
+            Record.discharge_department,
+            func.count(Record.id)
+        ).filter(
+            Record.date_of_discharge >= from_date,
+            Record.date_of_discharge <= to_date,
+            Record.date_of_death.is_(None)
+        ).group_by(Record.discharge_department).all()
+        discharged_map = {d: c for d, c in discharged_counts if d}
+
+        # 3. Deaths
+        death_counts = db.session.query(
+            Record.discharge_department,
+            func.count(Record.id)
+        ).filter(
+            Record.date_of_discharge >= from_date,
+            Record.date_of_discharge <= to_date,
+            Record.date_of_death.isnot(None)
+        ).group_by(Record.discharge_department).all()
+        death_map = {d: c for d, c in death_counts if d}
+
+        # 4. Patients start
+        start_counts = db.session.query(
+            Record.discharge_department,
+            func.count(Record.id)
+        ).filter(
+            Record.date_of_admission < from_date,
+            (Record.date_of_discharge.is_(None) | (Record.date_of_discharge >= from_date))
+        ).group_by(Record.discharge_department).all()
+        start_map = {d: c for d, c in start_counts if d}
+
+        # 5. Patients end
+        end_counts = db.session.query(
+            Record.discharge_department,
+            func.count(Record.id)
+        ).filter(
+            Record.date_of_admission <= to_date,
+            (Record.date_of_discharge.is_(None) | (Record.date_of_discharge > to_date))
+        ).group_by(Record.discharge_department).all()
+        end_map = {d: c for d, c in end_counts if d}
+
+        for dept in depts:
+            name = dept.name
+            beds_total = dept.bed_capacity
+            patients_start = start_map.get(name, 0)
+            admitted_total = admitted_map.get(name, 0)
+            discharged_total = discharged_map.get(name, 0)
+            deaths = death_map.get(name, 0)
+            patients_end = end_map.get(name, 0)
+            free_total = (beds_total - patients_end) if beds_total is not None else None
+
+            row = {
+                'dept': dept,
+                'beds_total': beds_total,
+                'beds_renovation': 0,
+                'patients_start': patients_start,
+                'admitted_total': admitted_total,
+                'admitted_rural': 0,
+                'admitted_children': 0,
+                'transferred_in': 0,
+                'transferred_out': 0,
+                'discharged_total': discharged_total,
+                'discharged_to_other': 0,
+                'deaths': deaths,
+                'patients_end': patients_end,
+                'patients_end_rural': 0,
+                'mothers_with_children': 0,
+                'free_male': None,
+                'free_female': None,
+                'free_total': free_total,
+            }
+            table.append(row)
+            for k in totals:
+                v = row[k]
+                if v is not None:
+                    totals[k] += v
+
+        # Unmatched departments
+        all_dept_names = set(admitted_map.keys()) | set(discharged_map.keys()) | set(death_map.keys()) | set(start_map.keys()) | set(end_map.keys())
+        known_dept_names = {d.name for d in depts}
+        unmatched_names = all_dept_names - known_dept_names
+
+        for name in sorted(unmatched_names):
+            display_name = name or 'Без відділення'
+            class MockDept:
+                def __init__(self, name):
+                    self.name = name
+                    self.bed_profile_name = name
+                    self.row_no = None
+            mock_dept = MockDept(display_name)
+
+            patients_start = start_map.get(name, 0)
+            admitted_total = admitted_map.get(name, 0)
+            discharged_total = discharged_map.get(name, 0)
+            deaths = death_map.get(name, 0)
+            patients_end = end_map.get(name, 0)
+
+            row = {
+                'dept': mock_dept,
+                'beds_total': None,
+                'beds_renovation': 0,
+                'patients_start': patients_start,
+                'admitted_total': admitted_total,
+                'admitted_rural': 0,
+                'admitted_children': 0,
+                'transferred_in': 0,
+                'transferred_out': 0,
+                'discharged_total': discharged_total,
+                'discharged_to_other': 0,
+                'deaths': deaths,
+                'patients_end': patients_end,
+                'patients_end_rural': 0,
+                'mothers_with_children': 0,
+                'free_male': None,
+                'free_female': None,
+                'free_total': None,
+            }
+            table.append(row)
+            for k in totals:
+                v = row[k]
+                if v is not None:
+                    totals[k] += v
+
+    return table, totals, data_source, dr_count
 
 
 # ---------------------------------------------------------------------------
+
 # Routes
 # ---------------------------------------------------------------------------
 
@@ -270,90 +478,7 @@ def form007_print(report_date_str):
 @role_required('admin', 'viewer')
 def form016():
     from_date, to_date = _parse_date_range()
-    query_end = to_date + timedelta(days=1)
-    days_in_period = (to_date - from_date).days + 1
-
-    # Check if DailyReport data exists for this period
-    dr_count = DailyReport.query.filter(
-        DailyReport.report_date >= from_date,
-        DailyReport.report_date <= to_date,
-    ).count()
-
-    data_source = 'daily_report' if dr_count > 0 else 'records'
-
-    if data_source == 'daily_report':
-        rows_raw = db.session.query(
-            Department.name.label('dept'),
-            Department.bed_capacity.label('capacity'),
-            Department.row_no.label('row_no'),
-            func.sum(DailyReport.admitted_total).label('admitted'),
-            func.sum(DailyReport.discharged_total + DailyReport.deaths).label('treated'),
-            func.sum(DailyReport.patients_end).label('bed_days'),
-            func.sum(DailyReport.deaths).label('deaths'),
-        ).join(Department, DailyReport.department_id == Department.id).filter(
-            DailyReport.report_date >= from_date,
-            DailyReport.report_date <= to_date,
-        ).group_by(DailyReport.department_id).order_by(
-            Department.row_no.nullslast(), Department.name
-        ).all()
-    else:
-        dept_capacity = {d.name: d.bed_capacity for d in Department.query.all() if d.bed_capacity}
-        rows_raw = db.session.query(
-            func.coalesce(Record.discharge_department, 'Без відділення').label('dept'),
-            func.count(Record.id).label('treated'),
-            func.coalesce(func.sum(Record.k_days), 0).label('bed_days'),
-            func.sum(case((Record.date_of_death.isnot(None), 1), else_=0)).label('deaths'),
-            func.count(Record.date_of_admission).label('admitted'),
-        ).filter(
-            Record.date_of_discharge.isnot(None),
-            Record.date_of_discharge >= from_date,
-            Record.date_of_discharge < query_end,
-        ).group_by(
-            func.coalesce(Record.discharge_department, 'Без відділення')
-        ).order_by(
-            func.coalesce(Record.discharge_department, 'Без відділення')
-        ).all()
-
-    table = []
-    totals = {'treated': 0, 'bed_days': 0, 'deaths': 0, 'admitted': 0,
-              'avg_los': None, 'mortality_pct': None, 'occupancy': None, 'turnover': None}
-
-    for row in rows_raw:
-        if data_source == 'daily_report':
-            dept_name = row.dept
-            capacity  = row.capacity
-            admitted  = row.admitted or 0
-            treated   = row.treated or 0
-            bed_days  = row.bed_days or 0
-            deaths    = row.deaths or 0
-        else:
-            dept_name = row.dept
-            capacity  = dept_capacity.get(dept_name) if data_source == 'records' else None
-            admitted  = row.admitted if hasattr(row, 'admitted') else 0
-            treated   = row.treated
-            bed_days  = row.bed_days
-            deaths    = row.deaths
-
-        avg_los       = round(bed_days / treated, 1) if treated else None
-        mortality_pct = round(deaths * 100 / treated, 2) if treated else None
-        occupancy     = round(bed_days / (capacity * days_in_period), 3) if capacity else None
-        turnover      = round(treated / capacity, 1) if capacity else None
-
-        table.append({
-            'dept': dept_name, 'capacity': capacity,
-            'admitted': admitted, 'treated': treated,
-            'bed_days': bed_days, 'deaths': deaths,
-            'avg_los': avg_los, 'mortality_pct': mortality_pct,
-            'occupancy': occupancy, 'turnover': turnover,
-        })
-        totals['treated']  += treated
-        totals['bed_days'] += bed_days
-        totals['deaths']   += deaths
-        totals['admitted'] += admitted
-
-    if totals['treated']:
-        totals['avg_los']       = round(totals['bed_days'] / totals['treated'], 1)
-        totals['mortality_pct'] = round(totals['deaths'] * 100 / totals['treated'], 2)
+    table, totals, data_source, dr_count = _get_form016_data(from_date, to_date)
 
     return render_template(
         'statisty/form016.html',
@@ -376,114 +501,220 @@ def form016_export():
     from openpyxl.styles import Font, Alignment, PatternFill, Border, Side
 
     from_date, to_date = _parse_date_range()
-    query_end = to_date + timedelta(days=1)
-    days_in_period = (to_date - from_date).days + 1
-
-    dr_count = DailyReport.query.filter(
-        DailyReport.report_date >= from_date,
-        DailyReport.report_date <= to_date,
-    ).count()
-
-    if dr_count > 0:
-        rows_raw = db.session.query(
-            Department.name.label('dept'),
-            Department.bed_capacity.label('capacity'),
-            func.sum(DailyReport.admitted_total).label('admitted'),
-            func.sum(DailyReport.discharged_total + DailyReport.deaths).label('treated'),
-            func.sum(DailyReport.patients_end).label('bed_days'),
-            func.sum(DailyReport.deaths).label('deaths'),
-        ).join(Department, DailyReport.department_id == Department.id).filter(
-            DailyReport.report_date >= from_date,
-            DailyReport.report_date <= to_date,
-        ).group_by(DailyReport.department_id).order_by(
-            Department.row_no.nullslast(), Department.name
-        ).all()
-        source_label = 'Форма 007 (щоденні дані)'
-    else:
-        dept_cap = {d.name: d.bed_capacity for d in Department.query.all() if d.bed_capacity}
-        rows_raw = db.session.query(
-            func.coalesce(Record.discharge_department, 'Без відділення').label('dept'),
-            func.count(Record.id).label('treated'),
-            func.coalesce(func.sum(Record.k_days), 0).label('bed_days'),
-            func.sum(case((Record.date_of_death.isnot(None), 1), else_=0)).label('deaths'),
-            func.count(Record.date_of_admission).label('admitted'),
-        ).filter(
-            Record.date_of_discharge.isnot(None),
-            Record.date_of_discharge >= from_date,
-            Record.date_of_discharge < query_end,
-        ).group_by(
-            func.coalesce(Record.discharge_department, 'Без відділення')
-        ).order_by(
-            func.coalesce(Record.discharge_department, 'Без відділення')
-        ).all()
-        source_label = 'Записи (виписки)'
+    table, totals, data_source, dr_count = _get_form016_data(from_date, to_date)
+    source_label = 'Форма 007 (щоденні дані)' if data_source == 'daily_report' else 'Записи (виписки)'
 
     wb = Workbook()
     ws = wb.active
     ws.title = "Форма 016"
 
-    header_font = Font(bold=True)
+    # Common styles
     center = Alignment(horizontal='center', vertical='center', wrap_text=True)
+    left = Alignment(horizontal='left', vertical='center')
     thin = Side(style='thin')
     border = Border(left=thin, right=thin, top=thin, bottom=thin)
     fill_hdr = PatternFill("solid", fgColor="D9E1F2")
+    fill_computed = PatternFill("solid", fgColor="FFFBEB")
 
+    # Column widths (19 columns)
+    col_widths = [
+        32,  # A: Назва профілю ліжка
+        8,   # B: № рядка
+        12,  # C: Розгорнуто ліжок
+        12,  # D: В т.ч. на ремонті
+        12,  # E: Було на поч.
+        10,  # F: Поступило - Всього
+        10,  # G: Поступило - Сільських
+        10,  # H: Поступило - Дітей
+        10,  # I: Переведено - із
+        10,  # J: Переведено - в
+        10,  # K: Виписано - Всього
+        10,  # L: Виписано - в т.ч. переведених
+        10,  # M: Померло
+        12,  # N: Знаходилось - всього
+        12,  # O: Знаходилось - в т.ч. сільських
+        12,  # P: перебуває матерів
+        10,  # Q: вільних - чол
+        10,  # R: вільних - жін
+        12   # S: вільних - заг
+    ]
+    for ci, w in enumerate(col_widths, 1):
+        ws.column_dimensions[ws.cell(row=1, column=ci).column_letter].width = w
+
+    # Period title (A1:S1)
     period_label = _period_label(from_date, to_date)
-    ws.merge_cells('A1:J1')
+    ws.merge_cells('A1:S1')
     ws['A1'] = f"Форма 016 — Звіт про роботу стаціонару: {period_label} (Джерело: {source_label})"
-    ws['A1'].font = Font(bold=True, size=12)
-    ws['A1'].alignment = center
+    ws['A1'].font = Font(name="Arial", size=11, bold=True)
+    ws['A1'].alignment = Alignment(horizontal='left', vertical='center')
 
-    headers = ['Відділення', 'Ліжок (план)', 'Поступило', 'Проліковано',
-               'Ліжко-днів', 'Померло', 'Летальність %',
-               'Сер. ліжко-день', 'Зайнятість ліжка', 'Оборот ліжка']
-    col_widths = [30, 12, 12, 12, 12, 10, 13, 14, 15, 13]
+    # Apply default header styles to every cell in A2:S6
+    for r in range(2, 7):
+        for c in range(1, 20):
+            cell = ws.cell(row=r, column=c)
+            cell.font = Font(name="Arial", size=9, bold=True)
+            cell.alignment = center
+            cell.fill = fill_hdr
+            cell.border = border
 
-    for ci, (h, w) in enumerate(zip(headers, col_widths), 1):
-        cell = ws.cell(row=2, column=ci, value=h)
-        cell.font = header_font; cell.alignment = center
-        cell.fill = fill_hdr; cell.border = border
-        ws.column_dimensions[cell.column_letter].width = w
+    # Define merges and header text
+    ws.merge_cells('A2:A5')
+    ws['A2'] = "Назва профілю ліжка"
+    
+    ws.merge_cells('B2:B5')
+    ws['B2'] = "№ рядка"
+    
+    ws.merge_cells('C2:C5')
+    ws['C2'] = "Розгорнуто ліжок, вкл.\nзгорнуті на ремонт"
+    
+    ws.merge_cells('D2:D5')
+    ws['D2'] = "В т.ч. згорнуті\nна ремонт"
+    
+    ws.merge_cells('E2:M2')
+    ws['E2'] = "Рух хворих за минулу добу"
+    
+    ws.merge_cells('N2:S2')
+    ws['N2'] = "На початок поточного дня"
+    
+    ws.merge_cells('E3:E5')
+    ws['E3'] = "Було хворих на поч. мин. доби"
+    
+    ws.merge_cells('F3:H3')
+    ws['F3'] = "Поступило хворих"
+    
+    ws.merge_cells('I3:J3')
+    ws['I3'] = "Переведено всередині лікарні"
+    
+    ws.merge_cells('K3:L3')
+    ws['K3'] = "Виписано хворих"
+    
+    ws.merge_cells('M3:M5')
+    ws['M3'] = "Померло"
+    
+    ws.merge_cells('N3:O3')
+    ws['N3'] = "Знаходилось хворих"
+    
+    ws.merge_cells('P3:P5')
+    ws['P3'] = "перебуває матерів при дітях"
+    
+    ws.merge_cells('Q3:S3')
+    ws['Q3'] = "к-ть вільних місць"
+    
+    ws.merge_cells('F4:H4')
+    ws['F4'] = "Поступило без переведення всередині лікарні"
+    
+    ws.merge_cells('I4:I5')
+    ws['I4'] = "із інших відділів"
+    
+    ws.merge_cells('J4:J5')
+    ws['J4'] = "в інші відділи"
+    
+    ws.merge_cells('K4:K5')
+    ws['K4'] = "Всього"
+    
+    ws.merge_cells('L4:L5')
+    ws['L4'] = "в т.ч. переведених в інші стаціонари"
+    
+    ws.merge_cells('N4:N5')
+    ws['N4'] = "всього"
+    
+    ws.merge_cells('O4:O5')
+    ws['O4'] = "в т.ч. сільських"
+    
+    ws.merge_cells('Q4:Q5')
+    ws['Q4'] = "чоловічих"
+    
+    ws.merge_cells('R4:R5')
+    ws['R4'] = "жіночих"
+    
+    ws.merge_cells('S4:S5')
+    ws['S4'] = "у загальному"
+    
+    ws['F5'] = "Всього"
+    ws['G5'] = "Сільських жителів"
+    ws['H5'] = "дітей до 17 р."
 
-    tot_treated = tot_bed_days = tot_deaths = tot_admitted = 0
+    # Row 6: numbers 1 to 19
+    for c in range(1, 20):
+        ws.cell(row=6, column=c, value=c)
 
-    for ri, row in enumerate(rows_raw, 3):
-        dept_name = row.dept
-        capacity  = row.capacity if dr_count > 0 else dept_cap.get(dept_name)
-        admitted  = row.admitted or 0
-        treated   = row.treated or 0
-        bed_days  = row.bed_days or 0
-        deaths    = row.deaths or 0
-        avg_los        = round(bed_days / treated, 1) if treated else ''
-        mortality_pct  = round(deaths * 100 / treated, 2) if treated else ''
-        occupancy      = round(bed_days / (capacity * days_in_period), 3) if capacity else ''
-        turnover       = round(treated / capacity, 1) if capacity else ''
+    # Set row heights for headers
+    ws.row_dimensions[1].height = 25
+    ws.row_dimensions[2].height = 20
+    ws.row_dimensions[3].height = 20
+    ws.row_dimensions[4].height = 20
+    ws.row_dimensions[5].height = 20
+    ws.row_dimensions[6].height = 18
 
-        vals = [dept_name, capacity or '', admitted, treated, bed_days,
-                deaths, mortality_pct, avg_los, occupancy, turnover]
+    # Populate rows starting from row 7
+    for ri, row in enumerate(table, 7):
+        dept = row['dept']
+        dept_name = dept.bed_profile_name or dept.name
+        row_no = dept.row_no or ''
+
+        # Map row values
+        vals = [
+            dept_name,
+            row_no,
+            row['beds_total'] if row['beds_total'] is not None else '',
+            row['beds_renovation'] if row['beds_renovation'] is not None else '',
+            row['patients_start'] if row['patients_start'] is not None else '',
+            row['admitted_total'],
+            row['admitted_rural'],
+            row['admitted_children'],
+            row['transferred_in'],
+            row['transferred_out'],
+            row['discharged_total'],
+            row['discharged_to_other'],
+            row['deaths'],
+            row['patients_end'] if row['patients_end'] is not None else '',
+            row['patients_end_rural'] if row['patients_end_rural'] is not None else '',
+            row['mothers_with_children'],
+            row['free_male'] if row['free_male'] is not None else '',
+            row['free_female'] if row['free_female'] is not None else '',
+            row['free_total'] if row['free_total'] is not None else '',
+        ]
+
         for ci, v in enumerate(vals, 1):
             cell = ws.cell(row=ri, column=ci, value=v)
+            cell.font = Font(name="Arial", size=9)
             cell.border = border
-            if ci > 1:
-                cell.alignment = Alignment(horizontal='center')
+            if ci == 1:
+                cell.alignment = left
+            else:
+                cell.alignment = Alignment(horizontal='center', vertical='center')
 
-        tot_treated  += treated
-        tot_bed_days += bed_days
-        tot_deaths   += deaths
-        tot_admitted += admitted
+            # Highlight computed cols (14: N and 19: S)
+            if ci in [14, 19]:
+                cell.fill = fill_computed
 
-    tot_row = len(list(rows_raw)) + 3
-    tot_avg_los    = round(tot_bed_days / tot_treated, 1) if tot_treated else ''
-    tot_mortality  = round(tot_deaths * 100 / tot_treated, 2) if tot_treated else ''
-    tot_vals = ['Разом', '', tot_admitted, tot_treated, tot_bed_days,
-                tot_deaths, tot_mortality, tot_avg_los, '', '']
-    for ci, v in enumerate(tot_vals, 1):
-        cell = ws.cell(row=tot_row, column=ci, value=v)
-        cell.font = header_font; cell.border = border
-        if ci > 1:
-            cell.alignment = Alignment(horizontal='center')
+    # Footer Totals Row
+    tot_row = len(table) + 7
+    ws.merge_cells(start_row=tot_row, start_column=1, end_row=tot_row, end_column=2)
+    tot_label_cell = ws.cell(row=tot_row, column=1, value='Разом')
+    tot_label_cell.font = Font(name="Arial", size=9, bold=True)
+    tot_label_cell.alignment = center
+    tot_label_cell.border = border
+    ws.cell(row=tot_row, column=2).border = border
 
-    ws.row_dimensions[2].height = 40
+    for ci in range(3, 20):
+        cell = ws.cell(row=tot_row, column=ci)
+        col_keys = [
+            'beds_total', 'beds_renovation', 'patients_start', 'admitted_total', 'admitted_rural',
+            'admitted_children', 'transferred_in', 'transferred_out', 'discharged_total',
+            'discharged_to_other', 'deaths', 'patients_end', 'patients_end_rural', 'mothers_with_children',
+            'free_male', 'free_female', 'free_total'
+        ]
+        key = col_keys[ci - 3]
+        v = totals[key]
+        cell.value = v if v is not None else ''
+        cell.font = Font(name="Arial", size=9, bold=True)
+        cell.border = border
+        cell.alignment = Alignment(horizontal='center', vertical='center')
+        if ci in [14, 19]:
+            cell.fill = fill_computed
+
+    ws.row_dimensions[tot_row].height = 20
 
     buf = BytesIO()
     wb.save(buf)
@@ -495,3 +726,4 @@ def form016_export():
         mimetype='application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
         headers={'Content-Disposition': f'attachment; filename="{filename}"'},
     )
+
