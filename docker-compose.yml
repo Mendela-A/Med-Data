@@ -41,7 +41,8 @@ services:
     image: nginx:stable
     container_name: nginx
     depends_on:
-      - web
+      web:
+        condition: service_healthy
 
     ports:
       - "80:80"

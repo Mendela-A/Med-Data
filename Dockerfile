@@ -37,4 +37,4 @@ USER appuser
 
 ENTRYPOINT ["/entrypoint.sh"]
 # Start the app with Gunicorn (1 worker + threads for SQLite safety)
-CMD ["gunicorn", "--bind", "0.0.0.0:8000", "--workers", "1", "--threads", "4", "app:create_app()"]
+CMD ["gunicorn", "--bind", "0.0.0.0:8000", "--workers", "1", "--threads", "4", "--timeout", "120", "app:create_app()"]
