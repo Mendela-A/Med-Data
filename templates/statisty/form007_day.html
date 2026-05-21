@@ -22,42 +22,42 @@
 </div>
 
 <div class="table-responsive">
-  <table class="table table-sm table-bordered align-middle" style="font-size: 0.78rem; min-width: 1200px;">
-    <thead class="table-light">
+  <table class="table table-sm excel-table align-middle" style="min-width: 1300px;">
+    <thead>
       <tr>
-        <th rowspan="4" class="align-middle text-center" style="min-width:140px;">Назва профілю ліжка</th>
-        <th rowspan="4" class="align-middle text-center" style="width:40px;">№ рядка</th>
-        <th rowspan="4" class="align-middle text-center">Розгорнуто ліжок, вкл.&shy; згорнуті на ремонт</th>
-        <th rowspan="4" class="align-middle text-center">В т.ч. згорнуті на ремонт</th>
-        <th rowspan="4" class="align-middle text-center">Було хворих на поч. мин. доби</th>
-        <th colspan="8" class="text-center">Рух хворих за минулу добу</th>
-        <th colspan="2" class="text-center">На початок поточного дня</th>
-        <th rowspan="4" class="align-middle text-center">перебуває матерів при дітях</th>
-        <th colspan="3" class="text-center">К-ть вільних місць</th>
+        <th rowspan="4" style="min-width:150px;">Назва профілю ліжка</th>
+        <th rowspan="4" style="width:40px;">№ рядка</th>
+        <th rowspan="4">Розгорнуто ліжок, вкл.<br>згорнуті на ремонт</th>
+        <th rowspan="4">В т.ч. згорнуті<br>на ремонт</th>
+        <th colspan="9">Рух хворих за минулу добу</th>
+        <th colspan="6">На початок поточного дня</th>
       </tr>
       <tr>
-        <th colspan="3" class="text-center">Поступило хворих</th>
-        <th colspan="2" class="text-center">Переведено</th>
-        <th colspan="3" class="text-center">Виписано хворих</th>
-        <th colspan="2" class="text-center">Знаходилось хворих</th>
-        <th rowspan="3" class="align-middle text-center">чоловічих</th>
-        <th rowspan="3" class="align-middle text-center">жіночих</th>
-        <th rowspan="3" class="align-middle text-center">у загальному</th>
+        <th rowspan="3">Було хворих на поч. мин. доби</th>
+        <th colspan="3">Поступило хворих</th>
+        <th colspan="2">Переведено всередині лікарні</th>
+        <th colspan="2">Виписано хворих</th>
+        <th rowspan="3">Померло</th>
+        <th colspan="2">Знаходилось хворих</th>
+        <th rowspan="3">перебуває матерів при дітях</th>
+        <th colspan="3">к-ть вільних місць</th>
       </tr>
       <tr>
-        <th rowspan="2" class="align-middle text-center">Всього</th>
-        <th colspan="2" class="text-center">Поступило без переведення всередині лікарні</th>
-        <th rowspan="2" class="align-middle text-center">із інших відділів</th>
-        <th rowspan="2" class="align-middle text-center">в інші відділи</th>
-        <th rowspan="2" class="align-middle text-center">Всього</th>
-        <th rowspan="2" class="align-middle text-center">в т.ч. переведених в інші стаціонари</th>
-        <th rowspan="2" class="align-middle text-center">Померло</th>
-        <th rowspan="2" class="align-middle text-center">всього</th>
-        <th rowspan="2" class="align-middle text-center">в т.ч. сільських</th>
+        <th colspan="3">Поступило без переведення всередині лікарні</th>
+        <th rowspan="2">із інших відділів</th>
+        <th rowspan="2">в інші відділи</th>
+        <th rowspan="2">Всього</th>
+        <th rowspan="2">в т.ч. переведених в інші стаціонари</th>
+        <th rowspan="2">всього</th>
+        <th rowspan="2">в т.ч. сільських</th>
+        <th rowspan="2">чоловічих</th>
+        <th rowspan="2">жіночих</th>
+        <th rowspan="2">у загальному</th>
       </tr>
       <tr>
-        <th class="text-center">Сільських жителів</th>
-        <th class="text-center">дітей до 17 р.</th>
+        <th>Всього</th>
+        <th>Сільських жителів</th>
+        <th>дітей до 17 р.</th>
       </tr>
       <tr class="table-secondary small text-center text-muted">
         <td>1</td><td>2</td><td>3</td><td>4</td><td>5</td>
@@ -70,31 +70,31 @@
     <tbody>
       {% for dept, r, free_total in rows %}
       <tr>
-        <td>{{ dept.name }}</td>
-        <td class="text-center">{{ dept.row_no or '' }}</td>
-        <td class="text-center">{{ r.beds_total if r else '' }}</td>
-        <td class="text-center">{{ r.beds_renovation if r else '' }}</td>
-        <td class="text-center">{{ r.patients_start if r else '' }}</td>
-        <td class="text-center fw-semibold">{{ r.admitted_total if r else '' }}</td>
-        <td class="text-center">{{ r.admitted_rural if r else '' }}</td>
-        <td class="text-center">{{ r.admitted_children if r else '' }}</td>
-        <td class="text-center">{{ r.transferred_in if r else '' }}</td>
-        <td class="text-center">{{ r.transferred_out if r else '' }}</td>
-        <td class="text-center fw-semibold">{{ r.discharged_total if r else '' }}</td>
-        <td class="text-center">{{ r.discharged_to_other if r else '' }}</td>
-        <td class="text-center {% if r and r.deaths %}text-danger fw-semibold{% endif %}">
-          {{ r.deaths if r else '' }}
+        <td class="fw-semibold">{{ dept.name }}</td>
+        <td class="text-center text-muted">{{ dept.row_no or '' }}</td>
+        <td class="text-center">{{ r.beds_total if r and r.beds_total is not none else '' }}</td>
+        <td class="text-center">{{ r.beds_renovation if r and r.beds_renovation is not none else '' }}</td>
+        <td class="text-center">{{ r.patients_start if r and r.patients_start is not none else '' }}</td>
+        <td class="text-center fw-bold">{{ r.admitted_total if r and r.admitted_total is not none else '' }}</td>
+        <td class="text-center">{{ r.admitted_rural if r and r.admitted_rural is not none else '' }}</td>
+        <td class="text-center">{{ r.admitted_children if r and r.admitted_children is not none else '' }}</td>
+        <td class="text-center">{{ r.transferred_in if r and r.transferred_in is not none else '' }}</td>
+        <td class="text-center">{{ r.transferred_out if r and r.transferred_out is not none else '' }}</td>
+        <td class="text-center fw-bold">{{ r.discharged_total if r and r.discharged_total is not none else '' }}</td>
+        <td class="text-center">{{ r.discharged_to_other if r and r.discharged_to_other is not none else '' }}</td>
+        <td class="text-center {% if r and r.deaths %}text-danger fw-bold{% endif %}">
+          {{ r.deaths if r and r.deaths is not none else '' }}
         </td>
-        <td class="text-center fw-semibold">{{ r.patients_end if r else '' }}</td>
-        <td class="text-center">{{ r.patients_end_rural if r else '' }}</td>
-        <td class="text-center">{{ r.mothers_with_children if r else '' }}</td>
-        <td class="text-center">{{ r.free_male if r else '' }}</td>
-        <td class="text-center">{{ r.free_female if r else '' }}</td>
-        <td class="text-center">{{ free_total if r and free_total is not none else '' }}</td>
+        <td class="text-center excel-computed">{{ r.patients_end if r and r.patients_end is not none else '' }}</td>
+        <td class="text-center">{{ r.patients_end_rural if r and r.patients_end_rural is not none else '' }}</td>
+        <td class="text-center">{{ r.mothers_with_children if r and r.mothers_with_children is not none else '' }}</td>
+        <td class="text-center">{{ r.free_male if r and r.free_male is not none else '' }}</td>
+        <td class="text-center">{{ r.free_female if r and r.free_female is not none else '' }}</td>
+        <td class="text-center excel-computed">{{ free_total if r and free_total is not none else '' }}</td>
       </tr>
       {% endfor %}
     </tbody>
-    <tfoot class="table-dark fw-semibold text-center">
+    <tfoot class="fw-bold text-center">
       <tr>
         <td colspan="2">Разом</td>
         <td>{{ totals.beds_total or '' }}</td>
@@ -108,12 +108,12 @@
         <td>{{ totals.discharged_total or '' }}</td>
         <td>{{ totals.discharged_to_other or '' }}</td>
         <td class="{% if totals.deaths %}text-danger{% endif %}">{{ totals.deaths or '' }}</td>
-        <td>{{ totals.patients_end or '' }}</td>
+        <td class="excel-computed">{{ totals.patients_end or '' }}</td>
         <td>{{ totals.patients_end_rural or '' }}</td>
         <td>{{ totals.mothers_with_children or '' }}</td>
         <td>{{ totals.free_male or '' }}</td>
         <td>{{ totals.free_female or '' }}</td>
-        <td>{{ totals.free_total or '' }}</td>
+        <td class="excel-computed">{{ totals.free_total or '' }}</td>
       </tr>
     </tfoot>
   </table>

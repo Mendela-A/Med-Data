@@ -91,10 +91,14 @@ def optimize_database():
     # 5. PRAGMA wal_checkpoint - збереження WAL журналу
     print("   5️⃣  PRAGMA wal_checkpoint - збереження WAL...")
     start = datetime.now()
-    cursor.execute("PRAGMA wal_checkpoint(TRUNCATE)")
-    result = cursor.fetchone()
-    elapsed = (datetime.now() - start).total_seconds()
-    print(f"      ✓ Завершено за {elapsed:.3f}s (busy: {result[0]}, log: {result[1]}, checkpointed: {result[2]})")
+    try:
+        cursor.execute("PRAGMA wal_checkpoint(TRUNCATE)")
+        result = cursor.fetchone()
+        elapsed = (datetime.now() - start).total_seconds()
+        print(f"      ✓ Завершено за {elapsed:.3f}s (busy: {result[0]}, log: {result[1]}, checkpointed: {result[2]})")
+    except Exception as e:
+        elapsed = (datetime.now() - start).total_seconds()
+        print(f"      ⚠️  Пропущено або не підтримується (не в режимі WAL): {e} (завершено за {elapsed:.3f}s)")
 
     conn.commit()
 

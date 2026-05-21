@@ -10,33 +10,53 @@ bcrypt = Bcrypt()
 
 
 def _set_sqlite_pragma(dbapi_conn, connection_record):
-    """Enable WAL mode and other optimizations for SQLite."""
+    """Enable SQLite optimizations, falling back gracefully if unsupported."""
+    import os
     cursor = dbapi_conn.cursor()
 
-    # Журналювання та синхронізація
-    cursor.execute("PRAGMA journal_mode=WAL")  # Write-Ahead Logging для кращої конкурентності
-    cursor.execute("PRAGMA synchronous=NORMAL")  # Баланс між швидкістю та надійністю
-    cursor.execute("PRAGMA busy_timeout=5000")  # 5 секунд таймаут для блокувань
+    # Вибір режиму журналювання (можна перевизначити через SQLITE_JOURNAL_MODE, наприклад, DELETE для Docker на Windows)
+    journal_mode = os.environ.get('SQLITE_JOURNAL_MODE', 'WAL').upper()
 
-    # Оптимізація кешу та пам'яті
-    cursor.execute("PRAGMA cache_size=-64000")  # 64MB кеш (negative = KB)
-    cursor.execute("PRAGMA temp_store=MEMORY")  # Тимчасові таблиці в пам'яті
-    cursor.execute("PRAGMA mmap_size=268435456")  # 256MB memory-mapped I/O (збільшено з 30MB)
+    try:
+        cursor.execute(f"PRAGMA journal_mode={journal_mode}")
+    except Exception:
+        try:
+            cursor.execute("PRAGMA journal_mode=DELETE")
+        except Exception:
+            pass
 
-    # Оптимізація читання
-    cursor.execute("PRAGMA query_only=OFF")  # Дозволити запис
-    cursor.execute("PRAGMA read_uncommitted=0")  # Строга ізоляція
+    try:
+        cursor.execute("PRAGMA synchronous=NORMAL")  # Баланс між швидкістю та надійністю
+    except Exception:
+        try:
+            cursor.execute("PRAGMA synchronous=FULL")
+        except Exception:
+            pass
 
-    # Оптимізація запису
-    cursor.execute("PRAGMA wal_autocheckpoint=1000")  # Checkpoint кожні 1000 сторінок
-    cursor.execute("PRAGMA journal_size_limit=67108864")  # 64MB ліміт журналу
+    try:
+        cursor.execute("PRAGMA busy_timeout=5000")  # 5 секунд таймаут для блокувань
+    except Exception:
+        pass
 
-    # Аналіз та оптимізація запитів
-    cursor.execute("PRAGMA optimize")  # Оптимізація статистики для планувальника
-    cursor.execute("PRAGMA auto_vacuum=INCREMENTAL")  # Поступова очистка вільного місця
+    # Оптимізації кешу, пам'яті, читання/запису
+    pragmas = [
+        "PRAGMA cache_size=-64000",          # 64MB кеш (negative = KB)
+        "PRAGMA temp_store=MEMORY",          # Тимчасові таблиці в пам'яті
+        "PRAGMA mmap_size=268435456",        # 256MB memory-mapped I/O
+        "PRAGMA query_only=OFF",             # Дозволити запис
+        "PRAGMA read_uncommitted=0",         # Строга ізоляція
+        "PRAGMA wal_autocheckpoint=1000",    # Checkpoint кожні 1000 сторінок (ігнорується в DELETE режимі)
+        "PRAGMA journal_size_limit=67108864", # 64MB ліміт журналу
+        "PRAGMA optimize",                   # Оптимізація статистики для планувальника
+        "PRAGMA auto_vacuum=INCREMENTAL",    # Поступова очистка вільного місця
+        "PRAGMA threads=4"                   # Використати 4 потоки для паралельних операцій
+    ]
 
-    # Оптимізація для багатопотоковості
-    cursor.execute("PRAGMA threads=4")  # Використати 4 потоки для паралельних операцій
+    for pragma in pragmas:
+        try:
+            cursor.execute(pragma)
+        except Exception:
+            pass
 
     cursor.close()
 
