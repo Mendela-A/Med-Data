@@ -121,6 +121,7 @@ class Department(db.Model):
     id = db.Column(db.Integer, primary_key=True)
     name = db.Column(db.String(200), nullable=False, unique=True, index=True)
     bed_capacity = db.Column(db.Integer, nullable=True)  # ліжковий фонд (для Форми 016)
+    row_no = db.Column(db.Integer, nullable=True)        # № рядка у Формі 007 (МОЗ нумерація)
     created_at = db.Column(db.DateTime, default=lambda: datetime.now(timezone.utc))
 
     def __repr__(self):
@@ -157,6 +158,83 @@ class NSZUCorrection(db.Model):
 
     def __repr__(self):
         return f"<NSZUCorrection {self.id} {self.nszu_record_id}>"
+
+
+class DailyReport(db.Model):
+    """Форма 007/о — щоденний листок обліку руху хворих і ліжкового фонду."""
+    __tablename__ = 'daily_reports'
+    __table_args__ = (
+        db.UniqueConstraint('report_date', 'department_id', name='uq_daily_report_date_dept'),
+        db.Index('idx_daily_report_date', 'report_date'),
+    )
+
+    id                    = db.Column(db.Integer, primary_key=True)
+    report_date           = db.Column(db.Date, nullable=False)
+    department_id         = db.Column(db.Integer, db.ForeignKey('departments.id'), nullable=False)
+
+    # col3 — розгорнуто ліжок (auto from dept.bed_capacity)
+    beds_total            = db.Column(db.Integer, nullable=True)
+    # col4 — в т.ч. на ремонті (manual)
+    beds_renovation       = db.Column(db.Integer, nullable=True)
+    # col5 — хворих на поч. минулої доби (auto = prev_day.patients_end)
+    patients_start        = db.Column(db.Integer, nullable=True)
+    # col6 — поступило всього (auto from records)
+    admitted_total        = db.Column(db.Integer, nullable=True)
+    # col7 — поступило сільських (manual)
+    admitted_rural        = db.Column(db.Integer, nullable=True)
+    # col8 — поступило дітей до 17р (manual)
+    admitted_children     = db.Column(db.Integer, nullable=True)
+    # col9 — переведено з ін. відділів (manual)
+    transferred_in        = db.Column(db.Integer, nullable=True)
+    # col10 — переведено в ін. відділи (manual)
+    transferred_out       = db.Column(db.Integer, nullable=True)
+    # col11 — виписано всього (auto from records)
+    discharged_total      = db.Column(db.Integer, nullable=True)
+    # col12 — виписано в ін. стаціонари (manual)
+    discharged_to_other   = db.Column(db.Integer, nullable=True)
+    # col13 — померло (auto from records)
+    deaths                = db.Column(db.Integer, nullable=True)
+    # col14 — на поч. поточного дня всього (computed: col5+col6+col9-col10-col11-col13)
+    patients_end          = db.Column(db.Integer, nullable=True)
+    # col15 — на поч. поточного дня сільських (manual)
+    patients_end_rural    = db.Column(db.Integer, nullable=True)
+    # col16 — матерів при дітях (manual)
+    mothers_with_children = db.Column(db.Integer, nullable=True)
+    # col17 — вільних чоловічих (manual)
+    free_male             = db.Column(db.Integer, nullable=True)
+    # col18 — вільних жіночих (manual)
+    free_female           = db.Column(db.Integer, nullable=True)
+    # col19 free_total = beds_total - patients_end (computed in code)
+
+    created_by = db.Column(db.Integer, db.ForeignKey('users.id'), nullable=True)
+    updated_by = db.Column(db.Integer, db.ForeignKey('users.id'), nullable=True)
+    created_at = db.Column(db.DateTime, default=lambda: datetime.now(timezone.utc))
+    updated_at = db.Column(db.DateTime, default=lambda: datetime.now(timezone.utc),
+                           onupdate=lambda: datetime.now(timezone.utc))
+
+    department = db.relationship('Department', backref='daily_reports')
+    creator    = db.relationship('User', foreign_keys=[created_by])
+    updater    = db.relationship('User', foreign_keys=[updated_by])
+
+    @property
+    def free_total(self):
+        if self.beds_total is not None and self.patients_end is not None:
+            return self.beds_total - self.patients_end
+        return None
+
+    def compute_patients_end(self):
+        """col14 = col5 + col6 + col9 - col10 - col11 - col13"""
+        return (
+            (self.patients_start or 0)
+            + (self.admitted_total or 0)
+            + (self.transferred_in or 0)
+            - (self.transferred_out or 0)
+            - (self.discharged_total or 0)
+            - (self.deaths or 0)
+        )
+
+    def __repr__(self):
+        return f"<DailyReport {self.report_date} dept={self.department_id}>"
 
 
 def log_action(actor_id, action, target_type=None, target_id=None, details=None):

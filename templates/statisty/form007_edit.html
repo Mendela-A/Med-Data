@@ -1,0 +1,154 @@
+{% extends "base.html" %}
+{% block title %}Редагування Форми 007 — {{ report_date.strftime('%d.%m.%Y') }}{% endblock %}
+
+{% block content %}
+<div class="d-flex align-items-center justify-content-between mb-3 flex-wrap gap-2">
+  <h4 class="mb-0">
+    <i class="bi bi-pencil me-2 text-primary"></i>
+    Форма 007 — {{ report_date.strftime('%d.%m.%Y') }}
+  </h4>
+</div>
+
+<div class="alert alert-info py-2 small mb-3">
+  <i class="bi bi-info-circle me-1"></i>
+  Поля <span class="badge bg-success">авто</span> заповнюються з виписок (кнопка "Авто-заповнити" на сторінці перегляду).
+  Поля <span class="badge bg-secondary">ручне</span> вводяться вручну статистом.
+  <strong>Залишок на кінець (кол.14) і вільних місць (кол.19)</strong> обчислюються автоматично при збереженні.
+</div>
+
+<form method="post">
+  <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+
+  <div class="table-responsive">
+    <table class="table table-sm table-bordered align-middle" style="font-size: 0.78rem; min-width: 1400px;">
+      <thead class="table-light text-center">
+        <tr>
+          <th rowspan="2" class="align-middle" style="min-width:140px;">Відділення</th>
+          <th rowspan="2" class="align-middle" style="width:35px;">№</th>
+          <th colspan="2">Ліжка</th>
+          <th rowspan="2" class="align-middle">Поч. мин. доби<br><small class="text-muted">(кол.5)</small></th>
+          <th colspan="3">Поступило</th>
+          <th colspan="2">Переведено</th>
+          <th colspan="2">Виписано</th>
+          <th rowspan="2" class="align-middle">Померло<br><small class="text-muted">(кол.13)</small></th>
+          <th colspan="2">Нa поч. пот. дня</th>
+          <th rowspan="2" class="align-middle">Матерів при дітях<br><small>(кол.16)</small></th>
+          <th colspan="2">Вільних місць</th>
+        </tr>
+        <tr>
+          <th>Всього<br><small>(кол.3)</small></th>
+          <th>Ремонт<br><small>(кол.4)</small></th>
+          <th>Всього <span class="badge bg-success">авто</span><br><small>(кол.6)</small></th>
+          <th>Сільськ.<br><small>(кол.7)</small></th>
+          <th>Діти&lt;17<br><small>(кол.8)</small></th>
+          <th>з ін. відд.<br><small>(кол.9)</small></th>
+          <th>в ін. відд.<br><small>(кол.10)</small></th>
+          <th>Всього <span class="badge bg-success">авто</span><br><small>(кол.11)</small></th>
+          <th>в ін. ст-ри<br><small>(кол.12)</small></th>
+          <th>Всього <span class="badge bg-warning text-dark">обч.</span><br><small>(кол.14)</small></th>
+          <th>Сільськ.<br><small>(кол.15)</small></th>
+          <th>Чол.<br><small>(кол.17)</small></th>
+          <th>Жін.<br><small>(кол.18)</small></th>
+        </tr>
+      </thead>
+      <tbody>
+        {% for dept in depts %}
+          {% set r = existing.get(dept.id) %}
+          <tr>
+            <td class="fw-semibold">{{ dept.name }}</td>
+            <td class="text-center text-muted">{{ dept.row_no or '' }}</td>
+
+            {# col3 — beds_total #}
+            <td><input type="number" name="beds_total_{{ dept.id }}" min="0"
+                       value="{{ r.beds_total if r and r.beds_total is not none else (dept.bed_capacity or '') }}"
+                       class="form-control form-control-sm text-center p-0" style="width:55px;"></td>
+
+            {# col4 — beds_renovation #}
+            <td><input type="number" name="beds_renovation_{{ dept.id }}" min="0"
+                       value="{{ r.beds_renovation if r and r.beds_renovation is not none else '' }}"
+                       class="form-control form-control-sm text-center p-0" style="width:55px;"></td>
+
+            {# col5 — patients_start #}
+            <td><input type="number" name="patients_start_{{ dept.id }}" min="0"
+                       value="{{ r.patients_start if r and r.patients_start is not none else '' }}"
+                       class="form-control form-control-sm text-center p-0" style="width:55px;"></td>
+
+            {# col6 — admitted_total (auto but editable) #}
+            <td class="bg-light"><input type="number" name="admitted_total_{{ dept.id }}" min="0"
+                       value="{{ r.admitted_total if r and r.admitted_total is not none else '' }}"
+                       class="form-control form-control-sm text-center p-0" style="width:55px;"></td>
+
+            {# col7 — admitted_rural #}
+            <td><input type="number" name="admitted_rural_{{ dept.id }}" min="0"
+                       value="{{ r.admitted_rural if r and r.admitted_rural is not none else '' }}"
+                       class="form-control form-control-sm text-center p-0" style="width:55px;"></td>
+
+            {# col8 — admitted_children #}
+            <td><input type="number" name="admitted_children_{{ dept.id }}" min="0"
+                       value="{{ r.admitted_children if r and r.admitted_children is not none else '' }}"
+                       class="form-control form-control-sm text-center p-0" style="width:55px;"></td>
+
+            {# col9 — transferred_in #}
+            <td><input type="number" name="transferred_in_{{ dept.id }}" min="0"
+                       value="{{ r.transferred_in if r and r.transferred_in is not none else '' }}"
+                       class="form-control form-control-sm text-center p-0" style="width:55px;"></td>
+
+            {# col10 — transferred_out #}
+            <td><input type="number" name="transferred_out_{{ dept.id }}" min="0"
+                       value="{{ r.transferred_out if r and r.transferred_out is not none else '' }}"
+                       class="form-control form-control-sm text-center p-0" style="width:55px;"></td>
+
+            {# col11 — discharged_total (auto but editable) #}
+            <td class="bg-light"><input type="number" name="discharged_total_{{ dept.id }}" min="0"
+                       value="{{ r.discharged_total if r and r.discharged_total is not none else '' }}"
+                       class="form-control form-control-sm text-center p-0" style="width:55px;"></td>
+
+            {# col12 — discharged_to_other #}
+            <td><input type="number" name="discharged_to_other_{{ dept.id }}" min="0"
+                       value="{{ r.discharged_to_other if r and r.discharged_to_other is not none else '' }}"
+                       class="form-control form-control-sm text-center p-0" style="width:55px;"></td>
+
+            {# col13 — deaths (auto but editable) #}
+            <td class="bg-light"><input type="number" name="deaths_{{ dept.id }}" min="0"
+                       value="{{ r.deaths if r and r.deaths is not none else '' }}"
+                       class="form-control form-control-sm text-center p-0" style="width:55px;"></td>
+
+            {# col14 — patients_end (computed, read-only display) #}
+            <td class="text-center text-muted bg-warning bg-opacity-10">
+              <small>{{ r.patients_end if r and r.patients_end is not none else 'авто' }}</small>
+            </td>
+
+            {# col15 — patients_end_rural #}
+            <td><input type="number" name="patients_end_rural_{{ dept.id }}" min="0"
+                       value="{{ r.patients_end_rural if r and r.patients_end_rural is not none else '' }}"
+                       class="form-control form-control-sm text-center p-0" style="width:55px;"></td>
+
+            {# col16 — mothers_with_children #}
+            <td><input type="number" name="mothers_with_children_{{ dept.id }}" min="0"
+                       value="{{ r.mothers_with_children if r and r.mothers_with_children is not none else '' }}"
+                       class="form-control form-control-sm text-center p-0" style="width:55px;"></td>
+
+            {# col17 — free_male #}
+            <td><input type="number" name="free_male_{{ dept.id }}" min="0"
+                       value="{{ r.free_male if r and r.free_male is not none else '' }}"
+                       class="form-control form-control-sm text-center p-0" style="width:55px;"></td>
+
+            {# col18 — free_female #}
+            <td><input type="number" name="free_female_{{ dept.id }}" min="0"
+                       value="{{ r.free_female if r and r.free_female is not none else '' }}"
+                       class="form-control form-control-sm text-center p-0" style="width:55px;"></td>
+          </tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </div>
+
+  <div class="mt-3 d-flex gap-2">
+    <button type="submit" class="btn btn-primary">
+      <i class="bi bi-check2 me-1"></i>Зберегти
+    </button>
+    <a href="{{ url_for('statisty.form007_day', report_date_str=report_date.isoformat()) }}"
+       class="btn btn-outline-secondary">Скасувати</a>
+  </div>
+</form>
+{% endblock %}

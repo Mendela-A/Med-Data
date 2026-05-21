@@ -31,12 +31,26 @@
        class="btn btn-success btn-sm">
       <i class="bi bi-file-earmark-excel me-1"></i>Excel
     </a>
-    <a href="{{ url_for('statisty.form007', from_date=from_date.isoformat(), to_date=to_date.isoformat()) }}"
+    <a href="{{ url_for('statisty.form007', from_date=from_date.strftime('%Y-%m')) }}"
        class="btn btn-outline-secondary btn-sm ms-1">
       <i class="bi bi-calendar3 me-1"></i>Форма 007 (по днях)
     </a>
   </div>
 </form>
+
+{% if data_source == 'daily_report' %}
+<div class="alert alert-success py-2 small mb-3">
+  <i class="bi bi-check-circle me-1"></i>
+  Дані з <strong>Форми 007</strong> ({{ dr_count }} записів за {{ period_label }}).
+  Ліжко-дні = сума щоденних залишків хворих.
+</div>
+{% else %}
+<div class="alert alert-warning py-2 small mb-3">
+  <i class="bi bi-exclamation-triangle me-1"></i>
+  Форму 007 ще не введено за цей період — показано дані з <strong>виписок</strong> (ліжко-дні = сума к_днів).
+  <a href="{{ url_for('statisty.form007', from_date=from_date.strftime('%Y-%m')) }}">Ввести Форму 007 →</a>
+</div>
+{% endif %}
 
 {% if table %}
 <div class="table-responsive">

@@ -1,0 +1,130 @@
+{% extends "base.html" %}
+{% block title %}Форма 007 — {{ report_date.strftime('%d.%m.%Y') }}{% endblock %}
+
+{% block content %}
+<div class="d-flex align-items-center justify-content-between mb-3 flex-wrap gap-2">
+  <h4 class="mb-0">
+    <i class="bi bi-calendar3 me-2 text-primary"></i>
+    Листок обліку хворих і ліжкового фонду стаціонару
+  </h4>
+  <span class="badge bg-secondary fs-6">{{ report_date.strftime('%d.%m.%Y') }}</span>
+</div>
+
+<div class="mb-3 d-flex gap-2 flex-wrap">
+  <a href="{{ url_for('statisty.form007_edit', report_date_str=report_date.isoformat()) }}"
+     class="btn btn-primary btn-sm">
+    <i class="bi bi-pencil me-1"></i>Редагувати
+  </a>
+  <form method="post"
+        action="{{ url_for('statisty.form007_autofill', report_date_str=report_date.isoformat()) }}"
+        class="d-inline">
+    <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+    <button type="submit" class="btn btn-outline-success btn-sm">
+      <i class="bi bi-lightning me-1"></i>Авто-заповнити з записів
+    </button>
+  </form>
+  <a href="{{ url_for('statisty.form007', from_date=report_date.strftime('%Y-%m')) }}"
+     class="btn btn-outline-secondary btn-sm ms-auto">
+    <i class="bi bi-arrow-left me-1"></i>Назад до місяця
+  </a>
+</div>
+
+<div class="table-responsive">
+  <table class="table table-sm table-bordered align-middle" style="font-size: 0.78rem; min-width: 1200px;">
+    <thead class="table-light">
+      <tr>
+        <th rowspan="3" class="align-middle text-center" style="min-width:140px;">Відділення</th>
+        <th rowspan="3" class="align-middle text-center" style="width:40px;">№</th>
+        <th rowspan="3" class="align-middle text-center">Ліжок</th>
+        <th rowspan="3" class="align-middle text-center">в т.ч. ремонт</th>
+        <th rowspan="3" class="align-middle text-center">Хворих на поч. мин. доби</th>
+        <th colspan="4" class="text-center">Поступило</th>
+        <th colspan="2" class="text-center">Переведено</th>
+        <th colspan="2" class="text-center">Виписано</th>
+        <th rowspan="3" class="align-middle text-center">Померло</th>
+        <th colspan="2" class="text-center">На поч. пот. дня</th>
+        <th rowspan="3" class="align-middle text-center">Матерів при дітях</th>
+        <th colspan="3" class="text-center">Вільних місць</th>
+      </tr>
+      <tr>
+        <th rowspan="2" class="text-center">Всього</th>
+        <th rowspan="2" class="text-center">Сільськ.</th>
+        <th rowspan="2" class="text-center">Дітей &lt;17</th>
+        <th rowspan="2" class="text-center">Авто</th>
+        <th rowspan="2" class="text-center">з ін. відділів</th>
+        <th rowspan="2" class="text-center">в ін. відділи</th>
+        <th rowspan="2" class="text-center">Всього</th>
+        <th rowspan="2" class="text-center">в ін. ст-ри</th>
+        <th rowspan="2" class="text-center">Всього</th>
+        <th rowspan="2" class="text-center">Сільськ.</th>
+        <th rowspan="2" class="text-center">Чол.</th>
+        <th rowspan="2" class="text-center">Жін.</th>
+        <th rowspan="2" class="text-center">Разом</th>
+      </tr>
+      <tr></tr>
+      <tr class="table-secondary small text-center text-muted">
+        <td>1</td><td>2</td><td>3</td><td>4</td><td>5</td>
+        <td>6</td><td>7</td><td>8</td><td>—</td>
+        <td>9</td><td>10</td><td>11</td><td>12</td>
+        <td>13</td><td>14</td><td>15</td><td>16</td>
+        <td>17</td><td>18</td><td>19</td>
+      </tr>
+    </thead>
+    <tbody>
+      {% for dept, r, free_total in rows %}
+      <tr>
+        <td>{{ dept.name }}</td>
+        <td class="text-center">{{ dept.row_no or '' }}</td>
+        <td class="text-center">{{ r.beds_total if r else '' }}</td>
+        <td class="text-center">{{ r.beds_renovation if r else '' }}</td>
+        <td class="text-center">{{ r.patients_start if r else '' }}</td>
+        <td class="text-center fw-semibold">{{ r.admitted_total if r else '' }}</td>
+        <td class="text-center">{{ r.admitted_rural if r else '' }}</td>
+        <td class="text-center">{{ r.admitted_children if r else '' }}</td>
+        <td class="text-center text-muted">
+          {% if r and r.admitted_total is not none %}
+            <small>авто</small>
+          {% endif %}
+        </td>
+        <td class="text-center">{{ r.transferred_in if r else '' }}</td>
+        <td class="text-center">{{ r.transferred_out if r else '' }}</td>
+        <td class="text-center fw-semibold">{{ r.discharged_total if r else '' }}</td>
+        <td class="text-center">{{ r.discharged_to_other if r else '' }}</td>
+        <td class="text-center {% if r and r.deaths %}text-danger fw-semibold{% endif %}">
+          {{ r.deaths if r else '' }}
+        </td>
+        <td class="text-center fw-semibold">{{ r.patients_end if r else '' }}</td>
+        <td class="text-center">{{ r.patients_end_rural if r else '' }}</td>
+        <td class="text-center">{{ r.mothers_with_children if r else '' }}</td>
+        <td class="text-center">{{ r.free_male if r else '' }}</td>
+        <td class="text-center">{{ r.free_female if r else '' }}</td>
+        <td class="text-center">{{ free_total if r and free_total is not none else '' }}</td>
+      </tr>
+      {% endfor %}
+    </tbody>
+    <tfoot class="table-dark fw-semibold text-center">
+      <tr>
+        <td colspan="2">Разом</td>
+        <td>{{ totals.beds_total or '' }}</td>
+        <td>{{ totals.beds_renovation or '' }}</td>
+        <td>{{ totals.patients_start or '' }}</td>
+        <td>{{ totals.admitted_total or '' }}</td>
+        <td>{{ totals.admitted_rural or '' }}</td>
+        <td>{{ totals.admitted_children or '' }}</td>
+        <td></td>
+        <td>{{ totals.transferred_in or '' }}</td>
+        <td>{{ totals.transferred_out or '' }}</td>
+        <td>{{ totals.discharged_total or '' }}</td>
+        <td>{{ totals.discharged_to_other or '' }}</td>
+        <td class="{% if totals.deaths %}text-danger{% endif %}">{{ totals.deaths or '' }}</td>
+        <td>{{ totals.patients_end or '' }}</td>
+        <td>{{ totals.patients_end_rural or '' }}</td>
+        <td>{{ totals.mothers_with_children or '' }}</td>
+        <td>{{ totals.free_male or '' }}</td>
+        <td>{{ totals.free_female or '' }}</td>
+        <td>{{ totals.free_total or '' }}</td>
+      </tr>
+    </tfoot>
+  </table>
+</div>
+{% endblock %}
