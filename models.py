@@ -140,6 +140,7 @@ class Department(db.Model):
     __tablename__ = 'departments'
     id = db.Column(db.Integer, primary_key=True)
     name = db.Column(db.String(200), nullable=False, unique=True, index=True)
+    bed_profile_name = db.Column(db.String(200), nullable=True)  # Назва профілю ліжка (для Форми 007)
     bed_capacity = db.Column(db.Integer, nullable=True)  # ліжковий фонд (для Форми 016)
     row_no = db.Column(db.Integer, nullable=True)        # № рядка у Формі 007 (МОЗ нумерація)
     created_at = db.Column(db.DateTime, default=lambda: datetime.now(timezone.utc))

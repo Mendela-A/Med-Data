@@ -63,7 +63,7 @@
         {% for dept in depts %}
           {% set r = existing.get(dept.id) %}
           <tr>
-            <td class="fw-semibold">{{ dept.name }}</td>
+            <td class="fw-semibold">{{ dept.bed_profile_name or dept.name }}</td>
             <td class="text-center text-muted">{{ dept.row_no or '' }}</td>
 
             {# col3 — beds_total #}

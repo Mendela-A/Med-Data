@@ -137,7 +137,7 @@ def admin_delete_user(user_id):
 @admin_bp.route('/departments')
 @role_required('admin')
 def admin_departments():
-    departments = Department.query.order_by(Department.name).all()
+    departments = Department.query.order_by(Department.row_no.nullslast(), Department.name).all()
     return render_template('admin_departments.html', departments=departments)
 
 
@@ -145,22 +145,107 @@ def admin_departments():
 @role_required('admin')
 def admin_create_department():
     name = request.form.get('name', '').strip()
+    bed_profile_name = request.form.get('bed_profile_name', '').strip() or None
+    row_no_str = request.form.get('row_no', '').strip()
+    bed_capacity_str = request.form.get('bed_capacity', '').strip()
+
     if not name:
         flash('Назва відділення обов\'язкова', 'warning')
         return redirect(url_for('admin.admin_departments'))
     if Department.query.filter_by(name=name).first():
         flash('Відділення з такою назвою вже існує', 'warning')
         return redirect(url_for('admin.admin_departments'))
-    d = Department(name=name)
+
+    row_no = None
+    if row_no_str:
+        try:
+            row_no = int(row_no_str)
+        except ValueError:
+            flash('№ рядка має бути числом', 'warning')
+            return redirect(url_for('admin.admin_departments'))
+
+    bed_capacity = None
+    if bed_capacity_str:
+        try:
+            bed_capacity = int(bed_capacity_str)
+        except ValueError:
+            flash('Ліжковий фонд має бути числом', 'warning')
+            return redirect(url_for('admin.admin_departments'))
+
+    d = Department(
+        name=name,
+        bed_profile_name=bed_profile_name,
+        row_no=row_no,
+        bed_capacity=bed_capacity
+    )
     db.session.add(d)
     db.session.flush()  # assigns d.id
-    log_action(current_user.id, 'department.create', 'department', d.id, f'name={name}')
+    log_action(current_user.id, 'department.create', 'department', d.id, f'name={name}, profile={bed_profile_name}, row={row_no}, beds={bed_capacity}')
     db.session.commit()
     # Clear dropdown cache after creating department
     clear_dropdown_cache()
     current_app.logger.info(f'Department created: {name} by {current_user.username}')
     flash(f'Відділення "{name}" успішно створено', 'success')
     return redirect(url_for('admin.admin_departments'))
+
+
+@admin_bp.route('/departments/<int:dept_id>/edit', methods=['GET', 'POST'])
+@role_required('admin')
+def admin_edit_department(dept_id):
+    d = db.get_or_404(Department, dept_id)
+
+    if request.method == 'POST':
+        name = request.form.get('name', '').strip()
+        bed_profile_name = request.form.get('bed_profile_name', '').strip() or None
+        row_no_str = request.form.get('row_no', '').strip()
+        bed_capacity_str = request.form.get('bed_capacity', '').strip()
+
+        if not name:
+            flash('Назва відділення обов\'язкова', 'warning')
+            return redirect(url_for('admin.admin_edit_department', dept_id=dept_id))
+
+        existing = Department.query.filter_by(name=name).first()
+        if existing and existing.id != dept_id:
+            flash('Відділення з такою назвою вже існує', 'warning')
+            return redirect(url_for('admin.admin_edit_department', dept_id=dept_id))
+
+        row_no = None
+        if row_no_str:
+            try:
+                row_no = int(row_no_str)
+            except ValueError:
+                flash('№ рядка має бути числом', 'warning')
+                return redirect(url_for('admin.admin_edit_department', dept_id=dept_id))
+
+        bed_capacity = None
+        if bed_capacity_str:
+            try:
+                bed_capacity = int(bed_capacity_str)
+            except ValueError:
+                flash('Ліжковий фонд має бути числом', 'warning')
+                return redirect(url_for('admin.admin_edit_department', dept_id=dept_id))
+
+        old_name = d.name
+        d.name = name
+        d.bed_profile_name = bed_profile_name
+        d.row_no = row_no
+        d.bed_capacity = bed_capacity
+
+        try:
+            log_action(current_user.id, 'department.update', 'department', d.id, f'name={old_name}->{name}, profile={bed_profile_name}, row={row_no}, beds={bed_capacity}')
+            db.session.commit()
+            clear_dropdown_cache()
+        except Exception:
+            db.session.rollback()
+            current_app.logger.exception('Failed to update department')
+            flash('Помилка при збереженні змін', 'danger')
+            return redirect(url_for('admin.admin_edit_department', dept_id=dept_id))
+
+        current_app.logger.info(f'Department updated: {d.name} by {current_user.username}')
+        flash(f'Відділення "{d.name}" успішно оновлено', 'success')
+        return redirect(url_for('admin.admin_departments'))
+
+    return render_template('edit_department.html', department=d)
 
 
 @admin_bp.route('/departments/<int:dept_id>/delete', methods=['POST'])

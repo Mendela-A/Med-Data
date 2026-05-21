@@ -155,7 +155,7 @@ tr.totals td {
   <tbody>
     {% for dept, r, free_total in rows %}
     <tr>
-      <td class="dept-name">{{ dept.name }}</td>
+      <td class="dept-name">{{ dept.bed_profile_name or dept.name }}</td>
       <td>{{ dept.row_no or '' }}</td>
       <td>{{ r.beds_total or '' }}</td>
       <td>{{ r.beds_renovation or '' }}</td>

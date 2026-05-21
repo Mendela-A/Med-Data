@@ -70,7 +70,7 @@
     <tbody>
       {% for dept, r, free_total in rows %}
       <tr>
-        <td class="fw-semibold">{{ dept.name }}</td>
+        <td class="fw-semibold">{{ dept.bed_profile_name or dept.name }}</td>
         <td class="text-center text-muted">{{ dept.row_no or '' }}</td>
         <td class="text-center">{{ r.beds_total if r and r.beds_total is not none else '' }}</td>
         <td class="text-center">{{ r.beds_renovation if r and r.beds_renovation is not none else '' }}</td>
