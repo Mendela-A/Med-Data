@@ -23,17 +23,18 @@
           <th rowspan="4" class="align-middle">В т.ч. згорнуті на ремонт</th>
           <th rowspan="4" class="align-middle">Було хворих на поч. мин. доби</th>
           <th colspan="8">Рух хворих за минулу добу</th>
-          <th colspan="3">На початок поточного дня</th>
-          <th colspan="2">К-ть вільних місць</th>
+          <th colspan="2">На початок поточного дня</th>
+          <th rowspan="4" class="align-middle">перебуває матерів при дітях<br><small>(кол.16)</small></th>
+          <th colspan="3">К-ть вільних місць</th>
         </tr>
         <tr>
           <th colspan="3">Поступило хворих</th>
           <th colspan="2">Переведено</th>
           <th colspan="3">Виписано хворих</th>
           <th colspan="2">Знаходилось хворих</th>
-          <th rowspan="3" class="align-middle">перебуває матерів при дітях<br><small>(кол.16)</small></th>
           <th rowspan="3" class="align-middle">чоловічих<br><small>(кол.17)</small></th>
           <th rowspan="3" class="align-middle">жіночих<br><small>(кол.18)</small></th>
+          <th rowspan="3" class="align-middle">у загальному<br><small>(кол.19)</small></th>
         </tr>
         <tr>
           <th rowspan="2" class="align-middle">Всього<br><small>(кол.6)</small></th>
@@ -137,6 +138,11 @@
             <td><input type="number" name="free_female_{{ dept.id }}" min="0"
                        value="{{ r.free_female if r and r.free_female is not none else '' }}"
                        class="form-control form-control-sm text-center p-0" style="width:55px;"></td>
+
+            {# col19 — free_total (computed: beds_total − patients_end) #}
+            <td class="text-center text-muted bg-warning bg-opacity-10">
+              <small>{{ r.free_total if r and r.free_total is not none else '' }}</small>
+            </td>
           </tr>
         {% endfor %}
       </tbody>

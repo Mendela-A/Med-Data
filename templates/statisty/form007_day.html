@@ -31,7 +31,8 @@
         <th rowspan="4" class="align-middle text-center">В т.ч. згорнуті на ремонт</th>
         <th rowspan="4" class="align-middle text-center">Було хворих на поч. мин. доби</th>
         <th colspan="8" class="text-center">Рух хворих за минулу добу</th>
-        <th colspan="3" class="text-center">На початок поточного дня</th>
+        <th colspan="2" class="text-center">На початок поточного дня</th>
+        <th rowspan="4" class="align-middle text-center">перебуває матерів при дітях</th>
         <th colspan="3" class="text-center">К-ть вільних місць</th>
       </tr>
       <tr>
@@ -39,7 +40,6 @@
         <th colspan="2" class="text-center">Переведено</th>
         <th colspan="3" class="text-center">Виписано хворих</th>
         <th colspan="2" class="text-center">Знаходилось хворих</th>
-        <th rowspan="3" class="align-middle text-center">перебуває матерів при дітях</th>
         <th rowspan="3" class="align-middle text-center">чоловічих</th>
         <th rowspan="3" class="align-middle text-center">жіночих</th>
         <th rowspan="3" class="align-middle text-center">у загальному</th>
@@ -103,7 +103,6 @@
         <td>{{ totals.admitted_total or '' }}</td>
         <td>{{ totals.admitted_rural or '' }}</td>
         <td>{{ totals.admitted_children or '' }}</td>
-        <td></td>
         <td>{{ totals.transferred_in or '' }}</td>
         <td>{{ totals.transferred_out or '' }}</td>
         <td>{{ totals.discharged_total or '' }}</td>
