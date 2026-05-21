@@ -23,12 +23,12 @@ def _parse_date_range():
     to_date   = None
     if from_str:
         try:
-            from_date = date.fromisoformat(from_str)
+            from_date = date.fromisoformat(from_str if len(from_str) > 7 else from_str + '-01')
         except ValueError:
             pass
     if to_str:
         try:
-            to_date = date.fromisoformat(to_str)
+            to_date = date.fromisoformat(to_str if len(to_str) > 7 else to_str + '-01')
         except ValueError:
             pass
     if from_date is None:
