@@ -112,34 +112,40 @@ tr.totals td {
   </colgroup>
   <thead>
     <tr>
-      <th rowspan="3">Назва профілю ліжка</th>
-      <th rowspan="3">№ ряд.</th>
-      <th rowspan="3">Розгор&shy;нуто ліжок</th>
-      <th rowspan="3">В т.ч. ремонт</th>
-      <th rowspan="3">Хворих на поч. мин. доби</th>
-      <th colspan="3">Поступило за минулу добу</th>
-      <th colspan="2">Переведено всередині</th>
-      <th colspan="2">Виписано</th>
-      <th rowspan="3">Померло</th>
-      <th colspan="2">На початок поточного дня</th>
-      <th rowspan="3">Матерів при дітях</th>
+      <th rowspan="4">Назва профілю ліжка</th>
+      <th rowspan="4">№ рядка</th>
+      <th rowspan="4">Розгорнуто ліжок, вкл. згорнуті на ремонт</th>
+      <th rowspan="4">В т.ч. згорнуті на ремонт</th>
+      <th rowspan="4">Було хворих на поч. мин. доби</th>
+      <th colspan="8">Рух хворих за минулу добу</th>
+      <th colspan="3">На початок поточного дня</th>
       <th colspan="3">К-ть вільних місць</th>
     </tr>
     <tr>
-      <th rowspan="2">Всього</th>
-      <th rowspan="2">Сільськ.</th>
-      <th rowspan="2">Дітей до 17 р.</th>
-      <th rowspan="2">з ін. відділів</th>
-      <th rowspan="2">в ін. відділи</th>
-      <th rowspan="2">Всього</th>
-      <th rowspan="2">в т.ч. в ін. ст-ри</th>
-      <th rowspan="2">Всього</th>
-      <th rowspan="2">Сільськ.</th>
-      <th rowspan="2">Чол.</th>
-      <th rowspan="2">Жін.</th>
-      <th rowspan="2">Разом</th>
+      <th colspan="3">Поступило хворих</th>
+      <th colspan="2">Переведено</th>
+      <th colspan="3">Виписано хворих</th>
+      <th colspan="2">Знаходилось хворих</th>
+      <th rowspan="3">перебуває матерів при дітях</th>
+      <th rowspan="3">чоловічих</th>
+      <th rowspan="3">жіночих</th>
+      <th rowspan="3">у загальному</th>
     </tr>
-    <tr></tr>
+    <tr>
+      <th rowspan="2">Всього</th>
+      <th colspan="2">Поступило без переведення всередині лікарні</th>
+      <th rowspan="2">із інших відділів</th>
+      <th rowspan="2">в інші відділи</th>
+      <th rowspan="2">Всього</th>
+      <th rowspan="2">в т.ч. переведених в інші стаціонари</th>
+      <th rowspan="2">Померло</th>
+      <th rowspan="2">всього</th>
+      <th rowspan="2">в т.ч. сільських</th>
+    </tr>
+    <tr>
+      <th>Сільських жителів</th>
+      <th>дітей до 17 р.</th>
+    </tr>
     <tr>
       {% for n in range(1, 20) %}
       <td class="col-num">{{ n }}</td>
