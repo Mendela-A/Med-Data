@@ -1,0 +1,207 @@
+<!DOCTYPE html>
+<html lang="uk">
+<head>
+<meta charset="UTF-8">
+<title>Форма 007 — {{ report_date.strftime('%d.%m.%Y') }}</title>
+<style>
+@page {
+    size: A4 landscape;
+    margin: 0.8cm 0.7cm 1.2cm 0.7cm;
+    @bottom-center {
+        content: "КНП «Калуська ЦРЛ» — Форма 007 — " "{{ report_date.strftime('%d.%m.%Y') }}";
+        font-size: 7pt;
+        color: #666;
+    }
+    @bottom-right {
+        content: "Стор. " counter(page) " з " counter(pages);
+        font-size: 7pt;
+        color: #666;
+    }
+}
+
+* { margin: 0; padding: 0; box-sizing: border-box; }
+
+body {
+    font-family: 'DejaVu Sans', Arial, sans-serif;
+    font-size: 7.5pt;
+    color: #111;
+}
+
+.header {
+    text-align: center;
+    margin-bottom: 6px;
+}
+.header .org {
+    font-size: 8pt;
+    font-weight: bold;
+    text-transform: uppercase;
+}
+.header .form-title {
+    font-size: 9.5pt;
+    font-weight: bold;
+    margin: 3px 0 1px;
+}
+.header .date-line {
+    font-size: 8pt;
+}
+
+table {
+    width: 100%;
+    border-collapse: collapse;
+    table-layout: fixed;
+}
+th, td {
+    border: 1px solid #333;
+    padding: 1px 2px;
+    vertical-align: middle;
+    text-align: center;
+    word-wrap: break-word;
+}
+th {
+    background: #e8edf5;
+    font-size: 6.5pt;
+    font-weight: bold;
+    line-height: 1.2;
+}
+td.dept-name {
+    text-align: left;
+    padding-left: 3px;
+    font-size: 7pt;
+}
+tr.totals td {
+    font-weight: bold;
+    background: #d0d8e8;
+}
+.col-num { color: #777; font-size: 6pt; }
+
+.signature {
+    margin-top: 8px;
+    font-size: 7.5pt;
+}
+</style>
+</head>
+<body>
+
+<div class="header">
+  <div class="org">КНП «Калуська центральна районна лікарня»</div>
+  <div class="form-title">Листок обліку хворих і ліжкового фонду стаціонару</div>
+  <div class="date-line">за <strong>{{ report_date.strftime('%d.%m.%Y') }}</strong> р.</div>
+</div>
+
+<table>
+  <colgroup>
+    <col style="width:11%"><!-- 1 dept -->
+    <col style="width:3%"> <!-- 2 row_no -->
+    <col style="width:3%"> <!-- 3 beds -->
+    <col style="width:3%"> <!-- 4 renovation -->
+    <col style="width:3.5%"><!-- 5 start -->
+    <col style="width:3.5%"><!-- 6 admitted -->
+    <col style="width:3.5%"><!-- 7 rural -->
+    <col style="width:3.5%"><!-- 8 children -->
+    <col style="width:3.5%"><!-- 9 transfin -->
+    <col style="width:3.5%"><!-- 10 transout -->
+    <col style="width:3.5%"><!-- 11 discharged -->
+    <col style="width:3.5%"><!-- 12 disc_other -->
+    <col style="width:3%"> <!-- 13 deaths -->
+    <col style="width:3.5%"><!-- 14 end -->
+    <col style="width:3.5%"><!-- 15 end_rural -->
+    <col style="width:3.5%"><!-- 16 mothers -->
+    <col style="width:3.5%"><!-- 17 free_m -->
+    <col style="width:3.5%"><!-- 18 free_f -->
+    <col style="width:3.5%"><!-- 19 free_tot -->
+  </colgroup>
+  <thead>
+    <tr>
+      <th rowspan="3">Назва профілю ліжка</th>
+      <th rowspan="3">№ ряд.</th>
+      <th rowspan="3">Розгор&shy;нуто ліжок</th>
+      <th rowspan="3">В т.ч. ремонт</th>
+      <th rowspan="3">Хворих на поч. мин. доби</th>
+      <th colspan="4">Поступило за минулу добу</th>
+      <th colspan="2">Переведено всередині</th>
+      <th colspan="2">Виписано</th>
+      <th rowspan="3">Померло</th>
+      <th colspan="2">На початок поточного дня</th>
+      <th rowspan="3">Матерів при дітях</th>
+      <th colspan="3">К-ть вільних місць</th>
+    </tr>
+    <tr>
+      <th rowspan="2">Всього</th>
+      <th rowspan="2">Сільськ.</th>
+      <th rowspan="2">Дітей до 17 р.</th>
+      <th rowspan="2">Авто</th>
+      <th rowspan="2">з ін. відділів</th>
+      <th rowspan="2">в ін. відділи</th>
+      <th rowspan="2">Всього</th>
+      <th rowspan="2">в т.ч. в ін. ст-ри</th>
+      <th rowspan="2">Всього</th>
+      <th rowspan="2">Сільськ.</th>
+      <th rowspan="2">Чол.</th>
+      <th rowspan="2">Жін.</th>
+      <th rowspan="2">Разом</th>
+    </tr>
+    <tr></tr>
+    <tr>
+      {% for n in range(1, 20) %}
+      <td class="col-num">{{ n }}</td>
+      {% endfor %}
+    </tr>
+  </thead>
+  <tbody>
+    {% for dept, r, free_total in rows %}
+    <tr>
+      <td class="dept-name">{{ dept.name }}</td>
+      <td>{{ dept.row_no or '' }}</td>
+      <td>{{ r.beds_total or '' }}</td>
+      <td>{{ r.beds_renovation or '' }}</td>
+      <td>{{ r.patients_start or '' }}</td>
+      <td><strong>{{ r.admitted_total or '' }}</strong></td>
+      <td>{{ r.admitted_rural or '' }}</td>
+      <td>{{ r.admitted_children or '' }}</td>
+      <td></td><!-- авто (col9 position in table) — not a real column -->
+      <td>{{ r.transferred_in or '' }}</td>
+      <td>{{ r.transferred_out or '' }}</td>
+      <td><strong>{{ r.discharged_total or '' }}</strong></td>
+      <td>{{ r.discharged_to_other or '' }}</td>
+      <td>{{ r.deaths or '' }}</td>
+      <td><strong>{{ r.patients_end or '' }}</strong></td>
+      <td>{{ r.patients_end_rural or '' }}</td>
+      <td>{{ r.mothers_with_children or '' }}</td>
+      <td>{{ r.free_male or '' }}</td>
+      <td>{{ r.free_female or '' }}</td>
+      <td>{{ free_total if free_total is not none else '' }}</td>
+    </tr>
+    {% endfor %}
+  </tbody>
+  <tfoot>
+    <tr class="totals">
+      <td class="dept-name" colspan="2">КНП «Калуська ЦРЛ»</td>
+      <td>{{ totals.beds_total or '' }}</td>
+      <td>{{ totals.beds_renovation or '' }}</td>
+      <td>{{ totals.patients_start or '' }}</td>
+      <td>{{ totals.admitted_total or '' }}</td>
+      <td>{{ totals.admitted_rural or '' }}</td>
+      <td>{{ totals.admitted_children or '' }}</td>
+      <td></td>
+      <td>{{ totals.transferred_in or '' }}</td>
+      <td>{{ totals.transferred_out or '' }}</td>
+      <td>{{ totals.discharged_total or '' }}</td>
+      <td>{{ totals.discharged_to_other or '' }}</td>
+      <td>{{ totals.deaths or '' }}</td>
+      <td>{{ totals.patients_end or '' }}</td>
+      <td>{{ totals.patients_end_rural or '' }}</td>
+      <td>{{ totals.mothers_with_children or '' }}</td>
+      <td>{{ totals.free_male or '' }}</td>
+      <td>{{ totals.free_female or '' }}</td>
+      <td>{{ totals.free_total or '' }}</td>
+    </tr>
+  </tfoot>
+</table>
+
+<div class="signature">
+  Готувала: _________________________________&nbsp;&nbsp;&nbsp;&nbsp;
+  Дата: {{ report_date.strftime('%d.%m.%Y') }}
+</div>
+
+</body>
+</html>

@@ -1,4 +1,4 @@
-from flask import render_template, request, redirect, url_for, Response, flash, abort
+from flask import render_template, request, redirect, url_for, Response, flash, abort, send_file
 from flask_login import login_required, current_user
 from datetime import date, timedelta, datetime
 import calendar
@@ -278,6 +278,64 @@ def form007_autofill(report_date_str):
     db.session.commit()
     flash(f"Авто-заповнення за {report_date.strftime('%d.%m.%Y')} виконано з даних записів.", 'success')
     return redirect(url_for('statisty.form007_day', report_date_str=report_date_str))
+
+
+# ---- Form 007 print (PDF) ---------------------------------------------------
+
+@statisty_bp.route('/form007/<report_date_str>/print')
+@role_required('admin', 'viewer')
+def form007_print(report_date_str):
+    try:
+        report_date = date.fromisoformat(report_date_str)
+    except ValueError:
+        abort(404)
+
+    depts = Department.query.order_by(Department.row_no.nullslast(), Department.name).all()
+    reports = {
+        r.department_id: r
+        for r in DailyReport.query.filter_by(report_date=report_date).all()
+    }
+
+    rows = []
+    totals = {k: 0 for k in ['beds_total', 'beds_renovation', 'patients_start',
+                               'admitted_total', 'admitted_rural', 'admitted_children',
+                               'transferred_in', 'transferred_out', 'discharged_total',
+                               'discharged_to_other', 'deaths', 'patients_end',
+                               'patients_end_rural', 'mothers_with_children',
+                               'free_male', 'free_female', 'free_total']}
+    for dept in depts:
+        r = reports.get(dept.id)
+        if r is None:
+            continue  # skip depts with no data for this day
+        free_total = r.free_total
+        for k in totals:
+            v = getattr(r, k, None) if k != 'free_total' else free_total
+            if v:
+                totals[k] += v
+        rows.append((dept, r, free_total))
+
+    html_string = render_template(
+        'print_form007.html',
+        rows=rows,
+        totals=totals,
+        report_date=report_date,
+    )
+
+    try:
+        from weasyprint import HTML
+    except ImportError:
+        flash('WeasyPrint не встановлено.', 'danger')
+        return redirect(url_for('statisty.form007_day', report_date_str=report_date_str))
+
+    pdf = HTML(string=html_string).write_pdf()
+    bio = BytesIO(pdf)
+    bio.seek(0)
+    return send_file(
+        bio,
+        as_attachment=False,
+        download_name=f"forma007_{report_date_str}.pdf",
+        mimetype='application/pdf',
+    )
 
 
 # ---- Form 016 ---------------------------------------------------------------
