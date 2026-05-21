@@ -9,12 +9,6 @@
   </h4>
 </div>
 
-<div class="alert alert-info py-2 small mb-3">
-  <i class="bi bi-info-circle me-1"></i>
-  Поля <span class="badge bg-success">авто</span> заповнюються з виписок (кнопка "Авто-заповнити" на сторінці перегляду).
-  Поля <span class="badge bg-secondary">ручне</span> вводяться вручну статистом.
-  <strong>Залишок на кінець (кол.14) і вільних місць (кол.19)</strong> обчислюються автоматично при збереженні.
-</div>
 
 <form method="post">
   <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
@@ -38,12 +32,12 @@
         <tr>
           <th>Всього<br><small>(кол.3)</small></th>
           <th>Ремонт<br><small>(кол.4)</small></th>
-          <th>Всього <span class="badge bg-success">авто</span><br><small>(кол.6)</small></th>
+          <th>Всього<br><small>(кол.6)</small></th>
           <th>Сільськ.<br><small>(кол.7)</small></th>
           <th>Діти&lt;17<br><small>(кол.8)</small></th>
           <th>з ін. відд.<br><small>(кол.9)</small></th>
           <th>в ін. відд.<br><small>(кол.10)</small></th>
-          <th>Всього <span class="badge bg-success">авто</span><br><small>(кол.11)</small></th>
+          <th>Всього<br><small>(кол.11)</small></th>
           <th>в ін. ст-ри<br><small>(кол.12)</small></th>
           <th>Всього <span class="badge bg-warning text-dark">обч.</span><br><small>(кол.14)</small></th>
           <th>Сільськ.<br><small>(кол.15)</small></th>
@@ -73,8 +67,8 @@
                        value="{{ r.patients_start if r and r.patients_start is not none else '' }}"
                        class="form-control form-control-sm text-center p-0" style="width:55px;"></td>
 
-            {# col6 — admitted_total (auto but editable) #}
-            <td class="bg-light"><input type="number" name="admitted_total_{{ dept.id }}" min="0"
+            {# col6 — admitted_total #}
+            <td><input type="number" name="admitted_total_{{ dept.id }}" min="0"
                        value="{{ r.admitted_total if r and r.admitted_total is not none else '' }}"
                        class="form-control form-control-sm text-center p-0" style="width:55px;"></td>
 
@@ -98,8 +92,8 @@
                        value="{{ r.transferred_out if r and r.transferred_out is not none else '' }}"
                        class="form-control form-control-sm text-center p-0" style="width:55px;"></td>
 
-            {# col11 — discharged_total (auto but editable) #}
-            <td class="bg-light"><input type="number" name="discharged_total_{{ dept.id }}" min="0"
+            {# col11 — discharged_total #}
+            <td><input type="number" name="discharged_total_{{ dept.id }}" min="0"
                        value="{{ r.discharged_total if r and r.discharged_total is not none else '' }}"
                        class="form-control form-control-sm text-center p-0" style="width:55px;"></td>
 
@@ -108,14 +102,14 @@
                        value="{{ r.discharged_to_other if r and r.discharged_to_other is not none else '' }}"
                        class="form-control form-control-sm text-center p-0" style="width:55px;"></td>
 
-            {# col13 — deaths (auto but editable) #}
-            <td class="bg-light"><input type="number" name="deaths_{{ dept.id }}" min="0"
+            {# col13 — deaths #}
+            <td><input type="number" name="deaths_{{ dept.id }}" min="0"
                        value="{{ r.deaths if r and r.deaths is not none else '' }}"
                        class="form-control form-control-sm text-center p-0" style="width:55px;"></td>
 
             {# col14 — patients_end (computed, read-only display) #}
             <td class="text-center text-muted bg-warning bg-opacity-10">
-              <small>{{ r.patients_end if r and r.patients_end is not none else 'авто' }}</small>
+              <small>{{ r.patients_end if r and r.patients_end is not none else '' }}</small>
             </td>
 
             {# col15 — patients_end_rural #}

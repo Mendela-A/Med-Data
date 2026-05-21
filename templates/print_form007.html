@@ -117,7 +117,7 @@ tr.totals td {
       <th rowspan="3">Розгор&shy;нуто ліжок</th>
       <th rowspan="3">В т.ч. ремонт</th>
       <th rowspan="3">Хворих на поч. мин. доби</th>
-      <th colspan="4">Поступило за минулу добу</th>
+      <th colspan="3">Поступило за минулу добу</th>
       <th colspan="2">Переведено всередині</th>
       <th colspan="2">Виписано</th>
       <th rowspan="3">Померло</th>
@@ -129,7 +129,6 @@ tr.totals td {
       <th rowspan="2">Всього</th>
       <th rowspan="2">Сільськ.</th>
       <th rowspan="2">Дітей до 17 р.</th>
-      <th rowspan="2">Авто</th>
       <th rowspan="2">з ін. відділів</th>
       <th rowspan="2">в ін. відділи</th>
       <th rowspan="2">Всього</th>
@@ -158,7 +157,6 @@ tr.totals td {
       <td><strong>{{ r.admitted_total or '' }}</strong></td>
       <td>{{ r.admitted_rural or '' }}</td>
       <td>{{ r.admitted_children or '' }}</td>
-      <td></td><!-- авто (col9 position in table) — not a real column -->
       <td>{{ r.transferred_in or '' }}</td>
       <td>{{ r.transferred_out or '' }}</td>
       <td><strong>{{ r.discharged_total or '' }}</strong></td>
@@ -182,7 +180,6 @@ tr.totals td {
       <td>{{ totals.admitted_total or '' }}</td>
       <td>{{ totals.admitted_rural or '' }}</td>
       <td>{{ totals.admitted_children or '' }}</td>
-      <td></td>
       <td>{{ totals.transferred_in or '' }}</td>
       <td>{{ totals.transferred_out or '' }}</td>
       <td>{{ totals.discharged_total or '' }}</td>

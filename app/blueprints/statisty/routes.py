@@ -53,38 +53,6 @@ def _period_label(from_date, to_date):
     return f"{from_date.strftime('%d.%m.%Y')} — {to_date.strftime('%d.%m.%Y')}"
 
 
-def _autofill_for_dept(report_date, dept):
-    """Compute auto-fillable columns from Record data."""
-    admitted = Record.query.filter(
-        Record.date_of_admission == report_date,
-        Record.discharge_department == dept.name,
-    ).count()
-
-    discharged = Record.query.filter(
-        Record.date_of_discharge == report_date,
-        Record.discharge_department == dept.name,
-        Record.date_of_death.is_(None),
-    ).count()
-
-    deaths = Record.query.filter(
-        Record.date_of_death == report_date,
-        Record.discharge_department == dept.name,
-    ).count()
-
-    prev = DailyReport.query.filter_by(
-        department_id=dept.id,
-        report_date=report_date - timedelta(days=1),
-    ).first()
-    patients_start = prev.patients_end if prev else None
-
-    return {
-        'beds_total':      dept.bed_capacity,
-        'patients_start':  patients_start,
-        'admitted_total':  admitted,
-        'discharged_total': discharged,
-        'deaths':          deaths,
-    }
-
 
 # ---------------------------------------------------------------------------
 # Routes
@@ -236,48 +204,6 @@ def form007_edit(report_date_str):
         report_date=report_date,
     )
 
-
-# ---- Form 007 autofill (POST) -----------------------------------------------
-
-@statisty_bp.route('/form007/<report_date_str>/autofill', methods=['POST'])
-@role_required('admin', 'viewer')
-def form007_autofill(report_date_str):
-    try:
-        report_date = date.fromisoformat(report_date_str)
-    except ValueError:
-        abort(404)
-
-    depts = Department.query.order_by(Department.row_no.nullslast(), Department.name).all()
-    existing = {
-        r.department_id: r
-        for r in DailyReport.query.filter_by(report_date=report_date).all()
-    }
-
-    for dept in depts:
-        auto = _autofill_for_dept(report_date, dept)
-
-        r = existing.get(dept.id)
-        if r is None:
-            r = DailyReport(report_date=report_date, department_id=dept.id,
-                             created_by=current_user.id)
-            db.session.add(r)
-
-        # Only overwrite auto-computed fields; keep manual fields intact
-        if auto['beds_total'] is not None:
-            r.beds_total = auto['beds_total']
-        if auto['patients_start'] is not None:
-            r.patients_start = auto['patients_start']
-        r.admitted_total   = auto['admitted_total']
-        r.discharged_total = auto['discharged_total']
-        r.deaths           = auto['deaths']
-        r.updated_by       = current_user.id
-
-        # Recompute col14
-        r.patients_end = r.compute_patients_end()
-
-    db.session.commit()
-    flash(f"Авто-заповнення за {report_date.strftime('%d.%m.%Y')} виконано з даних записів.", 'success')
-    return redirect(url_for('statisty.form007_day', report_date_str=report_date_str))
 
 
 # ---- Form 007 print (PDF) ---------------------------------------------------
