@@ -46,65 +46,52 @@
 {% else %}
 <div class="alert alert-warning py-2 small mb-3">
   <i class="bi bi-exclamation-triangle me-1"></i>
-  Форму 007 ще не введено за цей період — показано розраховані дані з <strong>виписок та поступлень пацієнтів</strong>.
-  <a href="{{ url_for('statisty.form007', from_date=from_date.strftime('%Y-%m')) }}">Ввести Форму 007 →</a>
-</div>
+  Форму 007 ще не введено за цей період — показано розраховані дані з <strong>виписок</strong>.</div>
 {% endif %}
-
 {% if table %}
 <div class="table-responsive">
-  <table class="table table-sm excel-table align-middle" style="min-width: 1300px;">
+  <table class="table table-sm excel-table align-middle text-center" style="min-width: 1400px; font-size: 0.85rem;">
     <thead>
       <tr>
-        <th rowspan="4" style="min-width:150px;">Назва профілю ліжка</th>
-        <th rowspan="4" style="width:40px;">№ рядка</th>
-        <th rowspan="4">Розгорнуто ліжок, вкл.<br>згорнуті на ремонт</th>
-        <th rowspan="4">В т.ч. згорнуті<br>на ремонт</th>
-        <th colspan="9">Рух хворих за минулу добу</th>
-        <th colspan="6">На початок поточного дня</th>
+        <th rowspan="2" style="min-width:160px;" class="align-middle">Назва профілю ліжка</th>
+        <th rowspan="2" style="width:50px;" class="align-middle">№ рядка</th>
+        <th rowspan="2" class="align-middle">Розгорнуто ліжок<br>на кінець звіт. періоду<br><span class="text-muted small">(гр. 1)</span></th>
+        <th rowspan="2" class="align-middle excel-computed text-dark">Число середньомісячних<br>(річних) ліжок<br><span class="text-muted small">(гр. 2)</span></th>
+        <th rowspan="2" class="align-middle">Перебувало хворих<br>на початок звіт. періоду<br><span class="text-muted small">(гр. 3)</span></th>
+        <th colspan="3" class="align-middle">Поступило хворих за звітний період</th>
+        <th colspan="2" class="align-middle">Переведені всередині лікарні</th>
+        <th colspan="2" class="align-middle">Виписано хворих</th>
+        <th rowspan="2" class="align-middle">Померло за звітний період<br><span class="text-muted small">(гр. 11)</span></th>
+        <th rowspan="2" class="align-middle">Перебувало хворих<br>на кінець звіт. періоду<br><span class="text-muted small">(гр. 12)</span></th>
+        <th colspan="2" class="align-middle">Проведено ліжко-днів хворими</th>
+        <th rowspan="2" class="align-middle">К-ть ліжко-днів<br>закриття на ремонт<br><span class="text-muted small">(гр. 15)</span></th>
+        <th rowspan="2" class="align-middle">Крім того, проведено<br>ліжко-днів матерями при дітях<br><span class="text-muted small">(гр. 16)</span></th>
       </tr>
       <tr>
-        <th rowspan="3">Було хворих на поч. мин. доби</th>
-        <th colspan="3">Поступило хворих</th>
-        <th colspan="2">Переведено всередині лікарні</th>
-        <th colspan="2">Виписано хворих</th>
-        <th rowspan="3">Померло</th>
-        <th colspan="2">Знаходилось хворих</th>
-        <th rowspan="3">перебуває матерів при дітях</th>
-        <th colspan="3">к-ть вільних місць</th>
-      </tr>
-      <tr>
-        <th colspan="3">Поступило без переведення всередині лікарні</th>
-        <th rowspan="2">із інших відділів</th>
-        <th rowspan="2">в інші відділи</th>
-        <th rowspan="2">Всього</th>
-        <th rowspan="2">в т.ч. переведених в інші стаціонари</th>
-        <th rowspan="2">всього</th>
-        <th rowspan="2">в т.ч. сільських</th>
-        <th rowspan="2">чоловічих</th>
-        <th rowspan="2">жіночих</th>
-        <th rowspan="2">у загальному</th>
-      </tr>
-      <tr>
-        <th>Всього</th>
-        <th>Сільських жителів</th>
-        <th>дітей до 17 р.</th>
+        <th class="align-middle">всього<br><span class="text-muted small">(гр. 4)</span></th>
+        <th class="align-middle">сільських жителів<br><span class="text-muted small">(гр. 5)</span></th>
+        <th class="align-middle">дітей 0-17 р. включно<br><span class="text-muted small">(гр. 6)</span></th>
+        <th class="align-middle">із інших відділень<br><span class="text-muted small">(гр. 7)</span></th>
+        <th class="align-middle">в інші відділення<br><span class="text-muted small">(гр. 8)</span></th>
+        <th class="align-middle">всього<br><span class="text-muted small">(гр. 9)</span></th>
+        <th class="align-middle">переведено в інші стаціонари<br><span class="text-muted small">(гр. 10)</span></th>
+        <th class="align-middle">всього<br><span class="text-muted small">(гр. 13)</span></th>
+        <th class="align-middle">сільськими жителями<br><span class="text-muted small">(гр. 14)</span></th>
       </tr>
       <tr class="table-secondary small text-center text-muted">
-        <td>1</td><td>2</td><td>3</td><td>4</td><td>5</td>
-        <td>6</td><td>7</td><td>8</td>
-        <td>9</td><td>10</td><td>11</td><td>12</td>
-        <td>13</td><td>14</td><td>15</td><td>16</td>
-        <td>17</td><td>18</td><td>19</td>
+        <td>А</td><td>Б</td><td>1</td><td>2</td><td>3</td>
+        <td>4</td><td>5</td><td>6</td><td>7</td><td>8</td>
+        <td>9</td><td>10</td><td>11</td><td>12</td><td>13</td>
+        <td>14</td><td>15</td><td>16</td>
       </tr>
     </thead>
     <tbody>
       {% for row in table %}
       <tr>
-        <td class="fw-semibold">{{ row.dept.bed_profile_name or row.dept.name }}</td>
+        <td class="fw-semibold text-start">{{ row.dept.bed_profile_name or row.dept.name }}</td>
         <td class="text-center text-muted">{{ row.dept.row_no or '' }}</td>
         <td class="text-center">{{ row.beds_total if row.beds_total is not none else '' }}</td>
-        <td class="text-center">{{ row.beds_renovation if row.beds_renovation is not none else '' }}</td>
+        <td class="text-center excel-computed">{{ row.beds_average if row.beds_average is not none else '' }}</td>
         <td class="text-center">{{ row.patients_start if row.patients_start is not none else '' }}</td>
         <td class="text-center fw-bold">{{ row.admitted_total if row.admitted_total is not none else '' }}</td>
         <td class="text-center">{{ row.admitted_rural if row.admitted_rural is not none else '' }}</td>
@@ -116,20 +103,19 @@
         <td class="text-center {% if row.deaths %}text-danger fw-bold{% endif %}">
           {{ row.deaths if row.deaths is not none else '' }}
         </td>
-        <td class="text-center excel-computed">{{ row.patients_end if row.patients_end is not none else '' }}</td>
-        <td class="text-center">{{ row.patients_end_rural if row.patients_end_rural is not none else '' }}</td>
-        <td class="text-center">{{ row.mothers_with_children if row.mothers_with_children is not none else '' }}</td>
-        <td class="text-center">{{ row.free_male if row.free_male is not none else '' }}</td>
-        <td class="text-center">{{ row.free_female if row.free_female is not none else '' }}</td>
-        <td class="text-center excel-computed">{{ row.free_total if row.free_total is not none else '' }}</td>
+        <td class="text-center fw-bold">{{ row.patients_end if row.patients_end is not none else '' }}</td>
+        <td class="text-center excel-computed fw-bold">{{ row.bed_days_total if row.bed_days_total is not none else '' }}</td>
+        <td class="text-center">{{ row.bed_days_rural if row.bed_days_rural is not none else '' }}</td>
+        <td class="text-center">{{ row.bed_days_renovation if row.bed_days_renovation is not none else '' }}</td>
+        <td class="text-center">{{ row.bed_days_mothers if row.bed_days_mothers is not none else '' }}</td>
       </tr>
       {% endfor %}
     </tbody>
     <tfoot class="fw-bold text-center table-dark">
       <tr>
-        <td colspan="2">Разом</td>
+        <td colspan="2" class="text-start ps-3">Разом</td>
         <td>{{ totals.beds_total or '' }}</td>
-        <td>{{ totals.beds_renovation or '' }}</td>
+        <td class="excel-computed text-dark">{{ totals.beds_average or '' }}</td>
         <td>{{ totals.patients_start or '' }}</td>
         <td>{{ totals.admitted_total or '' }}</td>
         <td>{{ totals.admitted_rural or '' }}</td>
@@ -139,25 +125,54 @@
         <td>{{ totals.discharged_total or '' }}</td>
         <td>{{ totals.discharged_to_other or '' }}</td>
         <td class="{% if totals.deaths %}text-danger{% endif %}">{{ totals.deaths or '' }}</td>
-        <td class="excel-computed text-dark">{{ totals.patients_end or '' }}</td>
-        <td>{{ totals.patients_end_rural or '' }}</td>
-        <td>{{ totals.mothers_with_children or '' }}</td>
-        <td>{{ totals.free_male or '' }}</td>
-        <td>{{ totals.free_female or '' }}</td>
-        <td class="excel-computed text-dark">{{ totals.free_total or '' }}</td>
+        <td>{{ totals.patients_end or '' }}</td>
+        <td class="excel-computed text-dark">{{ totals.bed_days_total or '' }}</td>
+        <td>{{ totals.bed_days_rural or '' }}</td>
+        <td>{{ totals.bed_days_renovation or '' }}</td>
+        <td>{{ totals.bed_days_mothers or '' }}</td>
       </tr>
     </tfoot>
   </table>
 </div>
 
-<div class="alert alert-info py-2 small mt-2">
+<div class="alert alert-info py-2 small mt-2 mb-3">
   <i class="bi bi-info-circle me-1"></i>
-  <strong>Правила агрегації Форми 16 за обраний період:</strong>
+  <strong>Правила агрегації Форми 016/о за обраний період:</strong>
   <ul>
-    <li>Колонки 6-13 та 16 обчислюються як <strong>суми</strong> відповідних щоденних показників за весь обраний період.</li>
-    <li>Колонка 5 (Було хворих на початок...) відображає значення на <strong>перший день</strong> обраного періоду.</li>
-    <li>Колонки 3, 4, 14, 15, 17, 18, 19 відображають останні значення на <strong>останній день</strong> обраного періоду.</li>
+    <li><strong>Графа 1</strong> (ліжка на кінець) та <strong>Графа 12</strong> (хворі на кінець) — відображають фактичні значення на <strong>останній день</strong> обраного звітного періоду.</li>
+    <li><strong>Графа 2</strong> (середньомісячні ліжка) — обчислюється як сума розгорнутих ліжок за кожен день періоду, поділена на число календарних днів у періоді.</li>
+    <li><strong>Графа 3</strong> (хворі на початок) — відображає кількість хворих на початок доби <strong>першого дня</strong> обраного періоду.</li>
+    <li><strong>Графи 4–11</strong> (рух хворих: поступлення, переведення, виписки, смерть) — обчислюються як <strong>суми</strong> відповідних щоденних показників за весь обраний період.</li>
+    <li><strong>Графи 13–16</strong> (ліжко-дні: загальні, сільські, ремонтні, матері) — обчислюються як <strong>суми</strong> відповідних щоденних показників за весь обраний період.</li>
   </ul>
+</div>
+
+<div class="card bg-light border-0 shadow-sm mb-4">
+  <div class="card-body py-3 px-4 small text-muted">
+    <div class="d-flex align-items-center mb-2">
+      <i class="bi bi-file-earmark-medical text-primary me-2 fs-5"></i>
+      <strong class="text-dark">Медична облікова документація — Форма № 016/о</strong>
+    </div>
+    <div class="ps-4">
+      <p class="mb-2">
+        <strong>Зведена відомість обліку руху хворих і ліжкового фонду в стаціонарі, відділенні або профілю ліжок.</strong><br>
+        Заповнюється щомісячно відповідальною особою (старшою медичною сестрою) на підставі щоденного підрахунку даних первинної облікової форми <strong>№ 007/о</strong>.
+      </p>
+      <div class="border-top pt-2 mt-2">
+        <div class="row g-2">
+          <div class="col-md-7">
+            <i class="bi bi-info-circle me-1"></i><strong>Примітка:</strong> У графі 6 "Поступило дітей до 17 років включно" у знаменнику вказується кількість дітей сільських жителів.
+          </div>
+          <div class="col-md-5 text-md-end border-start-md">
+            <div><strong>Термін зберігання:</strong> 1 рік після звітного періоду.</div>
+            <div class="mt-1 text-uppercase text-dark fw-semibold" style="font-size: 0.7rem; letter-spacing: 0.5px;">
+              Начальник Центру медстатистики МОЗ України — М.В. Голубчиков
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
 </div>
 
 {% else %}

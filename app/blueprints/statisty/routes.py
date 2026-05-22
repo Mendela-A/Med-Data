@@ -63,12 +63,12 @@ def _get_form016_data(from_date, to_date):
     depts = Department.query.order_by(Department.row_no.nullslast(), Department.name).all()
 
     table = []
-    totals = {k: 0 for k in ['beds_total', 'beds_renovation', 'patients_start',
+    totals = {k: 0 for k in ['beds_total', 'beds_average', 'patients_start',
                                'admitted_total', 'admitted_rural', 'admitted_children',
                                'transferred_in', 'transferred_out', 'discharged_total',
                                'discharged_to_other', 'deaths', 'patients_end',
-                               'patients_end_rural', 'mothers_with_children',
-                               'free_male', 'free_female', 'free_total']}
+                               'bed_days_total', 'bed_days_rural', 'bed_days_renovation',
+                               'bed_days_mothers']}
 
     if data_source == 'daily_report':
         # Fetch all daily reports for the period
@@ -86,21 +86,25 @@ def _get_form016_data(from_date, to_date):
             dept_reports = reports_by_dept.get(dept.id, [])
             if not dept_reports:
                 row = {
-                    'dept': dept, 'beds_total': None, 'beds_renovation': None, 'patients_start': None,
+                    'dept': dept, 'beds_total': None, 'beds_average': None, 'patients_start': None,
                     'admitted_total': 0, 'admitted_rural': 0, 'admitted_children': 0,
                     'transferred_in': 0, 'transferred_out': 0, 'discharged_total': 0,
                     'discharged_to_other': 0, 'deaths': 0, 'patients_end': None,
-                    'patients_end_rural': None, 'mothers_with_children': 0,
-                    'free_male': None, 'free_female': None, 'free_total': None,
+                    'bed_days_total': 0, 'bed_days_rural': 0, 'bed_days_renovation': 0,
+                    'bed_days_mothers': 0,
                 }
             else:
                 first_report = dept_reports[0]
                 last_report = dept_reports[-1]
 
+                # Compute average beds (Col 2)
+                valid_beds = [r.beds_total for r in dept_reports if r.beds_total is not None]
+                beds_average = sum(valid_beds) / len(valid_beds) if valid_beds else None
+
                 row = {
                     'dept': dept,
                     'beds_total': last_report.beds_total,
-                    'beds_renovation': last_report.beds_renovation,
+                    'beds_average': round(beds_average, 1) if beds_average is not None else None,
                     'patients_start': first_report.patients_start,
                     'admitted_total': sum(r.admitted_total or 0 for r in dept_reports),
                     'admitted_rural': sum(r.admitted_rural or 0 for r in dept_reports),
@@ -111,11 +115,10 @@ def _get_form016_data(from_date, to_date):
                     'discharged_to_other': sum(r.discharged_to_other or 0 for r in dept_reports),
                     'deaths': sum(r.deaths or 0 for r in dept_reports),
                     'patients_end': last_report.patients_end,
-                    'patients_end_rural': last_report.patients_end_rural,
-                    'mothers_with_children': sum(r.mothers_with_children or 0 for r in dept_reports),
-                    'free_male': last_report.free_male,
-                    'free_female': last_report.free_female,
-                    'free_total': last_report.free_total,
+                    'bed_days_total': sum(r.patients_end or 0 for r in dept_reports),
+                    'bed_days_rural': sum(r.patients_end_rural or 0 for r in dept_reports),
+                    'bed_days_renovation': sum(r.beds_renovation or 0 for r in dept_reports),
+                    'bed_days_mothers': sum(r.mothers_with_children or 0 for r in dept_reports),
                 }
             table.append(row)
             for k in totals:
@@ -176,6 +179,26 @@ def _get_form016_data(from_date, to_date):
         ).group_by(Record.discharge_department).all()
         end_map = {d: c for d, c in end_counts if d}
 
+        # 6. Overlapping Bed-Days
+        overlap_query = db.session.query(
+            Record.discharge_department,
+            Record.date_of_admission,
+            Record.date_of_discharge
+        ).filter(
+            Record.date_of_admission <= to_date,
+            (Record.date_of_discharge.is_(None) | (Record.date_of_discharge >= from_date))
+        ).all()
+
+        bed_days_map = {}
+        for dept_name, adm, dis in overlap_query:
+            if not dept_name:
+                continue
+            start_int = max(adm or from_date, from_date)
+            end_int = min(dis or to_date, to_date)
+            days = (end_int - start_int).days + 1
+            if days > 0:
+                bed_days_map[dept_name] = bed_days_map.get(dept_name, 0) + days
+
         for dept in depts:
             name = dept.name
             beds_total = dept.bed_capacity
@@ -184,12 +207,12 @@ def _get_form016_data(from_date, to_date):
             discharged_total = discharged_map.get(name, 0)
             deaths = death_map.get(name, 0)
             patients_end = end_map.get(name, 0)
-            free_total = (beds_total - patients_end) if beds_total is not None else None
+            bed_days_total = bed_days_map.get(name, 0)
 
             row = {
                 'dept': dept,
                 'beds_total': beds_total,
-                'beds_renovation': 0,
+                'beds_average': beds_total,
                 'patients_start': patients_start,
                 'admitted_total': admitted_total,
                 'admitted_rural': 0,
@@ -200,11 +223,10 @@ def _get_form016_data(from_date, to_date):
                 'discharged_to_other': 0,
                 'deaths': deaths,
                 'patients_end': patients_end,
-                'patients_end_rural': 0,
-                'mothers_with_children': 0,
-                'free_male': None,
-                'free_female': None,
-                'free_total': free_total,
+                'bed_days_total': bed_days_total,
+                'bed_days_rural': 0,
+                'bed_days_renovation': 0,
+                'bed_days_mothers': 0,
             }
             table.append(row)
             for k in totals:
@@ -231,11 +253,12 @@ def _get_form016_data(from_date, to_date):
             discharged_total = discharged_map.get(name, 0)
             deaths = death_map.get(name, 0)
             patients_end = end_map.get(name, 0)
+            bed_days_total = bed_days_map.get(name, 0)
 
             row = {
                 'dept': mock_dept,
                 'beds_total': None,
-                'beds_renovation': 0,
+                'beds_average': None,
                 'patients_start': patients_start,
                 'admitted_total': admitted_total,
                 'admitted_rural': 0,
@@ -246,17 +269,20 @@ def _get_form016_data(from_date, to_date):
                 'discharged_to_other': 0,
                 'deaths': deaths,
                 'patients_end': patients_end,
-                'patients_end_rural': 0,
-                'mothers_with_children': 0,
-                'free_male': None,
-                'free_female': None,
-                'free_total': None,
+                'bed_days_total': bed_days_total,
+                'bed_days_rural': 0,
+                'bed_days_renovation': 0,
+                'bed_days_mothers': 0,
             }
             table.append(row)
             for k in totals:
                 v = row[k]
                 if v is not None:
                     totals[k] += v
+
+    # Round beds_average total
+    if totals['beds_average'] is not None:
+        totals['beds_average'] = round(totals['beds_average'], 1)
 
     return table, totals, data_source, dr_count
 
@@ -524,41 +550,40 @@ def form016_export():
     fill_hdr = PatternFill("solid", fgColor="D9E1F2")
     fill_computed = PatternFill("solid", fgColor="FFFBEB")
 
-    # Column widths (19 columns)
+    # Column widths (18 columns: A to R)
     col_widths = [
         32,  # A: Назва профілю ліжка
         8,   # B: № рядка
-        12,  # C: Розгорнуто ліжок
-        12,  # D: В т.ч. на ремонті
-        12,  # E: Було на поч.
-        10,  # F: Поступило - Всього
-        10,  # G: Поступило - Сільських
-        10,  # H: Поступило - Дітей
-        10,  # I: Переведено - із
-        10,  # J: Переведено - в
-        10,  # K: Виписано - Всього
-        10,  # L: Виписано - в т.ч. переведених
-        10,  # M: Померло
-        12,  # N: Знаходилось - всього
-        12,  # O: Знаходилось - в т.ч. сільських
-        12,  # P: перебуває матерів
-        10,  # Q: вільних - чол
-        10,  # R: вільних - жін
-        12   # S: вільних - заг
+        12,  # C: Число ліжок на кінець звітного періоду (Col 1)
+        12,  # D: Число середньомісячних (річних) ліжок (Col 2)
+        12,  # E: Перебувало на початок звітного періоду (Col 3)
+        10,  # F: Поступило - всього (Col 4)
+        10,  # G: Поступило - сільських (Col 5)
+        10,  # H: Поступило - дітей (Col 6)
+        10,  # I: Переведено - із інших відділень (Col 7)
+        10,  # J: Переведено - в інші відділення (Col 8)
+        10,  # K: Виписано - всього (Col 9)
+        10,  # L: Виписано - переведено в інші стаціонари (Col 10)
+        10,  # M: Померло (Col 11)
+        12,  # N: Перебувало на кінець періоду (Col 12)
+        12,  # O: Ліжко-дні - всього (Col 13)
+        12,  # P: Ліжко-дні - сільськими (Col 14)
+        12,  # Q: Ліжко-дні - ремонт (Col 15)
+        12,  # R: Ліжко-дні - матерями (Col 16)
     ]
     for ci, w in enumerate(col_widths, 1):
         ws.column_dimensions[ws.cell(row=1, column=ci).column_letter].width = w
 
-    # Period title (A1:S1)
+    # Period title (A1:R1)
     period_label = _period_label(from_date, to_date)
-    ws.merge_cells('A1:S1')
-    ws['A1'] = f"Форма 016 — Звіт про роботу стаціонару: {period_label} (Джерело: {source_label})"
+    ws.merge_cells('A1:R1')
+    ws['A1'] = f"Форма 016/о — Зведена відомість обліку руху хворих і ліжкового фонду в стаціонарі: {period_label} (Джерело: {source_label})"
     ws['A1'].font = Font(name="Arial", size=11, bold=True)
     ws['A1'].alignment = Alignment(horizontal='left', vertical='center')
 
-    # Apply default header styles to every cell in A2:S6
-    for r in range(2, 7):
-        for c in range(1, 20):
+    # Apply default header styles to every cell in A2:R5
+    for r in range(2, 6):
+        for c in range(1, 19):
             cell = ws.cell(row=r, column=c)
             cell.font = Font(name="Arial", size=9, bold=True)
             cell.alignment = center
@@ -566,106 +591,97 @@ def form016_export():
             cell.border = border
 
     # Define merges and header text
-    ws.merge_cells('A2:A5')
+    ws.merge_cells('A2:A4')
     ws['A2'] = "Назва профілю ліжка"
     
-    ws.merge_cells('B2:B5')
+    ws.merge_cells('B2:B4')
     ws['B2'] = "№ рядка"
     
-    ws.merge_cells('C2:C5')
-    ws['C2'] = "Розгорнуто ліжок, вкл.\nзгорнуті на ремонт"
+    ws.merge_cells('C2:C4')
+    ws['C2'] = "Розгорнуто ліжок\nна кінець звіт. періоду\n(гр. 1)"
     
-    ws.merge_cells('D2:D5')
-    ws['D2'] = "В т.ч. згорнуті\nна ремонт"
+    ws.merge_cells('D2:D4')
+    ws['D2'] = "Число середньомісячних\n(річних) ліжок\n(гр. 2)"
     
-    ws.merge_cells('E2:M2')
-    ws['E2'] = "Рух хворих за минулу добу"
+    ws.merge_cells('E2:E4')
+    ws['E2'] = "Перебувало хворих\nна початок періоду\n(гр. 3)"
     
-    ws.merge_cells('N2:S2')
-    ws['N2'] = "На початок поточного дня"
+    ws.merge_cells('F2:H2')
+    ws['F2'] = "Поступило хворих за звітний період"
     
-    ws.merge_cells('E3:E5')
-    ws['E3'] = "Було хворих на поч. мин. доби"
+    ws.merge_cells('F3:F4')
+    ws['F3'] = "всього\n(гр. 4)"
     
-    ws.merge_cells('F3:H3')
-    ws['F3'] = "Поступило хворих"
+    ws.merge_cells('G3:G4')
+    ws['G3'] = "сільських\nжителей\n(гр. 5)"
     
-    ws.merge_cells('I3:J3')
-    ws['I3'] = "Переведено всередині лікарні"
+    ws.merge_cells('H3:H4')
+    ws['H3'] = "дітей\n0-17 років\n(гр. 6)"
     
-    ws.merge_cells('K3:L3')
-    ws['K3'] = "Виписано хворих"
+    ws.merge_cells('I2:J2')
+    ws['I2'] = "Переведено всередині лікарні"
     
-    ws.merge_cells('M3:M5')
-    ws['M3'] = "Померло"
+    ws.merge_cells('I3:I4')
+    ws['I3'] = "із інших\nвідділень\n(гр. 7)"
     
-    ws.merge_cells('N3:O3')
-    ws['N3'] = "Знаходилось хворих"
+    ws.merge_cells('J3:J4')
+    ws['J3'] = "в інші\nвідділення\n(гр. 8)"
     
-    ws.merge_cells('P3:P5')
-    ws['P3'] = "перебуває матерів при дітях"
+    ws.merge_cells('K2:L2')
+    ws['K2'] = "Виписано хворих"
     
-    ws.merge_cells('Q3:S3')
-    ws['Q3'] = "к-ть вільних місць"
+    ws.merge_cells('K3:K4')
+    ws['K3'] = "всього\n(гр. 9)"
     
-    ws.merge_cells('F4:H4')
-    ws['F4'] = "Поступило без переведення всередині лікарні"
+    ws.merge_cells('L3:L4')
+    ws['L3'] = "з них переведено\nв інші стаціонари\n(гр. 10)"
     
-    ws.merge_cells('I4:I5')
-    ws['I4'] = "із інших відділів"
+    ws.merge_cells('M2:M4')
+    ws['M2'] = "Померло\n(гр. 11)"
     
-    ws.merge_cells('J4:J5')
-    ws['J4'] = "в інші відділи"
+    ws.merge_cells('N2:N4')
+    ws['N2'] = "Перебувало хворих\nна кінець звіт. періоду\n(гр. 12)"
     
-    ws.merge_cells('K4:K5')
-    ws['K4'] = "Всього"
+    ws.merge_cells('O2:P2')
+    ws['O2'] = "Проведено ліжко-днів хворими"
     
-    ws.merge_cells('L4:L5')
-    ws['L4'] = "в т.ч. переведених в інші стаціонари"
+    ws.merge_cells('O3:O4')
+    ws['O3'] = "всього\n(гр. 13)"
     
-    ws.merge_cells('N4:N5')
-    ws['N4'] = "всього"
+    ws.merge_cells('P3:P4')
+    ws['P3'] = "сільськими\nжителями\n(гр. 14)"
     
-    ws.merge_cells('O4:O5')
-    ws['O4'] = "в т.ч. сільських"
+    ws.merge_cells('Q2:Q4')
+    ws['Q2'] = "Ліжко-днів\nзакриття на ремонт\n(гр. 15)"
     
-    ws.merge_cells('Q4:Q5')
-    ws['Q4'] = "чоловічих"
-    
-    ws.merge_cells('R4:R5')
-    ws['R4'] = "жіночих"
-    
-    ws.merge_cells('S4:S5')
-    ws['S4'] = "у загальному"
-    
-    ws['F5'] = "Всього"
-    ws['G5'] = "Сільських жителів"
-    ws['H5'] = "дітей до 17 р."
+    ws.merge_cells('R2:R4')
+    ws['R2'] = "Крім того,\nпроведено ліжко-днів\nматерями при дітях\n(гр. 16)"
 
-    # Row 6: numbers 1 to 19
-    for c in range(1, 20):
-        ws.cell(row=6, column=c, value=c)
+    # Row 5: column letters/numbers (official state form numbering)
+    ws.cell(row=5, column=1, value="А")
+    ws.cell(row=5, column=2, value="Б")
+    for col_idx in range(1, 17):
+        ws.cell(row=5, column=col_idx + 2, value=col_idx)
 
     # Set row heights for headers
     ws.row_dimensions[1].height = 25
-    ws.row_dimensions[2].height = 20
-    ws.row_dimensions[3].height = 20
-    ws.row_dimensions[4].height = 20
-    ws.row_dimensions[5].height = 20
-    ws.row_dimensions[6].height = 18
+    ws.row_dimensions[2].height = 24
+    ws.row_dimensions[3].height = 24
+    ws.row_dimensions[4].height = 24
+    ws.row_dimensions[5].height = 18
 
-    # Populate rows starting from row 7
-    for ri, row in enumerate(table, 7):
+    # Populate rows starting from row 6
+    for ri, row in enumerate(table, 6):
         dept = row['dept']
         dept_name = dept.bed_profile_name or dept.name
         row_no = dept.row_no or ''
 
-        # Map row values
+        # Map row values to the 18 Excel columns (A to R)
         vals = [
             dept_name,
             row_no,
             row['beds_total'] if row['beds_total'] is not None else '',
-            row['beds_renovation'] if row['beds_renovation'] is not None else '',
+            row['beds_average'] if row['beds_average'] is not None else '',
             row['patients_start'] if row['patients_start'] is not None else '',
             row['admitted_total'],
             row['admitted_rural'],
@@ -676,11 +692,10 @@ def form016_export():
             row['discharged_to_other'],
             row['deaths'],
             row['patients_end'] if row['patients_end'] is not None else '',
-            row['patients_end_rural'] if row['patients_end_rural'] is not None else '',
-            row['mothers_with_children'],
-            row['free_male'] if row['free_male'] is not None else '',
-            row['free_female'] if row['free_female'] is not None else '',
-            row['free_total'] if row['free_total'] is not None else '',
+            row['bed_days_total'],
+            row['bed_days_rural'],
+            row['bed_days_renovation'],
+            row['bed_days_mothers'],
         ]
 
         for ci, v in enumerate(vals, 1):
@@ -692,12 +707,12 @@ def form016_export():
             else:
                 cell.alignment = Alignment(horizontal='center', vertical='center')
 
-            # Highlight computed cols (14: N and 19: S)
-            if ci in [14, 19]:
+            # Highlight computed columns: Column 4 (D: beds_average) and Column 15 (O: bed_days_total)
+            if ci in [4, 15]:
                 cell.fill = fill_computed
 
     # Footer Totals Row
-    tot_row = len(table) + 7
+    tot_row = len(table) + 6
     ws.merge_cells(start_row=tot_row, start_column=1, end_row=tot_row, end_column=2)
     tot_label_cell = ws.cell(row=tot_row, column=1, value='Разом')
     tot_label_cell.font = Font(name="Arial", size=9, bold=True)
@@ -705,13 +720,13 @@ def form016_export():
     tot_label_cell.border = border
     ws.cell(row=tot_row, column=2).border = border
 
-    for ci in range(3, 20):
+    for ci in range(3, 19):
         cell = ws.cell(row=tot_row, column=ci)
         col_keys = [
-            'beds_total', 'beds_renovation', 'patients_start', 'admitted_total', 'admitted_rural',
+            'beds_total', 'beds_average', 'patients_start', 'admitted_total', 'admitted_rural',
             'admitted_children', 'transferred_in', 'transferred_out', 'discharged_total',
-            'discharged_to_other', 'deaths', 'patients_end', 'patients_end_rural', 'mothers_with_children',
-            'free_male', 'free_female', 'free_total'
+            'discharged_to_other', 'deaths', 'patients_end', 'bed_days_total', 'bed_days_rural',
+            'bed_days_renovation', 'bed_days_mothers'
         ]
         key = col_keys[ci - 3]
         v = totals[key]
