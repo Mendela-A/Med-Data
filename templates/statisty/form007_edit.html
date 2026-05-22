@@ -81,7 +81,7 @@
 
             {# col6 — admitted_total #}
             <td><input type="number" name="admitted_total_{{ dept.id }}" min="0"
-                       value="{{ r.admitted_total if (r and r.admitted_total is not none) else (admitted_map.get(dept.name) or '') }}"></td>
+                       value="{{ r.admitted_total if r and r.admitted_total is not none else '' }}"></td>
 
             {# col7 — admitted_rural #}
             <td><input type="number" name="admitted_rural_{{ dept.id }}" min="0"
@@ -101,7 +101,7 @@
 
             {# col11 — discharged_total #}
             <td><input type="number" name="discharged_total_{{ dept.id }}" min="0"
-                       value="{{ r.discharged_total if (r and r.discharged_total is not none) else (discharged_map.get(dept.name) or '') }}"></td>
+                       value="{{ r.discharged_total if r and r.discharged_total is not none else '' }}"></td>
 
             {# col12 — discharged_to_other #}
             <td><input type="number" name="discharged_to_other_{{ dept.id }}" min="0"
@@ -109,7 +109,7 @@
 
             {# col13 — deaths #}
             <td><input type="number" name="deaths_{{ dept.id }}" min="0"
-                       value="{{ r.deaths if (r and r.deaths is not none) else (death_map.get(dept.name) or '') }}"></td>
+                       value="{{ r.deaths if r and r.deaths is not none else '' }}"></td>
 
             {# col14 — patients_end (computed, read-only display) #}
             <td class="text-center excel-computed">

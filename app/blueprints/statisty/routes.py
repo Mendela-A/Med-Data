@@ -412,41 +412,11 @@ def form007_edit(report_date_str):
         for r in DailyReport.query.filter_by(report_date=prev_date).all()
     }
 
-    # Count from Records table for the selected day
-    admitted_counts = db.session.query(
-        Record.discharge_department,
-        func.count(Record.id)
-    ).filter(
-        Record.date_of_admission == report_date
-    ).group_by(Record.discharge_department).all()
-    admitted_map = {d: c for d, c in admitted_counts if d}
-
-    discharged_counts = db.session.query(
-        Record.discharge_department,
-        func.count(Record.id)
-    ).filter(
-        Record.date_of_discharge == report_date,
-        Record.date_of_death.is_(None)
-    ).group_by(Record.discharge_department).all()
-    discharged_map = {d: c for d, c in discharged_counts if d}
-
-    death_counts = db.session.query(
-        Record.discharge_department,
-        func.count(Record.id)
-    ).filter(
-        Record.date_of_discharge == report_date,
-        Record.date_of_death.isnot(None)
-    ).group_by(Record.discharge_department).all()
-    death_map = {d: c for d, c in death_counts if d}
-
     return render_template(
         'statisty/form007_edit.html',
         depts=depts,
         existing=existing,
         prev_reports=prev_reports,
-        admitted_map=admitted_map,
-        discharged_map=discharged_map,
-        death_map=death_map,
         report_date=report_date,
     )
 
