@@ -62,25 +62,26 @@
       <tbody>
         {% for dept in depts %}
           {% set r = existing.get(dept.id) %}
+          {% set prev_r = prev_reports.get(dept.id) if prev_reports else none %}
           <tr>
             <td class="fw-semibold">{{ dept.bed_profile_name or dept.name }}</td>
             <td class="text-center text-muted">{{ dept.row_no or '' }}</td>
 
             {# col3 — beds_total #}
             <td><input type="number" name="beds_total_{{ dept.id }}" min="0"
-                       value="{{ r.beds_total if r and r.beds_total is not none else (dept.bed_capacity or '') }}"></td>
+                       value="{{ r.beds_total if (r and r.beds_total is not none) else (prev_r.beds_total if (prev_r and prev_r.beds_total is not none) else (dept.bed_capacity or '')) }}"></td>
 
             {# col4 — beds_renovation #}
             <td><input type="number" name="beds_renovation_{{ dept.id }}" min="0"
-                       value="{{ r.beds_renovation if r and r.beds_renovation is not none else '' }}"></td>
+                       value="{{ r.beds_renovation if (r and r.beds_renovation is not none) else (prev_r.beds_renovation if (prev_r and prev_r.beds_renovation is not none) else '') }}"></td>
 
             {# col5 — patients_start #}
             <td><input type="number" name="patients_start_{{ dept.id }}" min="0"
-                       value="{{ r.patients_start if r and r.patients_start is not none else '' }}"></td>
+                       value="{{ r.patients_start if (r and r.patients_start is not none) else (prev_r.patients_end if (prev_r and prev_r.patients_end is not none) else '') }}"></td>
 
             {# col6 — admitted_total #}
             <td><input type="number" name="admitted_total_{{ dept.id }}" min="0"
-                       value="{{ r.admitted_total if r and r.admitted_total is not none else '' }}"></td>
+                       value="{{ r.admitted_total if (r and r.admitted_total is not none) else (admitted_map.get(dept.name) or '') }}"></td>
 
             {# col7 — admitted_rural #}
             <td><input type="number" name="admitted_rural_{{ dept.id }}" min="0"
@@ -100,7 +101,7 @@
 
             {# col11 — discharged_total #}
             <td><input type="number" name="discharged_total_{{ dept.id }}" min="0"
-                       value="{{ r.discharged_total if r and r.discharged_total is not none else '' }}"></td>
+                       value="{{ r.discharged_total if (r and r.discharged_total is not none) else (discharged_map.get(dept.name) or '') }}"></td>
 
             {# col12 — discharged_to_other #}
             <td><input type="number" name="discharged_to_other_{{ dept.id }}" min="0"
@@ -108,7 +109,7 @@
 
             {# col13 — deaths #}
             <td><input type="number" name="deaths_{{ dept.id }}" min="0"
-                       value="{{ r.deaths if r and r.deaths is not none else '' }}"></td>
+                       value="{{ r.deaths if (r and r.deaths is not none) else (death_map.get(dept.name) or '') }}"></td>
 
             {# col14 — patients_end (computed, read-only display) #}
             <td class="text-center excel-computed">
