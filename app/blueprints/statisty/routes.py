@@ -59,7 +59,6 @@ def _get_form016_data(from_date, to_date):
         DailyReport.report_date <= to_date,
     ).count()
 
-    data_source = 'daily_report' if dr_count > 0 else 'records'
     depts = Department.query.order_by(Department.row_no.nullslast(), Department.name).all()
 
     table = []
@@ -70,221 +69,66 @@ def _get_form016_data(from_date, to_date):
                                'bed_days_total', 'bed_days_rural', 'bed_days_renovation',
                                'bed_days_mothers']}
 
-    if data_source == 'daily_report':
-        # Fetch all daily reports for the period
-        reports = DailyReport.query.filter(
-            DailyReport.report_date >= from_date,
-            DailyReport.report_date <= to_date
-        ).order_by(DailyReport.report_date.asc()).all()
+    # Fetch all daily reports for the period
+    reports = DailyReport.query.filter(
+        DailyReport.report_date >= from_date,
+        DailyReport.report_date <= to_date
+    ).order_by(DailyReport.report_date.asc()).all()
 
-        # Group by department
-        reports_by_dept = {}
-        for r in reports:
-            reports_by_dept.setdefault(r.department_id, []).append(r)
+    # Group by department
+    reports_by_dept = {}
+    for r in reports:
+        reports_by_dept.setdefault(r.department_id, []).append(r)
 
-        for dept in depts:
-            dept_reports = reports_by_dept.get(dept.id, [])
-            if not dept_reports:
-                row = {
-                    'dept': dept, 'beds_total': None, 'beds_average': None, 'patients_start': None,
-                    'admitted_total': 0, 'admitted_rural': 0, 'admitted_children': 0,
-                    'transferred_in': 0, 'transferred_out': 0, 'discharged_total': 0,
-                    'discharged_to_other': 0, 'deaths': 0, 'patients_end': None,
-                    'bed_days_total': 0, 'bed_days_rural': 0, 'bed_days_renovation': 0,
-                    'bed_days_mothers': 0,
-                }
-            else:
-                first_report = dept_reports[0]
-                last_report = dept_reports[-1]
+    for dept in depts:
+        dept_reports = reports_by_dept.get(dept.id, [])
+        if not dept_reports:
+            row = {
+                'dept': dept, 'beds_total': None, 'beds_average': None, 'patients_start': None,
+                'admitted_total': 0, 'admitted_rural': 0, 'admitted_children': 0,
+                'transferred_in': 0, 'transferred_out': 0, 'discharged_total': 0,
+                'discharged_to_other': 0, 'deaths': 0, 'patients_end': None,
+                'bed_days_total': 0, 'bed_days_rural': 0, 'bed_days_renovation': 0,
+                'bed_days_mothers': 0,
+            }
+        else:
+            first_report = dept_reports[0]
+            last_report = dept_reports[-1]
 
-                # Compute average beds (Col 2)
-                valid_beds = [r.beds_total for r in dept_reports if r.beds_total is not None]
-                beds_average = sum(valid_beds) / len(valid_beds) if valid_beds else None
-
-                row = {
-                    'dept': dept,
-                    'beds_total': last_report.beds_total,
-                    'beds_average': round(beds_average, 1) if beds_average is not None else None,
-                    'patients_start': first_report.patients_start,
-                    'admitted_total': sum(r.admitted_total or 0 for r in dept_reports),
-                    'admitted_rural': sum(r.admitted_rural or 0 for r in dept_reports),
-                    'admitted_children': sum(r.admitted_children or 0 for r in dept_reports),
-                    'transferred_in': sum(r.transferred_in or 0 for r in dept_reports),
-                    'transferred_out': sum(r.transferred_out or 0 for r in dept_reports),
-                    'discharged_total': sum(r.discharged_total or 0 for r in dept_reports),
-                    'discharged_to_other': sum(r.discharged_to_other or 0 for r in dept_reports),
-                    'deaths': sum(r.deaths or 0 for r in dept_reports),
-                    'patients_end': last_report.patients_end,
-                    'bed_days_total': sum(r.patients_end or 0 for r in dept_reports),
-                    'bed_days_rural': sum(r.patients_end_rural or 0 for r in dept_reports),
-                    'bed_days_renovation': sum(r.beds_renovation or 0 for r in dept_reports),
-                    'bed_days_mothers': sum(r.mothers_with_children or 0 for r in dept_reports),
-                }
-            table.append(row)
-            for k in totals:
-                v = row[k]
-                if v is not None:
-                    totals[k] += v
-    else:
-        # Fallback from patient records
-        # 1. Admitted
-        admitted_counts = db.session.query(
-            Record.discharge_department,
-            func.count(Record.id)
-        ).filter(
-            Record.date_of_admission >= from_date,
-            Record.date_of_admission <= to_date
-        ).group_by(Record.discharge_department).all()
-        admitted_map = {d: c for d, c in admitted_counts if d}
-
-        # 2. Discharged
-        discharged_counts = db.session.query(
-            Record.discharge_department,
-            func.count(Record.id)
-        ).filter(
-            Record.date_of_discharge >= from_date,
-            Record.date_of_discharge <= to_date,
-            Record.date_of_death.is_(None)
-        ).group_by(Record.discharge_department).all()
-        discharged_map = {d: c for d, c in discharged_counts if d}
-
-        # 3. Deaths
-        death_counts = db.session.query(
-            Record.discharge_department,
-            func.count(Record.id)
-        ).filter(
-            Record.date_of_discharge >= from_date,
-            Record.date_of_discharge <= to_date,
-            Record.date_of_death.isnot(None)
-        ).group_by(Record.discharge_department).all()
-        death_map = {d: c for d, c in death_counts if d}
-
-        # 4. Patients start
-        start_counts = db.session.query(
-            Record.discharge_department,
-            func.count(Record.id)
-        ).filter(
-            Record.date_of_admission < from_date,
-            (Record.date_of_discharge.is_(None) | (Record.date_of_discharge >= from_date))
-        ).group_by(Record.discharge_department).all()
-        start_map = {d: c for d, c in start_counts if d}
-
-        # 5. Patients end
-        end_counts = db.session.query(
-            Record.discharge_department,
-            func.count(Record.id)
-        ).filter(
-            Record.date_of_admission <= to_date,
-            (Record.date_of_discharge.is_(None) | (Record.date_of_discharge > to_date))
-        ).group_by(Record.discharge_department).all()
-        end_map = {d: c for d, c in end_counts if d}
-
-        # 6. Overlapping Bed-Days
-        overlap_query = db.session.query(
-            Record.discharge_department,
-            Record.date_of_admission,
-            Record.date_of_discharge
-        ).filter(
-            Record.date_of_admission <= to_date,
-            (Record.date_of_discharge.is_(None) | (Record.date_of_discharge >= from_date))
-        ).all()
-
-        bed_days_map = {}
-        for dept_name, adm, dis in overlap_query:
-            if not dept_name:
-                continue
-            start_int = max(adm or from_date, from_date)
-            end_int = min(dis or to_date, to_date)
-            days = (end_int - start_int).days + 1
-            if days > 0:
-                bed_days_map[dept_name] = bed_days_map.get(dept_name, 0) + days
-
-        for dept in depts:
-            name = dept.name
-            beds_total = dept.bed_capacity
-            patients_start = start_map.get(name, 0)
-            admitted_total = admitted_map.get(name, 0)
-            discharged_total = discharged_map.get(name, 0)
-            deaths = death_map.get(name, 0)
-            patients_end = end_map.get(name, 0)
-            bed_days_total = bed_days_map.get(name, 0)
+            # Compute average beds (Col 2)
+            valid_beds = [r.beds_total for r in dept_reports if r.beds_total is not None]
+            beds_average = sum(valid_beds) / len(valid_beds) if valid_beds else None
 
             row = {
                 'dept': dept,
-                'beds_total': beds_total,
-                'beds_average': beds_total,
-                'patients_start': patients_start,
-                'admitted_total': admitted_total,
-                'admitted_rural': 0,
-                'admitted_children': 0,
-                'transferred_in': 0,
-                'transferred_out': 0,
-                'discharged_total': discharged_total,
-                'discharged_to_other': 0,
-                'deaths': deaths,
-                'patients_end': patients_end,
-                'bed_days_total': bed_days_total,
-                'bed_days_rural': 0,
-                'bed_days_renovation': 0,
-                'bed_days_mothers': 0,
+                'beds_total': last_report.beds_total,
+                'beds_average': round(beds_average, 1) if beds_average is not None else None,
+                'patients_start': first_report.patients_start,
+                'admitted_total': sum(r.admitted_total or 0 for r in dept_reports),
+                'admitted_rural': sum(r.admitted_rural or 0 for r in dept_reports),
+                'admitted_children': sum(r.admitted_children or 0 for r in dept_reports),
+                'transferred_in': sum(r.transferred_in or 0 for r in dept_reports),
+                'transferred_out': sum(r.transferred_out or 0 for r in dept_reports),
+                'discharged_total': sum(r.discharged_total or 0 for r in dept_reports),
+                'discharged_to_other': sum(r.discharged_to_other or 0 for r in dept_reports),
+                'deaths': sum(r.deaths or 0 for r in dept_reports),
+                'patients_end': last_report.patients_end,
+                'bed_days_total': sum(r.patients_end or 0 for r in dept_reports),
+                'bed_days_rural': sum(r.patients_end_rural or 0 for r in dept_reports),
+                'bed_days_renovation': sum(r.beds_renovation or 0 for r in dept_reports),
+                'bed_days_mothers': sum(r.mothers_with_children or 0 for r in dept_reports),
             }
-            table.append(row)
-            for k in totals:
-                v = row[k]
-                if v is not None:
-                    totals[k] += v
-
-        # Unmatched departments
-        all_dept_names = set(admitted_map.keys()) | set(discharged_map.keys()) | set(death_map.keys()) | set(start_map.keys()) | set(end_map.keys())
-        known_dept_names = {d.name for d in depts}
-        unmatched_names = all_dept_names - known_dept_names
-
-        for name in sorted(unmatched_names):
-            display_name = name or 'Без відділення'
-            class MockDept:
-                def __init__(self, name):
-                    self.name = name
-                    self.bed_profile_name = name
-                    self.row_no = None
-            mock_dept = MockDept(display_name)
-
-            patients_start = start_map.get(name, 0)
-            admitted_total = admitted_map.get(name, 0)
-            discharged_total = discharged_map.get(name, 0)
-            deaths = death_map.get(name, 0)
-            patients_end = end_map.get(name, 0)
-            bed_days_total = bed_days_map.get(name, 0)
-
-            row = {
-                'dept': mock_dept,
-                'beds_total': None,
-                'beds_average': None,
-                'patients_start': patients_start,
-                'admitted_total': admitted_total,
-                'admitted_rural': 0,
-                'admitted_children': 0,
-                'transferred_in': 0,
-                'transferred_out': 0,
-                'discharged_total': discharged_total,
-                'discharged_to_other': 0,
-                'deaths': deaths,
-                'patients_end': patients_end,
-                'bed_days_total': bed_days_total,
-                'bed_days_rural': 0,
-                'bed_days_renovation': 0,
-                'bed_days_mothers': 0,
-            }
-            table.append(row)
-            for k in totals:
-                v = row[k]
-                if v is not None:
-                    totals[k] += v
+        table.append(row)
+        for k in totals:
+            v = row[k]
+            if v is not None:
+                totals[k] += v
 
     # Round beds_average total
     if totals['beds_average'] is not None:
         totals['beds_average'] = round(totals['beds_average'], 1)
 
-    return table, totals, data_source, dr_count
+    return table, totals, 'daily_report', dr_count
 
 
 # ---------------------------------------------------------------------------
@@ -429,7 +273,7 @@ def form007_edit(report_date_str):
 
         db.session.commit()
         flash(f"Форму 007 за {report_date.strftime('%d.%m.%Y')} збережено.", 'success')
-        return redirect(url_for('statisty.form007_day', report_date_str=report_date_str))
+        return redirect(url_for('statisty.form007_edit', report_date_str=report_date_str))
 
     # GET: Pre-populate fallbacks
     prev_date = report_date - timedelta(days=1)

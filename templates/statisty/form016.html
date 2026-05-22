@@ -38,7 +38,7 @@
   </div>
 </form>
 
-{% if data_source == 'daily_report' %}
+{% if dr_count > 0 %}
 <div class="alert alert-success py-2 small mb-3">
   <i class="bi bi-check-circle me-1"></i>
   Дані агреговано з <strong>Форми 007</strong> ({{ dr_count }} записів за {{ period_label }}).
@@ -46,7 +46,8 @@
 {% else %}
 <div class="alert alert-warning py-2 small mb-3">
   <i class="bi bi-exclamation-triangle me-1"></i>
-  Форму 007 ще не введено за цей період — показано розраховані дані з <strong>виписок</strong>.</div>
+  Форму 007 ще не введено за цей період. Будь ласка, введіть щоденні звіти Форми 007 для відображення статистики.
+</div>
 {% endif %}
 {% if table %}
 <div class="table-responsive">
@@ -55,28 +56,28 @@
       <tr>
         <th rowspan="2" style="min-width:160px;" class="align-middle">Назва профілю ліжка</th>
         <th rowspan="2" style="width:50px;" class="align-middle">№ рядка</th>
-        <th rowspan="2" class="align-middle">Розгорнуто ліжок<br>на кінець звіт. періоду<br><span class="text-muted small">(гр. 1)</span></th>
-        <th rowspan="2" class="align-middle excel-computed text-dark">Число середньомісячних<br>(річних) ліжок<br><span class="text-muted small">(гр. 2)</span></th>
-        <th rowspan="2" class="align-middle">Перебувало хворих<br>на початок звіт. періоду<br><span class="text-muted small">(гр. 3)</span></th>
+        <th rowspan="2" class="align-middle">Розгорнуто ліжок<br>на кінець звіт. періоду</th>
+        <th rowspan="2" class="align-middle excel-computed text-dark">Число середньомісячних<br>(річних) ліжок</th>
+        <th rowspan="2" class="align-middle">Перебувало хворих<br>на початок звіт. періоду</th>
         <th colspan="3" class="align-middle">Поступило хворих за звітний період</th>
         <th colspan="2" class="align-middle">Переведені всередині лікарні</th>
         <th colspan="2" class="align-middle">Виписано хворих</th>
-        <th rowspan="2" class="align-middle">Померло за звітний період<br><span class="text-muted small">(гр. 11)</span></th>
-        <th rowspan="2" class="align-middle">Перебувало хворих<br>на кінець звіт. періоду<br><span class="text-muted small">(гр. 12)</span></th>
+        <th rowspan="2" class="align-middle">Померло за звітний період</th>
+        <th rowspan="2" class="align-middle">Перебувало хворих<br>на кінець звіт. періоду</th>
         <th colspan="2" class="align-middle">Проведено ліжко-днів хворими</th>
-        <th rowspan="2" class="align-middle">К-ть ліжко-днів<br>закриття на ремонт<br><span class="text-muted small">(гр. 15)</span></th>
-        <th rowspan="2" class="align-middle">Крім того, проведено<br>ліжко-днів матерями при дітях<br><span class="text-muted small">(гр. 16)</span></th>
+        <th rowspan="2" class="align-middle">К-ть ліжко-днів<br>закриття на ремонт</th>
+        <th rowspan="2" class="align-middle">Крім того, проведено<br>ліжко-днів матерями при дітях</th>
       </tr>
       <tr>
-        <th class="align-middle">всього<br><span class="text-muted small">(гр. 4)</span></th>
-        <th class="align-middle">сільських жителів<br><span class="text-muted small">(гр. 5)</span></th>
-        <th class="align-middle">дітей 0-17 р. включно<br><span class="text-muted small">(гр. 6)</span></th>
-        <th class="align-middle">із інших відділень<br><span class="text-muted small">(гр. 7)</span></th>
-        <th class="align-middle">в інші відділення<br><span class="text-muted small">(гр. 8)</span></th>
-        <th class="align-middle">всього<br><span class="text-muted small">(гр. 9)</span></th>
-        <th class="align-middle">переведено в інші стаціонари<br><span class="text-muted small">(гр. 10)</span></th>
-        <th class="align-middle">всього<br><span class="text-muted small">(гр. 13)</span></th>
-        <th class="align-middle">сільськими жителями<br><span class="text-muted small">(гр. 14)</span></th>
+        <th class="align-middle">всього</th>
+        <th class="align-middle">сільських жителів</th>
+        <th class="align-middle">дітей 0-17 р. включно</th>
+        <th class="align-middle">із інших відділень</th>
+        <th class="align-middle">в інші відділення</th>
+        <th class="align-middle">всього</th>
+        <th class="align-middle">переведено в інші стаціонари</th>
+        <th class="align-middle">всього</th>
+        <th class="align-middle">сільськими жителями</th>
       </tr>
       <tr class="table-secondary small text-center text-muted">
         <td>А</td><td>Б</td><td>1</td><td>2</td><td>3</td>
@@ -111,7 +112,7 @@
       </tr>
       {% endfor %}
     </tbody>
-    <tfoot class="fw-bold text-center table-dark">
+    <tfoot class="fw-bold text-center table-secondary text-dark">
       <tr>
         <td colspan="2" class="text-start ps-3">Разом</td>
         <td>{{ totals.beds_total or '' }}</td>
