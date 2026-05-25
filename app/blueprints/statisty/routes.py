@@ -371,6 +371,58 @@ def form007_day(report_date_str):
         rows=rows,
         report_date=report_date,
         totals=totals,
+        depts=depts,
+    )
+
+
+# ---- Form 007 monthly view for a single department -------------------------
+
+@statisty_bp.route('/form007/dept/<int:department_id>')
+@role_required('admin', 'viewer')
+def form007_dept_month(department_id):
+    dept = Department.query.get_or_404(department_id)
+    from_date, _ = _parse_date_range()
+    first_day = date(from_date.year, from_date.month, 1)
+    last_day_num = calendar.monthrange(from_date.year, from_date.month)[1]
+    last_day = date(from_date.year, from_date.month, last_day_num)
+
+    all_days = [date(first_day.year, first_day.month, d) for d in range(1, last_day_num + 1)]
+
+    reports = {
+        r.report_date: r
+        for r in DailyReport.query.filter(
+            DailyReport.department_id == department_id,
+            DailyReport.report_date >= first_day,
+            DailyReport.report_date <= last_day,
+        ).all()
+    }
+
+    rows = [(d, reports.get(d)) for d in all_days]
+
+    flow_keys = ['admitted_total', 'admitted_rural', 'admitted_children',
+                 'transferred_in', 'transferred_out', 'discharged_total',
+                 'discharged_to_other', 'deaths', 'mothers_with_children']
+    totals = {k: sum(getattr(r, k) or 0 for _, r in rows if r) for k in flow_keys}
+    first_r = reports.get(first_day)
+    last_r  = reports.get(last_day)
+    totals['patients_start']     = first_r.patients_start     if first_r else None
+    totals['beds_total']         = last_r.beds_total          if last_r  else None
+    totals['beds_renovation']    = last_r.beds_renovation     if last_r  else None
+    totals['patients_end']       = last_r.patients_end        if last_r  else None
+    totals['patients_end_rural'] = last_r.patients_end_rural  if last_r  else None
+    totals['free_male']          = last_r.free_male           if last_r  else None
+    totals['free_female']        = last_r.free_female         if last_r  else None
+
+    depts = Department.query.order_by(Department.row_no.nullslast(), Department.name).all()
+
+    return render_template(
+        'statisty/form007_dept_month.html',
+        dept=dept,
+        depts=depts,
+        rows=rows,
+        totals=totals,
+        from_date=first_day,
+        period_label=_period_label(first_day, last_day),
     )
 
 
