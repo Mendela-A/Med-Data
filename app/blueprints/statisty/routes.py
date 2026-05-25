@@ -225,56 +225,52 @@ def _get_form016_data(from_date, to_date, department_id=None):
         9: 'Вересень', 10: 'Жовтень', 11: 'Листопад', 12: 'Грудень'
     }
 
+    _ZERO = {k: 0 for k in [
+        'beds_total', 'beds_average', 'patients_start', 'admitted_total',
+        'admitted_rural', 'admitted_children', 'transferred_in', 'transferred_out',
+        'discharged_total', 'discharged_to_other', 'deaths', 'patients_end',
+        'bed_days_total', 'bed_days_rural', 'bed_days_renovation', 'bed_days_mothers',
+    ]}
+
+    def _month_row(m):
+        data = _aggregate_period(year, m, m, department_id)
+        row = {'date_str': MONTHS_UA_NOMINATIVE[m], 'is_totals': False}
+        row.update(data if data else _ZERO)
+        return row
+
+    def _subtotal_row(label, start_m, end_m):
+        data = _aggregate_period(year, start_m, end_m, department_id)
+        row = {'date_str': label, 'is_totals': True}
+        row.update(data if data else _ZERO)
+        return row
+
     table = []
 
-    # Months 1 to 6
-    for m in range(1, 7):
-        m_data = _aggregate_period(year, m, m, department_id)
-        row = {
-            'date_str': MONTHS_UA_NOMINATIVE[m],
-            'is_totals': False,
-        }
-        if m_data:
-            row.update(m_data)
-        else:
-            row.update({k: 0 for k in ['beds_total', 'beds_average', 'patients_start', 'admitted_total', 'admitted_rural', 'admitted_children', 'transferred_in', 'transferred_out', 'discharged_total', 'discharged_to_other', 'deaths', 'patients_end', 'bed_days_total', 'bed_days_rural', 'bed_days_renovation', 'bed_days_mothers']})
-        table.append(row)
+    # Q1: Jan–Mar
+    for m in range(1, 4):
+        table.append(_month_row(m))
+    table.append(_subtotal_row('За I квартал', 1, 3))
 
-    # Subtotal "За півріччя" (months 1-6)
-    half_year_data = _aggregate_period(year, 1, 6, department_id)
-    half_year_row = {
-        'date_str': 'За півріччя',
-        'is_totals': True,
-    }
-    if half_year_data:
-        half_year_row.update(half_year_data)
-    else:
-        half_year_row.update({k: 0 for k in ['beds_total', 'beds_average', 'patients_start', 'admitted_total', 'admitted_rural', 'admitted_children', 'transferred_in', 'transferred_out', 'discharged_total', 'discharged_to_other', 'deaths', 'patients_end', 'bed_days_total', 'bed_days_rural', 'bed_days_renovation', 'bed_days_mothers']})
-    table.append(half_year_row)
+    # Q2: Apr–Jun
+    for m in range(4, 7):
+        table.append(_month_row(m))
+    table.append(_subtotal_row('За II квартал', 4, 6))
 
-    # Months 7 to 12
-    for m in range(7, 13):
-        m_data = _aggregate_period(year, m, m, department_id)
-        row = {
-            'date_str': MONTHS_UA_NOMINATIVE[m],
-            'is_totals': False,
-        }
-        if m_data:
-            row.update(m_data)
-        else:
-            row.update({k: 0 for k in ['beds_total', 'beds_average', 'patients_start', 'admitted_total', 'admitted_rural', 'admitted_children', 'transferred_in', 'transferred_out', 'discharged_total', 'discharged_to_other', 'deaths', 'patients_end', 'bed_days_total', 'bed_days_rural', 'bed_days_renovation', 'bed_days_mothers']})
-        table.append(row)
+    # H1
+    table.append(_subtotal_row('За півріччя', 1, 6))
 
-    # Total "За рік" (months 1-12)
-    full_year_data = _aggregate_period(year, 1, 12, department_id)
-    full_year_row = {
-        'date_str': 'За рік',
-        'is_totals': True,
-    }
-    if full_year_data:
-        full_year_row.update(full_year_data)
-    else:
-        full_year_row.update({k: 0 for k in ['beds_total', 'beds_average', 'patients_start', 'admitted_total', 'admitted_rural', 'admitted_children', 'transferred_in', 'transferred_out', 'discharged_total', 'discharged_to_other', 'deaths', 'patients_end', 'bed_days_total', 'bed_days_rural', 'bed_days_renovation', 'bed_days_mothers']})
+    # Q3: Jul–Sep
+    for m in range(7, 10):
+        table.append(_month_row(m))
+    table.append(_subtotal_row('За III квартал', 7, 9))
+
+    # Q4: Oct–Dec
+    for m in range(10, 13):
+        table.append(_month_row(m))
+    table.append(_subtotal_row('За IV квартал', 10, 12))
+
+    # Annual
+    full_year_row = _subtotal_row('За рік', 1, 12)
     table.append(full_year_row)
 
     totals = full_year_row
