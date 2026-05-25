@@ -1,0 +1,222 @@
+<!DOCTYPE html>
+<html lang="uk">
+<head>
+<meta charset="UTF-8">
+<title>Форма 016/о — {{ period_label }}</title>
+<style>
+@page {
+    size: A4 landscape;
+    margin: 0.6cm 0.6cm 1.1cm 0.6cm;
+    @bottom-center {
+        content: "КНП «Калуська ЦРЛ» — Форма 016/о — {{ from_date.year }}";
+        font-size: 7pt;
+        color: #666;
+    }
+    @bottom-right {
+        content: "Стор. " counter(page) " з " counter(pages);
+        font-size: 7pt;
+        color: #666;
+    }
+}
+
+* { margin: 0; padding: 0; box-sizing: border-box; }
+
+body {
+    font-family: 'DejaVu Sans', Arial, sans-serif;
+    font-size: 7pt;
+    color: #111;
+}
+
+.header {
+    overflow: hidden;
+    margin-bottom: 10px;
+    border-bottom: 1px solid #ccc;
+    padding-bottom: 7px;
+    line-height: 1.35;
+}
+.header-left {
+    float: left;
+    text-align: left;
+    width: 45%;
+    font-size: 7.5pt;
+}
+.header-right {
+    float: right;
+    text-align: right;
+    width: 45%;
+    font-size: 7.5pt;
+}
+.header-center {
+    clear: both;
+    text-align: center;
+    padding-top: 8px;
+}
+.header-center h1 {
+    font-size: 9.5pt;
+    font-weight: bold;
+    text-transform: uppercase;
+    letter-spacing: 0.4px;
+    margin: 0;
+}
+.header-center .subtitle {
+    font-size: 7.5pt;
+    margin-top: 2px;
+}
+
+table {
+    width: 100%;
+    border-collapse: collapse;
+    table-layout: fixed;
+}
+th, td {
+    border: 1px solid #333;
+    padding: 1px 2px;
+    vertical-align: middle;
+    text-align: center;
+    word-wrap: break-word;
+}
+th {
+    background: #e8edf5;
+    font-size: 6pt;
+    font-weight: bold;
+    line-height: 1.2;
+}
+td.period-name {
+    text-align: left;
+    padding-left: 4px;
+    font-size: 7pt;
+}
+tr.totals-row td {
+    font-weight: bold;
+    background: #d0d8e8;
+}
+.col-num {
+    color: #666;
+    font-size: 5.5pt;
+    background: #f0f0f0;
+}
+
+.signature {
+    margin-top: 10px;
+    font-size: 7.5pt;
+}
+</style>
+</head>
+<body>
+
+<div class="header">
+  <div class="header-left">
+    Міністерство охорони здоров'я України<br>
+    <strong>КНП «Калуська центральна районна лікарня»</strong><br>
+    <span style="font-size: 6pt; color: #555;">вул. Каракая, 25, м. Калуш, Івано-Франківська обл., 77300</span>
+  </div>
+  <div class="header-right">
+    МЕДИЧНА ДОКУМЕНТАЦІЯ<br>
+    <strong>Форма № 016/о</strong><br>
+    <span style="font-size: 6pt; color: #555;">Затверджено наказом МОЗ України від 27.12.05 р. № 760</span>
+  </div>
+  <div class="header-center">
+    <h1>Зведена відомість обліку руху хворих і ліжкового фонду в стаціонарі</h1>
+    <div class="subtitle">
+      {% if selected_dept %}
+        Відділення: <strong>{{ selected_dept.name }}</strong> —
+      {% endif %}
+      за <strong>{{ from_date.year }}</strong> р. ({{ period_label }})
+    </div>
+  </div>
+</div>
+
+<table>
+  <colgroup>
+    <col style="width:13%">  <!-- А: місяць -->
+    <col style="width:5%">   <!-- 1: beds_total -->
+    <col style="width:5%">   <!-- 2: beds_average -->
+    <col style="width:5%">   <!-- 3: patients_start -->
+    <col style="width:5%">   <!-- 4: admitted_total -->
+    <col style="width:5%">   <!-- 5: admitted_rural -->
+    <col style="width:5%">   <!-- 6: admitted_children -->
+    <col style="width:5%">   <!-- 7: transferred_in -->
+    <col style="width:5%">   <!-- 8: transferred_out -->
+    <col style="width:5%">   <!-- 9: discharged_total -->
+    <col style="width:5%">   <!-- 10: discharged_to_other -->
+    <col style="width:4%">   <!-- 11: deaths -->
+    <col style="width:5%">   <!-- 12: patients_end -->
+    <col style="width:5.5%"> <!-- 13: bed_days_total -->
+    <col style="width:5.5%"> <!-- 14: bed_days_rural -->
+    <col style="width:5.5%"> <!-- 15: bed_days_renovation -->
+    <col style="width:5.5%"> <!-- 16: bed_days_mothers -->
+  </colgroup>
+  <thead>
+    <tr>
+      <th rowspan="4">Найменування місяців</th>
+      <th rowspan="4">Число ліжок у межах кошторису фактично розгорнутих + згорнутих на ремонт на кінець звітного періоду</th>
+      <th rowspan="4">Середньо&shy;місячних (річних) ліжок</th>
+      <th rowspan="4">Перебувало хворих на початок звітного періоду</th>
+      <th colspan="7">За звітний період</th>
+      <th rowspan="4">Померло</th>
+      <th rowspan="4">Перебувало хворих на кінець звітного періоду</th>
+      <th rowspan="4">Проведено всіма хворими ліжко-днів</th>
+      <th rowspan="4">у тому числі сільськими жителями</th>
+      <th rowspan="4">Число ліжко-днів закриття</th>
+      <th rowspan="4">Крім того, проведено ліжко-днів матерями з хворими дітьми</th>
+    </tr>
+    <tr>
+      <th colspan="3">поступило хворих</th>
+      <th colspan="2">переведено хворих всередині лікарні</th>
+      <th colspan="2">виписано хворих</th>
+    </tr>
+    <tr>
+      <th rowspan="2">всього</th>
+      <th colspan="2">із них</th>
+      <th rowspan="2">із інших відділень</th>
+      <th rowspan="2">в інші відділення</th>
+      <th rowspan="2">всього</th>
+      <th rowspan="2">у тому числі переведені в інші стаціонари</th>
+    </tr>
+    <tr>
+      <th>сільських жителів</th>
+      <th>дітей до 17 років включно</th>
+    </tr>
+    <tr>
+      <td class="col-num">А</td>
+      <td class="col-num">1</td><td class="col-num">2</td><td class="col-num">3</td>
+      <td class="col-num">4</td><td class="col-num">5</td><td class="col-num">6</td>
+      <td class="col-num">7</td><td class="col-num">8</td><td class="col-num">9</td>
+      <td class="col-num">10</td><td class="col-num">11</td><td class="col-num">12</td>
+      <td class="col-num">13</td><td class="col-num">14</td><td class="col-num">15</td>
+      <td class="col-num">16</td>
+    </tr>
+  </thead>
+  <tbody>
+    {% for row in table %}
+    <tr {% if row.is_totals %}class="totals-row"{% endif %}>
+      <td class="period-name">{{ row.date_str }}</td>
+      <td>{{ row.beds_total if row.beds_total is not none else '' }}</td>
+      <td>{{ row.beds_average if row.beds_average is not none else '' }}</td>
+      <td>{{ row.patients_start if row.patients_start is not none else '' }}</td>
+      <td>{{ row.admitted_total if row.admitted_total is not none else '' }}</td>
+      <td>{{ row.admitted_rural if row.admitted_rural is not none else '' }}</td>
+      <td>{{ row.admitted_children if row.admitted_children is not none else '' }}</td>
+      <td>{{ row.transferred_in if row.transferred_in is not none else '' }}</td>
+      <td>{{ row.transferred_out if row.transferred_out is not none else '' }}</td>
+      <td>{{ row.discharged_total if row.discharged_total is not none else '' }}</td>
+      <td>{{ row.discharged_to_other if row.discharged_to_other is not none else '' }}</td>
+      <td>{{ row.deaths if row.deaths is not none else '' }}</td>
+      <td>{{ row.patients_end if row.patients_end is not none else '' }}</td>
+      <td>{{ row.bed_days_total if row.bed_days_total is not none else '' }}</td>
+      <td>{{ row.bed_days_rural if row.bed_days_rural is not none else '' }}</td>
+      <td>{{ row.bed_days_renovation if row.bed_days_renovation is not none else '' }}</td>
+      <td>{{ row.bed_days_mothers if row.bed_days_mothers is not none else '' }}</td>
+    </tr>
+    {% endfor %}
+  </tbody>
+</table>
+
+<div class="signature">
+  Заступник генерального директора КНП «Калуська ЦРЛ»: _______________________ Л. Луців &nbsp;&nbsp;&nbsp;&nbsp;
+  Відповідальний: _______________________ Валерій ПАЛЯНИЦЯ &nbsp;&nbsp;&nbsp;&nbsp;
+  Дата: _______________
+</div>
+
+</body>
+</html>

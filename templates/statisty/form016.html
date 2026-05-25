@@ -58,6 +58,11 @@
        class="btn btn-success btn-sm">
       <i class="bi bi-file-earmark-excel me-1"></i>Excel
     </a>
+    <a href="{{ url_for('statisty.form016_print', from_date=from_date.isoformat(), to_date=to_date.isoformat(), department_id=department_id or '') }}"
+       target="_blank"
+       class="btn btn-outline-danger btn-sm ms-1">
+      <i class="bi bi-printer me-1"></i>Друк PDF
+    </a>
     <a href="{{ url_for('statisty.form007', from_date=from_date.strftime('%Y-%m')) }}"
        class="btn btn-outline-secondary btn-sm ms-1">
       <i class="bi bi-calendar3 me-1"></i>Форма 007 (по днях)

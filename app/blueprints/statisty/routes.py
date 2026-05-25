@@ -641,6 +641,46 @@ def form016():
     )
 
 
+# ---- Form 016 PDF print -----------------------------------------------------
+
+@statisty_bp.route('/form016/print')
+@role_required('admin', 'viewer')
+def form016_print():
+    from_date, to_date = _parse_date_range()
+    department_id_str = request.args.get('department_id', '').strip()
+    department_id = int(department_id_str) if department_id_str.isdigit() else None
+    selected_dept = Department.query.get(department_id) if department_id else None
+
+    table, totals, _, _ = _get_form016_data(from_date, to_date, department_id)
+
+    html_string = render_template(
+        'print_form016.html',
+        table=table,
+        totals=totals,
+        from_date=from_date,
+        to_date=to_date,
+        period_label=_period_label(from_date, to_date),
+        selected_dept=selected_dept,
+    )
+
+    try:
+        from weasyprint import HTML
+    except ImportError:
+        flash('WeasyPrint не встановлено.', 'danger')
+        return redirect(url_for('statisty.form016',
+                                from_date=from_date.isoformat(),
+                                to_date=to_date.isoformat(),
+                                department_id=department_id or ''))
+
+    pdf = HTML(string=html_string).write_pdf()
+    bio = BytesIO(pdf)
+    bio.seek(0)
+    dept_slug = f"_{selected_dept.name[:20].replace(' ', '_')}" if selected_dept else ''
+    filename = f"forma016{dept_slug}_{from_date.year}.pdf"
+    return send_file(bio, as_attachment=False,
+                     download_name=filename, mimetype='application/pdf')
+
+
 # ---- Form 016 Excel export --------------------------------------------------
 
 @statisty_bp.route('/form016/export')
