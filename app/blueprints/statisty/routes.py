@@ -346,6 +346,7 @@ def form007_day(report_date_str):
     rows = []
     totals = {k: 0 for k in ['beds_total', 'beds_renovation', 'patients_start',
                                'admitted_total', 'admitted_rural', 'admitted_children',
+                               'admitted_children_rural',
                                'transferred_in', 'transferred_out', 'discharged_total',
                                'discharged_to_other', 'deaths', 'patients_end',
                                'patients_end_rural', 'mothers_with_children',
@@ -396,6 +397,7 @@ def form007_dept_month(department_id):
     rows = [(d, reports.get(d)) for d in all_days]
 
     flow_keys = ['patients_start', 'admitted_total', 'admitted_rural', 'admitted_children',
+                 'admitted_children_rural',
                  'transferred_in', 'transferred_out', 'discharged_total',
                  'discharged_to_other', 'deaths', 'patients_end', 'patients_end_rural',
                  'mothers_with_children']
@@ -444,7 +446,7 @@ def form007_dept_month_print(department_id):
     flow_keys = ['admitted_total', 'admitted_rural', 'admitted_children',
                  'transferred_in', 'transferred_out', 'discharged_total',
                  'discharged_to_other', 'deaths', 'patients_end', 'patients_end_rural',
-                 'mothers_with_children']
+                 'mothers_with_children', 'admitted_children_rural']
     totals = {k: sum(getattr(r, k) or 0 for _, r in rows if r) for k in flow_keys}
     totals['patients_start'] = sum(getattr(r, 'patients_start') or 0 for _, r in rows if r)
     last_r = next((reports[d] for d in reversed(all_days) if d in reports), None)
@@ -513,6 +515,7 @@ def form007_edit(report_date_str):
             r.admitted_total        = _int('admitted_total')
             r.admitted_rural        = _int('admitted_rural')
             r.admitted_children     = _int('admitted_children')
+            r.admitted_children_rural = _int('admitted_children_rural')
             r.transferred_in        = _int('transferred_in')
             r.transferred_out       = _int('transferred_out')
             r.discharged_total      = _int('discharged_total')
@@ -567,6 +570,7 @@ def form007_print(report_date_str):
     rows = []
     totals = {k: 0 for k in ['beds_total', 'beds_renovation', 'patients_start',
                                'admitted_total', 'admitted_rural', 'admitted_children',
+                               'admitted_children_rural',
                                'transferred_in', 'transferred_out', 'discharged_total',
                                'discharged_to_other', 'deaths', 'patients_end',
                                'patients_end_rural', 'mothers_with_children',

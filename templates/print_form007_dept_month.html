@@ -92,6 +92,7 @@ tr.totals td {
     <col style="width:4%">  <!-- 6 admitted -->
     <col style="width:4%">  <!-- 7 rural -->
     <col style="width:4%">  <!-- 8 children -->
+    <col style="width:4%">  <!-- 8.1 children_rural -->
     <col style="width:4%">  <!-- 9 transfin -->
     <col style="width:4%">  <!-- 10 transout -->
     <col style="width:4%">  <!-- 11 discharged -->
@@ -108,11 +109,11 @@ tr.totals td {
       <th rowspan="4">Дата</th>
       <th rowspan="4">Розгорнуто ліжок, вкл. згорнуті на ремонт</th>
       <th rowspan="4">В т.ч. згорнуті на ремонт</th>
-      <th colspan="9">Рух хворих за минулу добу</th>
+      <th colspan="10">Рух хворих за минулу добу</th>
       <th colspan="5">На початок поточного дня</th>
     </tr>
     <tr>
-      <th colspan="4">Поступило хворих</th>
+      <th colspan="5">Поступило хворих</th>
       <th colspan="2">Переведено всередині лікарні</th>
       <th colspan="2">Виписано хворих</th>
       <th rowspan="3">Померло</th>
@@ -122,7 +123,7 @@ tr.totals td {
     </tr>
     <tr>
       <th rowspan="2">Було хворих на поч. мин. доби</th>
-      <th colspan="3">Поступило без переведення всередині лікарні</th>
+      <th colspan="4">Поступило без переведення всередині лікарні</th>
       <th rowspan="2">із інших відділів</th>
       <th rowspan="2">в інші відділи</th>
       <th rowspan="2">Всього</th>
@@ -136,12 +137,16 @@ tr.totals td {
       <th>Всього</th>
       <th>Сільських жителів</th>
       <th>дітей до 17 р.</th>
+      <th>з них сільських</th>
     </tr>
     <tr>
       <td class="col-num">Дата</td>
-      {% for n in range(3, 19) %}
-      <td class="col-num">{{ n }}</td>
-      {% endfor %}
+      <td class="col-num">3</td><td class="col-num">4</td><td class="col-num">5</td>
+      <td class="col-num">6</td><td class="col-num">7</td><td class="col-num">8</td>
+      <td class="col-num">8.1</td>
+      <td class="col-num">9</td><td class="col-num">10</td><td class="col-num">11</td><td class="col-num">12</td>
+      <td class="col-num">13</td><td class="col-num">14</td><td class="col-num">15</td><td class="col-num">16</td>
+      <td class="col-num">17</td><td class="col-num">18</td>
     </tr>
   </thead>
   <tbody>
@@ -154,6 +159,7 @@ tr.totals td {
       <td><strong>{{ r.admitted_total if r and r.admitted_total is not none else '' }}</strong></td>
       <td>{{ r.admitted_rural if r and r.admitted_rural is not none else '' }}</td>
       <td>{{ r.admitted_children if r and r.admitted_children is not none else '' }}</td>
+      <td>{{ r.admitted_children_rural if r and r.admitted_children_rural is not none else '' }}</td>
       <td>{{ r.transferred_in if r and r.transferred_in is not none else '' }}</td>
       <td>{{ r.transferred_out if r and r.transferred_out is not none else '' }}</td>
       <td><strong>{{ r.discharged_total if r and r.discharged_total is not none else '' }}</strong></td>
@@ -176,6 +182,7 @@ tr.totals td {
       <td>{{ totals.admitted_total or '' }}</td>
       <td>{{ totals.admitted_rural or '' }}</td>
       <td>{{ totals.admitted_children or '' }}</td>
+      <td>{{ totals.admitted_children_rural or '' }}</td>
       <td>{{ totals.transferred_in or '' }}</td>
       <td>{{ totals.transferred_out or '' }}</td>
       <td>{{ totals.discharged_total or '' }}</td>
