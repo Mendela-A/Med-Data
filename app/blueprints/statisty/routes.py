@@ -395,17 +395,14 @@ def form007_dept_month(department_id):
 
     rows = [(d, reports.get(d)) for d in all_days]
 
-    flow_keys = ['admitted_total', 'admitted_rural', 'admitted_children',
+    flow_keys = ['patients_start', 'admitted_total', 'admitted_rural', 'admitted_children',
                  'transferred_in', 'transferred_out', 'discharged_total',
-                 'discharged_to_other', 'deaths', 'mothers_with_children']
+                 'discharged_to_other', 'deaths', 'patients_end', 'patients_end_rural',
+                 'mothers_with_children']
     totals = {k: sum(getattr(r, k) or 0 for _, r in rows if r) for k in flow_keys}
-    first_r = reports.get(first_day)
-    last_r  = reports.get(last_day)
-    totals['patients_start']     = first_r.patients_start     if first_r else None
+    last_r = next((reports[d] for d in reversed(all_days) if d in reports), None)
     totals['beds_total']         = last_r.beds_total          if last_r  else None
     totals['beds_renovation']    = last_r.beds_renovation     if last_r  else None
-    totals['patients_end']       = last_r.patients_end        if last_r  else None
-    totals['patients_end_rural'] = last_r.patients_end_rural  if last_r  else None
     totals['free_male']          = last_r.free_male           if last_r  else None
     totals['free_female']        = last_r.free_female         if last_r  else None
 
@@ -446,15 +443,13 @@ def form007_dept_month_print(department_id):
 
     flow_keys = ['admitted_total', 'admitted_rural', 'admitted_children',
                  'transferred_in', 'transferred_out', 'discharged_total',
-                 'discharged_to_other', 'deaths', 'mothers_with_children']
+                 'discharged_to_other', 'deaths', 'patients_end', 'patients_end_rural',
+                 'mothers_with_children']
     totals = {k: sum(getattr(r, k) or 0 for _, r in rows if r) for k in flow_keys}
-    first_r = reports.get(first_day)
-    last_r  = reports.get(last_day)
-    totals['patients_start']     = first_r.patients_start     if first_r else None
+    totals['patients_start'] = sum(getattr(r, 'patients_start') or 0 for _, r in rows if r)
+    last_r = next((reports[d] for d in reversed(all_days) if d in reports), None)
     totals['beds_total']         = last_r.beds_total          if last_r  else None
     totals['beds_renovation']    = last_r.beds_renovation     if last_r  else None
-    totals['patients_end']       = last_r.patients_end        if last_r  else None
-    totals['patients_end_rural'] = last_r.patients_end_rural  if last_r  else None
     totals['free_male']          = last_r.free_male           if last_r  else None
     totals['free_female']        = last_r.free_female         if last_r  else None
 
