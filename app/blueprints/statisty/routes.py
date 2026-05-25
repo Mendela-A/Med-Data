@@ -97,6 +97,7 @@ def _aggregate_period(year, start_month, end_month, department_id=None):
         day_admitted_total = 0
         day_admitted_rural = 0
         day_admitted_children = 0
+        day_admitted_children_rural = 0
         day_transferred_in = 0
         day_transferred_out = 0
         day_discharged_total = 0
@@ -115,6 +116,7 @@ def _aggregate_period(year, start_month, end_month, department_id=None):
                 day_admitted_total += r.admitted_total or 0
                 day_admitted_rural += r.admitted_rural or 0
                 day_admitted_children += r.admitted_children or 0
+                day_admitted_children_rural += r.admitted_children_rural or 0
                 day_transferred_in += r.transferred_in or 0
                 day_transferred_out += r.transferred_out or 0
                 day_discharged_total += r.discharged_total or 0
@@ -133,6 +135,7 @@ def _aggregate_period(year, start_month, end_month, department_id=None):
             'admitted_total': day_admitted_total,
             'admitted_rural': day_admitted_rural,
             'admitted_children': day_admitted_children,
+            'admitted_children_rural': day_admitted_children_rural,
             'transferred_in': day_transferred_in,
             'transferred_out': day_transferred_out,
             'discharged_total': day_discharged_total,
@@ -152,6 +155,7 @@ def _aggregate_period(year, start_month, end_month, department_id=None):
     admitted_total = sum(s['admitted_total'] for s in daily_stats)
     admitted_rural = sum(s['admitted_rural'] for s in daily_stats)
     admitted_children = sum(s['admitted_children'] for s in daily_stats)
+    admitted_children_rural = sum(s['admitted_children_rural'] for s in daily_stats)
     transferred_in = sum(s['transferred_in'] for s in daily_stats)
     transferred_out = sum(s['transferred_out'] for s in daily_stats)
     discharged_total = sum(s['discharged_total'] for s in daily_stats)
@@ -184,6 +188,7 @@ def _aggregate_period(year, start_month, end_month, department_id=None):
         'admitted_total': admitted_total,
         'admitted_rural': admitted_rural,
         'admitted_children': admitted_children,
+        'admitted_children_rural': admitted_children_rural,
         'transferred_in': transferred_in,
         'transferred_out': transferred_out,
         'discharged_total': discharged_total,
