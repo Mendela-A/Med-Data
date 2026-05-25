@@ -958,6 +958,7 @@ def print_settings_edit():
         ps.form007_subtitle = request.form.get('form007_subtitle', '').strip()
         ps.form016_title    = request.form.get('form016_title', '').strip()
         ps.form016_subtitle = request.form.get('form016_subtitle', '').strip()
+        ps.form007_dept_title = request.form.get('form007_dept_title', '').strip()
         ps.form007_form_no  = request.form.get('form007_form_no', '').strip()
         ps.form007_decree   = request.form.get('form007_decree',  '').strip()
         ps.form016_form_no  = request.form.get('form016_form_no', '').strip()

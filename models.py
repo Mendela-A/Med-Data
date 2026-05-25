@@ -289,6 +289,8 @@ class PrintSettings(db.Model):
                                  default='ЗВЕДЕНА ВІДОМІСТЬ ОБЛІКУ РУХУ ХВОРИХ')
     form016_subtitle = db.Column(db.String(200), nullable=False,
                                  default='і ліжкового фонду стаціонару')
+    form007_dept_title = db.Column(db.String(200), nullable=False,
+                                   default='Рух хворих і ліжкового фонду')
     form007_form_no  = db.Column(db.String(50),  nullable=False,
                                  default='Форма № 007/о')
     form007_decree   = db.Column(db.String(200), nullable=False,
