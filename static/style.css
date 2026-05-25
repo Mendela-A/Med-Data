@@ -1054,3 +1054,32 @@ input[list]:focus::-webkit-calendar-picker-indicator { opacity: 1; }
   max-width: 45px;
   min-width: 32px;
 }
+
+/* Statisty dropdown in topnav */
+.topnav-links .dropdown-toggle::after {
+  vertical-align: middle;
+  margin-left: 0.15em;
+  opacity: 0.6;
+}
+.topnav-links .dropdown-menu {
+  font-size: 0.825rem;
+  border-radius: var(--radius-sm);
+  min-width: 220px;
+  margin-top: 4px;
+}
+.topnav-links .dropdown-item {
+  padding: 0.4rem 0.85rem;
+  color: var(--color-text-muted);
+  border-radius: var(--radius-sm);
+}
+.topnav-links .dropdown-item:hover,
+.topnav-links .dropdown-item:focus {
+  background-color: var(--color-primary-light);
+  color: var(--color-primary);
+}
+.topnav-links .dropdown-item.active,
+.topnav-links .dropdown-item:active {
+  background-color: var(--color-primary-light);
+  color: var(--color-primary);
+  font-weight: 550;
+}

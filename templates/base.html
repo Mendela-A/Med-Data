@@ -40,9 +40,26 @@
         <a href="{{ url_for('admin.admin_statistics') }}" class="topnav-link{% if request.endpoint == 'admin.admin_statistics' %} active{% endif %}">
           <i class="bi bi-bar-chart-line"></i><span>Статистика</span>
         </a>
-        <a href="{{ url_for('statisty.form016') }}" class="topnav-link{% if request.endpoint and request.endpoint.startswith('statisty.') %} active{% endif %}">
-          <i class="bi bi-clipboard2-data"></i><span>Статисти</span>
-        </a>
+        <div class="dropdown">
+          <a class="topnav-link dropdown-toggle{% if request.endpoint and request.endpoint.startswith('statisty.') %} active{% endif %}"
+             href="#" role="button" data-bs-toggle="dropdown" aria-expanded="false">
+            <i class="bi bi-clipboard2-data"></i><span>Статисти</span>
+          </a>
+          <ul class="dropdown-menu shadow-sm">
+            <li>
+              <a class="dropdown-item{% if request.endpoint and request.endpoint.startswith('statisty.form007') %} active{% endif %}"
+                 href="{{ url_for('statisty.form007') }}">
+                <i class="bi bi-calendar3 me-2"></i>Форма 007 — рух хворих
+              </a>
+            </li>
+            <li>
+              <a class="dropdown-item{% if request.endpoint == 'statisty.form016' %} active{% endif %}"
+                 href="{{ url_for('statisty.form016') }}">
+                <i class="bi bi-clipboard2-data me-2"></i>Форма 016 — зведена відомість
+              </a>
+            </li>
+          </ul>
+        </div>
       {% endif %}
       {% if current_user.role == 'admin' %}
         <div class="topnav-divider"></div>
