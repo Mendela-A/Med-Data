@@ -1,0 +1,199 @@
+<!DOCTYPE html>
+<html lang="uk">
+<head>
+<meta charset="UTF-8">
+<title>Форма 007 — {{ dept.name }} — {{ period_label }}</title>
+<style>
+@page {
+    size: A4 landscape;
+    margin: 0.8cm 0.7cm 1.2cm 0.7cm;
+    @bottom-center {
+        content: "КНП «Калуська ЦРЛ» — {{ dept.name }} — {{ period_label }}";
+        font-size: 7pt;
+        color: #666;
+    }
+    @bottom-right {
+        content: "Стор. " counter(page) " з " counter(pages);
+        font-size: 7pt;
+        color: #666;
+    }
+}
+
+* { margin: 0; padding: 0; box-sizing: border-box; }
+
+body {
+    font-family: 'DejaVu Sans', Arial, sans-serif;
+    font-size: 7.5pt;
+    color: #111;
+}
+
+table {
+    width: 100%;
+    border-collapse: collapse;
+    table-layout: fixed;
+}
+th, td {
+    border: 1px solid #333;
+    padding: 1px 2px;
+    vertical-align: middle;
+    text-align: center;
+    word-wrap: break-word;
+}
+th {
+    background: #e8edf5;
+    font-size: 6.5pt;
+    font-weight: bold;
+    line-height: 1.2;
+}
+td.date-cell {
+    font-weight: bold;
+    font-size: 7pt;
+}
+td.empty-row {
+    color: #bbb;
+}
+tr.totals td {
+    font-weight: bold;
+    background: #d0d8e8;
+}
+.col-num { color: #777; font-size: 6pt; }
+.signature {
+    margin-top: 8px;
+    font-size: 7.5pt;
+}
+</style>
+</head>
+<body>
+
+<div style="overflow: hidden; margin-bottom: 12px; border-bottom: 1px solid #ccc; padding-bottom: 8px;">
+  <div style="float: left; text-align: left; width: 45%; line-height: 1.3;">
+    Міністерство охорони здоров'я України<br>
+    <strong>КНП «Калуська центральна районна лікарня»</strong><br>
+    <span style="font-size: 6.5pt; color: #555;">вул. Каракая, 25, м. Калуш, Івано-Франківська обл., 77300</span>
+  </div>
+  <div style="float: right; text-align: right; width: 45%; line-height: 1.3;">
+    МЕДИЧНА ДОКУМЕНТАЦІЯ<br>
+    <strong>Форма № 007/о</strong><br>
+    <span style="font-size: 6.5pt; color: #555;">Затверджено наказом МОЗ України<br>від 29.05.2013 р. № 110</span>
+  </div>
+  <div style="clear: both; text-align: center; padding-top: 10px;">
+    <h1 style="font-size: 10pt; font-weight: bold; margin: 0; text-transform: uppercase;">Рух хворих і ліжкового фонду</h1>
+    <div style="font-size: 8.5pt; font-weight: bold; margin-top: 2px;">по відділенню: {{ dept.bed_profile_name or dept.name }}</div>
+    <div style="font-size: 7.5pt; margin-top: 3px;">за <strong>{{ period_label }}</strong></div>
+  </div>
+</div>
+
+<table>
+  <colgroup>
+    <col style="width:5%">  <!-- дата -->
+    <col style="width:3.5%"><!-- 3 beds -->
+    <col style="width:3.5%"><!-- 4 renovation -->
+    <col style="width:4%">  <!-- 5 start -->
+    <col style="width:4%">  <!-- 6 admitted -->
+    <col style="width:4%">  <!-- 7 rural -->
+    <col style="width:4%">  <!-- 8 children -->
+    <col style="width:4%">  <!-- 9 transfin -->
+    <col style="width:4%">  <!-- 10 transout -->
+    <col style="width:4%">  <!-- 11 discharged -->
+    <col style="width:4%">  <!-- 12 disc_other -->
+    <col style="width:3.5%"><!-- 13 deaths -->
+    <col style="width:4%">  <!-- 14 end -->
+    <col style="width:4%">  <!-- 15 end_rural -->
+    <col style="width:4%">  <!-- 16 mothers -->
+    <col style="width:4%">  <!-- 17 free_m -->
+    <col style="width:4%">  <!-- 18 free_f -->
+  </colgroup>
+  <thead>
+    <tr>
+      <th rowspan="4">Дата</th>
+      <th rowspan="4">Розгорнуто ліжок, вкл. згорнуті на ремонт</th>
+      <th rowspan="4">В т.ч. згорнуті на ремонт</th>
+      <th colspan="9">Рух хворих за минулу добу</th>
+      <th colspan="5">На початок поточного дня</th>
+    </tr>
+    <tr>
+      <th colspan="4">Поступило хворих</th>
+      <th colspan="2">Переведено всередині лікарні</th>
+      <th colspan="2">Виписано хворих</th>
+      <th rowspan="3">Померло</th>
+      <th colspan="2">Знаходилось хворих</th>
+      <th rowspan="3">перебуває матерів при дітях</th>
+      <th colspan="2">к-ть вільних місць</th>
+    </tr>
+    <tr>
+      <th rowspan="2">Було хворих на поч. мин. доби</th>
+      <th colspan="3">Поступило без переведення всередині лікарні</th>
+      <th rowspan="2">із інших відділів</th>
+      <th rowspan="2">в інші відділи</th>
+      <th rowspan="2">Всього</th>
+      <th rowspan="2">в т.ч. переведених в інші стаціонари</th>
+      <th rowspan="2">всього</th>
+      <th rowspan="2">в т.ч. сільських</th>
+      <th rowspan="2">чоловічих</th>
+      <th rowspan="2">жіночих</th>
+    </tr>
+    <tr>
+      <th>Всього</th>
+      <th>Сільських жителів</th>
+      <th>дітей до 17 р.</th>
+    </tr>
+    <tr>
+      <td class="col-num">Дата</td>
+      {% for n in range(3, 19) %}
+      <td class="col-num">{{ n }}</td>
+      {% endfor %}
+    </tr>
+  </thead>
+  <tbody>
+    {% for day, r in rows %}
+    <tr {% if not r %}class="empty-row"{% endif %}>
+      <td class="date-cell">{{ day.strftime('%d.%m') }}</td>
+      <td>{{ r.beds_total if r and r.beds_total is not none else '' }}</td>
+      <td>{{ r.beds_renovation if r and r.beds_renovation is not none else '' }}</td>
+      <td>{{ r.patients_start if r and r.patients_start is not none else '' }}</td>
+      <td><strong>{{ r.admitted_total if r and r.admitted_total is not none else '' }}</strong></td>
+      <td>{{ r.admitted_rural if r and r.admitted_rural is not none else '' }}</td>
+      <td>{{ r.admitted_children if r and r.admitted_children is not none else '' }}</td>
+      <td>{{ r.transferred_in if r and r.transferred_in is not none else '' }}</td>
+      <td>{{ r.transferred_out if r and r.transferred_out is not none else '' }}</td>
+      <td><strong>{{ r.discharged_total if r and r.discharged_total is not none else '' }}</strong></td>
+      <td>{{ r.discharged_to_other if r and r.discharged_to_other is not none else '' }}</td>
+      <td>{{ r.deaths if r and r.deaths is not none else '' }}</td>
+      <td><strong>{{ r.patients_end if r and r.patients_end is not none else '' }}</strong></td>
+      <td>{{ r.patients_end_rural if r and r.patients_end_rural is not none else '' }}</td>
+      <td>{{ r.mothers_with_children if r and r.mothers_with_children is not none else '' }}</td>
+      <td>{{ r.free_male if r and r.free_male is not none else '' }}</td>
+      <td>{{ r.free_female if r and r.free_female is not none else '' }}</td>
+    </tr>
+    {% endfor %}
+  </tbody>
+  <tfoot>
+    <tr class="totals">
+      <td>Разом</td>
+      <td>{{ totals.beds_total if totals.beds_total is not none else '' }}</td>
+      <td>{{ totals.beds_renovation if totals.beds_renovation is not none else '' }}</td>
+      <td>{{ totals.patients_start if totals.patients_start is not none else '' }}</td>
+      <td>{{ totals.admitted_total or '' }}</td>
+      <td>{{ totals.admitted_rural or '' }}</td>
+      <td>{{ totals.admitted_children or '' }}</td>
+      <td>{{ totals.transferred_in or '' }}</td>
+      <td>{{ totals.transferred_out or '' }}</td>
+      <td>{{ totals.discharged_total or '' }}</td>
+      <td>{{ totals.discharged_to_other or '' }}</td>
+      <td>{{ totals.deaths or '' }}</td>
+      <td>{{ totals.patients_end if totals.patients_end is not none else '' }}</td>
+      <td>{{ totals.patients_end_rural if totals.patients_end_rural is not none else '' }}</td>
+      <td>{{ totals.mothers_with_children or '' }}</td>
+      <td>{{ totals.free_male if totals.free_male is not none else '' }}</td>
+      <td>{{ totals.free_female if totals.free_female is not none else '' }}</td>
+    </tr>
+  </tfoot>
+</table>
+
+<div class="signature">
+  Готувала: _________________________________&nbsp;&nbsp;&nbsp;&nbsp;
+  Дата: {{ from_date.strftime('%d.%m.%Y') }}
+</div>
+
+</body>
+</html>

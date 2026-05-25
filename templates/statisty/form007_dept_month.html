@@ -13,6 +13,14 @@
   <span class="badge bg-secondary fs-6">{{ period_label }}</span>
 </div>
 
+<div class="mb-2">
+  <a href="{{ url_for('statisty.form007_dept_month_print', department_id=dept.id, from_date=from_date.strftime('%Y-%m')) }}"
+     target="_blank"
+     class="btn btn-outline-danger btn-sm">
+    <i class="bi bi-printer me-1"></i>Друк PDF
+  </a>
+</div>
+
 <form method="get" class="row g-2 align-items-end mb-3">
   <div class="col-auto">
     <label class="form-label small mb-1">Відділення</label>
