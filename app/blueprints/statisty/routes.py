@@ -403,8 +403,8 @@ def form007_dept_month(department_id):
     last_r = next((reports[d] for d in reversed(all_days) if d in reports), None)
     totals['beds_total']         = last_r.beds_total          if last_r  else None
     totals['beds_renovation']    = last_r.beds_renovation     if last_r  else None
-    totals['free_male']          = last_r.free_male           if last_r  else None
-    totals['free_female']        = last_r.free_female         if last_r  else None
+    totals['free_male']          = None
+    totals['free_female']        = None
 
     depts = Department.query.order_by(Department.row_no.nullslast(), Department.name).all()
 
@@ -450,8 +450,8 @@ def form007_dept_month_print(department_id):
     last_r = next((reports[d] for d in reversed(all_days) if d in reports), None)
     totals['beds_total']         = last_r.beds_total          if last_r  else None
     totals['beds_renovation']    = last_r.beds_renovation     if last_r  else None
-    totals['free_male']          = last_r.free_male           if last_r  else None
-    totals['free_female']        = last_r.free_female         if last_r  else None
+    totals['free_male']          = None
+    totals['free_female']        = None
 
     html_string = render_template(
         'print_form007_dept_month.html',
