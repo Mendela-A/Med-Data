@@ -1039,3 +1039,18 @@ input[list]:focus::-webkit-calendar-picker-indicator { opacity: 1; }
 .excel-table tbody tr:hover td.excel-computed {
   background-color: #fef3c7 !important; /* amber on hover */
 }
+
+/* Vertical text headers for Form 016/o to match MoH paper forms */
+.excel-table th.vertical-header {
+  writing-mode: vertical-rl;
+  transform: rotate(180deg);
+  white-space: normal !important;
+  vertical-align: middle !important;
+  text-align: left !important; /* aligns text to bottom of header after rotation */
+  padding: 8px 3px !important;
+  font-size: 0.72rem !important;
+  line-height: 1.1 !important;
+  height: 240px; /* enough room for long vertical labels */
+  max-width: 45px;
+  min-width: 32px;
+}

@@ -3,13 +3,16 @@ from app import create_app
 from models import db
 from models import User, Record, Department
 
+class TestConfig:
+    TESTING = True
+    WTF_CSRF_ENABLED = False
+    SQLALCHEMY_DATABASE_URI = 'sqlite:///:memory:'
+    SECRET_KEY = 'test_secret_key'
+    SQLALCHEMY_TRACK_MODIFICATIONS = False
+
 @pytest.fixture
 def app():
-    app = create_app()
-    app.config['TESTING'] = True
-    app.config['WTF_CSRF_ENABLED'] = False
-    # Use an isolated in-memory database for tests to avoid touching local data/app.db
-    app.config['SQLALCHEMY_DATABASE_URI'] = 'sqlite:///:memory:'
+    app = create_app(TestConfig)
     with app.app_context():
         # ensure a clean DB for tests
         db.create_all()
@@ -70,7 +73,7 @@ def test_operators_can_see_each_others_records(app, client):
         # create a record as op1
         client.post('/login', data={'username': 'op1', 'password': 'pass'}, follow_redirects=True)
         data = {
-            'date_of_discharge': '2026-01-09',
+            'date_of_discharge': datetime.date.today().isoformat(),
             'full_name': 'Shared Record',
             'discharge_department': 'DeptTest',
             'treating_physician': 'Dr',

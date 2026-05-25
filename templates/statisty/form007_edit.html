@@ -25,19 +25,19 @@
           <th rowspan="4">Розгорнуто ліжок, вкл.<br>згорнуті на ремонт</th>
           <th rowspan="4">В т.ч. згорнуті<br>на ремонт</th>
           <th colspan="9">Рух хворих за минулу добу</th>
-          <th colspan="6">На початок поточного дня</th>
+          <th colspan="5">На початок поточного дня</th>
         </tr>
         <tr>
-          <th rowspan="3">Було хворих на поч. мин. доби</th>
-          <th colspan="3">Поступило хворих</th>
+          <th colspan="4">Поступило хворих</th>
           <th colspan="2">Переведено всередині лікарні</th>
           <th colspan="2">Виписано хворих</th>
           <th rowspan="3">Померло</th>
           <th colspan="2">Знаходилось хворих</th>
           <th rowspan="3">перебуває матерів при дітях</th>
-          <th colspan="3">к-ть вільних місць</th>
+          <th colspan="2">к-ть вільних місць</th>
         </tr>
         <tr>
+          <th rowspan="2">Було хворих на поч. мин. доби</th>
           <th colspan="3">Поступило без переведення всередині лікарні</th>
           <th rowspan="2">із інших відділів</th>
           <th rowspan="2">в інші відділи</th>
@@ -47,7 +47,6 @@
           <th rowspan="2">в т.ч. сільських</th>
           <th rowspan="2">чоловічих</th>
           <th rowspan="2">жіночих</th>
-          <th rowspan="2">у загальному</th>
         </tr>
         <tr>
           <th>Всього</th>
@@ -59,7 +58,7 @@
           <td>6</td><td>7</td><td>8</td>
           <td>9</td><td>10</td><td>11</td><td>12</td>
           <td>13</td><td>14</td><td>15</td><td>16</td>
-          <td>17</td><td>18</td><td>19</td>
+          <td>17</td><td>18</td>
         </tr>
       </thead>
       <tbody>
@@ -134,11 +133,6 @@
             {# col18 — free_female #}
             <td><input type="number" name="free_female_{{ dept.id }}" min="0"
                        value="{{ r.free_female if r and r.free_female is not none else '' }}"></td>
-
-            {# col19 — free_total (computed: beds_total − patients_end) #}
-            <td class="text-center excel-computed">
-              <small>{{ r.free_total if r and r.free_total is not none else '' }}</small>
-            </td>
           </tr>
         {% endfor %}
       </tbody>

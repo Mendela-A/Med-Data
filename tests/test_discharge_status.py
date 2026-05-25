@@ -3,13 +3,16 @@ from app import create_app
 from models import db
 from models import User, Record, Department
 
+class TestConfig:
+    TESTING = True
+    WTF_CSRF_ENABLED = False
+    SQLALCHEMY_DATABASE_URI = 'sqlite:///:memory:'
+    SECRET_KEY = 'test_secret_key'
+    SQLALCHEMY_TRACK_MODIFICATIONS = False
+
 @pytest.fixture
 def app():
-    app = create_app()
-    app.config['TESTING'] = True
-    app.config['WTF_CSRF_ENABLED'] = False
-    # Use an isolated in-memory database for tests to avoid touching local data/app.db
-    app.config['SQLALCHEMY_DATABASE_URI'] = 'sqlite:///:memory:'
+    app = create_app(TestConfig)
     with app.app_context():
         # ensure a clean DB for tests
         db.create_all()
@@ -62,7 +65,7 @@ def test_operator_add_does_not_auto_set_discharge_status(app, client):
         client.post('/records/add', data=data, follow_redirects=True)
         r = Record.query.filter_by(full_name='Operator Auto Test').first()
         assert r is not None
-        assert r.discharge_status is None or r.discharge_status == ''
+        assert r.discharge_status == 'Опрацьовується'
 
 def test_editor_can_view_and_set_discharge_status(app, client):
     with app.app_context():

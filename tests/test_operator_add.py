@@ -4,12 +4,16 @@ from app import create_app
 from models import db
 from models import User, Record
 
+class TestConfig:
+    TESTING = True
+    WTF_CSRF_ENABLED = False
+    SQLALCHEMY_DATABASE_URI = 'sqlite:///:memory:'
+    SECRET_KEY = 'test_secret_key'
+    SQLALCHEMY_TRACK_MODIFICATIONS = False
+
 @pytest.fixture
 def app():
-    app = create_app()
-    app.config['TESTING'] = True
-    app.config['WTF_CSRF_ENABLED'] = False
-    app.config['SQLALCHEMY_DATABASE_URI'] = 'sqlite:///:memory:'
+    app = create_app(TestConfig)
     with app.app_context():
         db.create_all()
         yield app
@@ -38,7 +42,7 @@ def test_operator_can_add_without_department(app, client):
         # login as operator
         client.post('/login', data={'username': 'op', 'password': 'pass'}, follow_redirects=True)
         data = {
-            'date_of_discharge': '2026-01-01',
+            'date_of_discharge': datetime.date.today().isoformat(),
             'full_name': 'NoDept Record',
             'discharge_department': '',
             'treating_physician': 'Dr',
@@ -47,7 +51,7 @@ def test_operator_can_add_without_department(app, client):
         }
         rv = client.post('/records/add', data=data, follow_redirects=True)
         txt = rv.get_data(as_text=True)
-        assert 'Record added' in txt
+        assert 'успішно додано' in txt
         # ensure record exists in DB
         r = Record.query.filter_by(full_name='NoDept Record').first()
         assert r is not None

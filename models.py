@@ -205,6 +205,8 @@ class DailyReport(db.Model):
     admitted_rural        = db.Column(db.Integer, nullable=True)
     # col8 — поступило дітей до 17р (manual)
     admitted_children     = db.Column(db.Integer, nullable=True)
+    # col8_rural — поступило дітей до 17р сільських (manual)
+    admitted_children_rural = db.Column(db.Integer, nullable=True)
     # col9 — переведено з ін. відділів (manual)
     transferred_in        = db.Column(db.Integer, nullable=True)
     # col10 — переведено в ін. відділи (manual)

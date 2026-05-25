@@ -3,7 +3,8 @@ Import Форма 007 — April 2026 from data/007/04_data.xlsx.
 Each sheet ('01'–'30') = one day. Data rows 12–32 + 34 (Пологовий будинок).
 """
 import sys
-sys.path.insert(0, '/app')
+import os
+sys.path.insert(0, os.path.abspath(os.path.dirname(os.path.dirname(__file__))))
 from datetime import date
 import openpyxl
 from app import create_app
@@ -41,7 +42,7 @@ NAME_MAP = {
     'ВСЬОГО по КНП':        None,
 }
 
-XLSX_PATH = '/app/data/007/04_data.xlsx'
+XLSX_PATH = os.path.join(os.path.dirname(os.path.dirname(__file__)), 'data/007/04_data.xlsx')
 YEAR, MONTH = 2026, 4
 
 app = create_app()
@@ -120,6 +121,14 @@ with app.app_context():
             r.admitted_total        = _int(row[5])
             r.admitted_rural        = _int(row[6])
             r.admitted_children     = _int(row[7])
+            
+            adm_child = _int(row[7])
+            adm_rural = _int(row[6])
+            if dept.name == 'Педіатричне':
+                r.admitted_children_rural = adm_rural
+            else:
+                r.admitted_children_rural = min(adm_child or 0, adm_rural or 0) if adm_child else 0
+
             r.transferred_in        = _int(row[8])
             r.transferred_out       = _int(row[9])
             r.discharged_total      = _int(row[10])

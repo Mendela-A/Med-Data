@@ -1,16 +1,43 @@
 {% extends "base.html" %}
-{% block title %}Форма 016 — Звіт стаціонару{% endblock %}
+{% block title %}Форма 016/о — Звіт стаціонару{% endblock %}
 
 {% block content %}
+{# Official MoH top-left and top-right headers #}
+<div class="row mb-4 small text-muted px-2">
+  <div class="col-md-6 text-start">
+    Міністерство охорони здоров'я України<br>
+    <strong>КНП «Калуська центральна районна лікарня»</strong>
+  </div>
+  <div class="col-md-6 text-md-end text-start mt-2 mt-md-0">
+    МЕДИЧНА ДОКУМЕНТАЦІЯ<br>
+    <strong>Форма № 016/о</strong><br>
+    <span style="font-size: 0.8rem;">Затверджено наказом МОЗ України від 27.12.05 р. № 760</span>
+  </div>
+</div>
+
 <div class="d-flex align-items-center justify-content-between mb-3 flex-wrap gap-2">
   <h4 class="mb-0">
-    <i class="bi bi-clipboard2-data me-2 text-primary"></i>Форма 016 — Звіт про роботу стаціонару
+    <i class="bi bi-clipboard2-data me-2 text-primary"></i>
+    {% if selected_dept %}
+      ЗВЕДЕНА ВІДОМІСТЬ обліку руху хворих і ліжкового фонду в стаціонарі, відділенні або профілю ліжок по відділенню: <strong>{{ selected_dept.name }}</strong>
+    {% else %}
+      ЗВЕДЕНА ВІДОМІСТЬ обліку руху хворих і ліжкового фонду в стаціонарі
+    {% endif %}
   </h4>
   <span class="badge bg-secondary fs-6">{{ period_label }}</span>
 </div>
 
-{# Date range form #}
+{# Date range and Department form #}
 <form method="get" class="row g-2 align-items-end mb-4">
+  <div class="col-auto">
+    <label class="form-label mb-1 small">Відділення</label>
+    <select name="department_id" class="form-select form-select-sm">
+      <option value="">Всі відділення (стаціонар)</option>
+      {% for d in depts %}
+        <option value="{{ d.id }}" {% if d.id == department_id %}selected{% endif %}>{{ d.name }}</option>
+      {% endfor %}
+    </select>
+  </div>
   <div class="col-auto">
     <label class="form-label mb-1 small">Від</label>
     <input type="date" name="from_date" class="form-control form-control-sm"
@@ -27,7 +54,7 @@
     </button>
   </div>
   <div class="col-auto ms-auto">
-    <a href="{{ url_for('statisty.form016_export', from_date=from_date.isoformat(), to_date=to_date.isoformat()) }}"
+    <a href="{{ url_for('statisty.form016_export', from_date=from_date.isoformat(), to_date=to_date.isoformat(), department_id=department_id or '') }}"
        class="btn btn-success btn-sm">
       <i class="bi bi-file-earmark-excel me-1"></i>Excel
     </a>
@@ -46,51 +73,59 @@
 {% else %}
 <div class="alert alert-warning py-2 small mb-3">
   <i class="bi bi-exclamation-triangle me-1"></i>
-  Форму 007 ще не введено за цей період. Будь ласка, введіть щоденні звіти Форми 007 для відображення статистики.
+  Форму 007 ще не введено для вибраних умов за цей період.
 </div>
 {% endif %}
+
 {% if table %}
 <div class="table-responsive">
-  <table class="table table-sm excel-table align-middle text-center" style="min-width: 1400px; font-size: 0.85rem;">
+  <table class="table table-sm excel-table align-middle text-center" style="min-width: 1500px; font-size: 0.85rem;">
     <thead>
       <tr>
-        <th rowspan="2" style="min-width:160px;" class="align-middle">Назва профілю ліжка</th>
-        <th rowspan="2" style="width:50px;" class="align-middle">№ рядка</th>
-        <th rowspan="2" class="align-middle">Розгорнуто ліжок<br>на кінець звіт. періоду</th>
-        <th rowspan="2" class="align-middle excel-computed text-dark">Число середньомісячних<br>(річних) ліжок</th>
-        <th rowspan="2" class="align-middle">Перебувало хворих<br>на початок звіт. періоду</th>
-        <th colspan="3" class="align-middle">Поступило хворих за звітний період</th>
-        <th colspan="2" class="align-middle">Переведені всередині лікарні</th>
-        <th colspan="2" class="align-middle">Виписано хворих</th>
-        <th rowspan="2" class="align-middle">Померло за звітний період</th>
-        <th rowspan="2" class="align-middle">Перебувало хворих<br>на кінець звіт. періоду</th>
-        <th colspan="2" class="align-middle">Проведено ліжко-днів хворими</th>
-        <th rowspan="2" class="align-middle">К-ть ліжко-днів<br>закриття на ремонт</th>
-        <th rowspan="2" class="align-middle">Крім того, проведено<br>ліжко-днів матерями при дітях</th>
+        <th rowspan="4" style="min-width:180px;" class="align-middle bg-light text-dark fw-bold border-secondary">Найменування місяців</th>
+        <th rowspan="4" class="align-middle bg-light text-dark fw-bold border-secondary vertical-header" style="max-width: 200px; font-size: 0.8rem;">Число ліжок у межах кошторису фактично розгорнутих + згорнутих на ремонт на кінець звітного періоду</th>
+        <th rowspan="4" class="align-middle excel-computed text-dark fw-bold border-secondary vertical-header">Середньомісячних (річних) ліжок</th>
+        <th rowspan="4" class="align-middle bg-light text-dark fw-bold border-secondary vertical-header">Перебувало хворих на початок звітного періоду</th>
+        <th colspan="7" class="align-middle bg-light text-dark fw-bold border-secondary">За звітний період</th>
+        <th rowspan="4" class="align-middle bg-light text-dark fw-bold border-secondary vertical-header">Померло</th>
+        <th rowspan="4" class="align-middle bg-light text-dark fw-bold border-secondary vertical-header">Перебувало хворих на кінець звітного періоду</th>
+        <th rowspan="4" class="align-middle bg-light text-dark fw-bold border-secondary vertical-header" style="max-width: 150px;">Проведено всіма хворими ліжко-днів</th>
+        <th rowspan="4" class="align-middle bg-light text-dark fw-bold border-secondary vertical-header" style="max-width: 130px;">у тому числі сільськими жителями</th>
+        <th rowspan="4" class="align-middle bg-light text-dark fw-bold border-secondary vertical-header">Число ліжко-днів закриття</th>
+        <th rowspan="4" class="align-middle bg-light text-dark fw-bold border-secondary vertical-header" style="max-width: 150px;">Крім того, проведено ліжко-днів матерями з хворими дітьми</th>
       </tr>
       <tr>
-        <th class="align-middle">всього</th>
-        <th class="align-middle">сільських жителів</th>
-        <th class="align-middle">дітей 0-17 р. включно</th>
-        <th class="align-middle">із інших відділень</th>
-        <th class="align-middle">в інші відділення</th>
-        <th class="align-middle">всього</th>
-        <th class="align-middle">переведено в інші стаціонари</th>
-        <th class="align-middle">всього</th>
-        <th class="align-middle">сільськими жителями</th>
+        <th colspan="3" class="align-middle bg-light border-secondary">поступило хворих</th>
+        <th colspan="2" class="align-middle bg-light border-secondary">переведено хворих всередині лікарні</th>
+        <th colspan="2" class="align-middle bg-light border-secondary">виписано хворих</th>
       </tr>
-      <tr class="table-secondary small text-center text-muted">
-        <td>А</td><td>Б</td><td>1</td><td>2</td><td>3</td>
-        <td>4</td><td>5</td><td>6</td><td>7</td><td>8</td>
-        <td>9</td><td>10</td><td>11</td><td>12</td><td>13</td>
-        <td>14</td><td>15</td><td>16</td>
+      <tr>
+        <th rowspan="2" class="align-middle bg-light border-secondary vertical-header">всього</th>
+        <th colspan="2" class="align-middle bg-light border-secondary">із них</th>
+        <th rowspan="2" class="align-middle bg-light border-secondary vertical-header">із інших відділень</th>
+        <th rowspan="2" class="align-middle bg-light border-secondary vertical-header">в інші відділення</th>
+        <th rowspan="2" class="align-middle bg-light border-secondary vertical-header">всього</th>
+        <th rowspan="2" class="align-middle bg-light border-secondary vertical-header" style="max-width: 140px; font-size: 0.75rem;">у тому числі переведені в інші стаціонари (з гр.9)</th>
+      </tr>
+      <tr>
+        <th class="align-middle bg-light border-secondary vertical-header">сільських жителів</th>
+        <th class="align-middle bg-light border-secondary vertical-header">дітей до 17 років включно</th>
+      </tr>
+      <tr class="table-secondary small text-center text-muted border-secondary">
+        <td>А</td><td>1</td><td>2</td><td>3</td><td>4</td>
+        <td>5</td><td>6</td><td>7</td><td>8</td><td>9</td>
+        <td>10</td><td>11</td><td>12</td><td>13</td><td>14</td>
+        <td>15</td><td>16</td>
       </tr>
     </thead>
     <tbody>
       {% for row in table %}
-      <tr>
-        <td class="fw-semibold text-start">{{ row.dept.bed_profile_name or row.dept.name }}</td>
-        <td class="text-center text-muted">{{ row.dept.row_no or '' }}</td>
+      <tr {% if row.is_totals %}class="fw-bold table-light text-primary border-bottom border-dark" style="font-size: 0.9rem;"{% endif %}>
+        {% if row.is_totals %}
+          <td class="text-start ps-3 fw-bold">{{ row.date_str }}</td>
+        {% else %}
+          <td class="fw-semibold text-center">{{ row.date_str }}</td>
+        {% endif %}
         <td class="text-center">{{ row.beds_total if row.beds_total is not none else '' }}</td>
         <td class="text-center excel-computed">{{ row.beds_average if row.beds_average is not none else '' }}</td>
         <td class="text-center">{{ row.patients_start if row.patients_start is not none else '' }}</td>
@@ -112,28 +147,27 @@
       </tr>
       {% endfor %}
     </tbody>
-    <tfoot class="fw-bold text-center table-secondary text-dark">
-      <tr>
-        <td colspan="2" class="text-start ps-3">Разом</td>
-        <td>{{ totals.beds_total or '' }}</td>
-        <td class="excel-computed text-dark">{{ totals.beds_average or '' }}</td>
-        <td>{{ totals.patients_start or '' }}</td>
-        <td>{{ totals.admitted_total or '' }}</td>
-        <td>{{ totals.admitted_rural or '' }}</td>
-        <td>{{ totals.admitted_children or '' }}</td>
-        <td>{{ totals.transferred_in or '' }}</td>
-        <td>{{ totals.transferred_out or '' }}</td>
-        <td>{{ totals.discharged_total or '' }}</td>
-        <td>{{ totals.discharged_to_other or '' }}</td>
-        <td class="{% if totals.deaths %}text-danger{% endif %}">{{ totals.deaths or '' }}</td>
-        <td>{{ totals.patients_end or '' }}</td>
-        <td class="excel-computed text-dark">{{ totals.bed_days_total or '' }}</td>
-        <td>{{ totals.bed_days_rural or '' }}</td>
-        <td>{{ totals.bed_days_renovation or '' }}</td>
-        <td>{{ totals.bed_days_mothers or '' }}</td>
-      </tr>
-    </tfoot>
   </table>
+</div>
+
+{# Official Signature Block #}
+<div class="row mt-4 mb-4 pt-3 pb-3 signature-block bg-light shadow-sm rounded px-3 align-items-center mx-1">
+  <div class="col-md-7 text-start">
+    <div class="fw-bold text-dark mb-1">Заступник генерального директора</div>
+    <div class="text-muted small mb-2">КНП «Калуська ЦРЛ» з адміністративної діяльності</div>
+    <div style="display: flex; align-items: flex-end; gap: 8px;">
+      <span class="text-muted small">Підпис:</span>
+      <div class="signature-line border-bottom border-dark d-inline-block" style="width: 180px; height: 18px;"></div>
+      <span class="fw-semibold text-dark ms-2">Л. Луців</span>
+    </div>
+  </div>
+  <div class="col-md-5 text-md-end text-start mt-3 mt-md-0">
+    <div style="display: flex; align-items: flex-end; justify-content: flex-end; gap: 8px;">
+      <span class="text-muted small">Відповідальний:</span>
+      <div class="signature-line border-bottom border-dark d-inline-block" style="width: 150px; height: 18px;"></div>
+      <span class="fw-bold text-dark text-uppercase ms-2">Валерій ПАЛЯНИЦЯ</span>
+    </div>
+  </div>
 </div>
 
 <div class="alert alert-info py-2 small mt-2 mb-3">
@@ -162,7 +196,7 @@
       <div class="border-top pt-2 mt-2">
         <div class="row g-2">
           <div class="col-md-7">
-            <i class="bi bi-info-circle me-1"></i><strong>Примітка:</strong> У графі 6 "Поступило дітей до 17 років включно" у знаменнику вказується кількість дітей сільських жителів.
+            <i class="bi bi-info-circle me-1"></i><strong>Примітка:</strong> У графі 6 "дітей до 17 років включно" вказується кількість госпіталізованих дітей відповідно до офіційного стандарту.
           </div>
           <div class="col-md-5 text-md-end border-start-md">
             <div><strong>Термін зберігання:</strong> 1 рік після звітного періоду.</div>
