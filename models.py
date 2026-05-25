@@ -260,6 +260,32 @@ class DailyReport(db.Model):
         return f"<DailyReport {self.report_date} dept={self.department_id}>"
 
 
+class PrintSettings(db.Model):
+    """Singleton (id=1) — налаштування шапки для друку форм."""
+    __tablename__ = 'print_settings'
+
+    id             = db.Column(db.Integer, primary_key=True)
+    ministry       = db.Column(db.String(200), nullable=False,
+                               default="Міністерство охорони здоров'я України")
+    org_name       = db.Column(db.String(200), nullable=False,
+                               default='КНП «Калуська центральна районна лікарня»')
+    org_short_name = db.Column(db.String(100), nullable=False,
+                               default='КНП «Калуська ЦРЛ»')
+    org_address    = db.Column(db.String(300), nullable=False,
+                               default='вул. Каракая, 25, м. Калуш, Івано-Франківська обл., 77300')
+    signer1_title  = db.Column(db.String(200), nullable=False,
+                               default='Заступник генерального директора')
+    signer1_name   = db.Column(db.String(100), nullable=False,
+                               default='Л. Луців')
+    signer2_label  = db.Column(db.String(100), nullable=False,
+                               default='Відповідальний:')
+    signer2_name   = db.Column(db.String(100), nullable=False,
+                               default='Валерій ПАЛЯНИЦЯ')
+
+    def __repr__(self):
+        return f"<PrintSettings org={self.org_short_name}>"
+
+
 def log_action(actor_id, action, target_type=None, target_id=None, details=None):
     """Create an audit log entry. Caller is responsible for committing."""
     a = Audit(actor_id=actor_id, action=action, target_type=target_type, target_id=target_id, details=details)

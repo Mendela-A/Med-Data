@@ -67,9 +67,9 @@ tr.totals td {
 
 <div style="overflow: hidden; margin-bottom: 12px; border-bottom: 1px solid #ccc; padding-bottom: 8px;">
   <div style="float: left; text-align: left; width: 45%; line-height: 1.3;">
-    Міністерство охорони здоров'я України<br>
-    <strong>КНП «Калуська центральна районна лікарня»</strong><br>
-    <span style="font-size: 6.5pt; color: #555;">вул. Каракая, 25, м. Калуш, Івано-Франківська обл., 77300</span>
+    {{ ps.ministry }}<br>
+    <strong>{{ ps.org_name }}</strong><br>
+    <span style="font-size: 6.5pt; color: #555;">{{ ps.org_address }}</span>
   </div>
   <div style="float: right; text-align: right; width: 45%; line-height: 1.3;">
     МЕДИЧНА ДОКУМЕНТАЦІЯ<br>
@@ -198,7 +198,7 @@ tr.totals td {
 </table>
 
 <div class="signature">
-  Готувала: _________________________________&nbsp;&nbsp;&nbsp;&nbsp;
+  {{ ps.signer2_label }} _________________________________&nbsp;&nbsp;&nbsp;&nbsp;
   Дата: {{ from_date.strftime('%d.%m.%Y') }}
 </div>
 

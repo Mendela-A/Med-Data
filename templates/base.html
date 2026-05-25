@@ -58,6 +58,15 @@
                 <i class="bi bi-clipboard2-data me-2"></i>Форма 016 — зведена відомість
               </a>
             </li>
+            {% if current_user.role == 'admin' %}
+            <li><hr class="dropdown-divider"></li>
+            <li>
+              <a class="dropdown-item{% if request.endpoint == 'statisty.print_settings_edit' %} active{% endif %}"
+                 href="{{ url_for('statisty.print_settings_edit') }}">
+                <i class="bi bi-printer me-2"></i>Налаштування друку
+              </a>
+            </li>
+            {% endif %}
           </ul>
         </div>
       {% endif %}

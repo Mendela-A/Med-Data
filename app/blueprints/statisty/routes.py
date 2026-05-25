@@ -6,7 +6,7 @@ from io import BytesIO
 from sqlalchemy import func, case
 
 from app.extensions import db
-from models import Record, Department, DailyReport
+from models import Record, Department, DailyReport, PrintSettings
 from decorators import role_required
 from . import statisty_bp
 
@@ -14,6 +14,15 @@ from . import statisty_bp
 # ---------------------------------------------------------------------------
 # Helpers
 # ---------------------------------------------------------------------------
+
+def _get_print_settings():
+    ps = PrintSettings.query.get(1)
+    if ps is None:
+        ps = PrintSettings(id=1)
+        db.session.add(ps)
+        db.session.commit()
+    return ps
+
 
 def _parse_date_range():
     today = date.today()
@@ -467,6 +476,7 @@ def form007_dept_month_print(department_id):
         totals=totals,
         from_date=first_day,
         period_label=_period_label(first_day, last_day),
+        ps=_get_print_settings(),
     )
 
     try:
@@ -596,6 +606,7 @@ def form007_print(report_date_str):
         rows=rows,
         totals=totals,
         report_date=report_date,
+        ps=_get_print_settings(),
     )
 
     try:
@@ -665,6 +676,7 @@ def form016_print():
         to_date=to_date,
         period_label=_period_label(from_date, to_date),
         selected_dept=selected_dept,
+        ps=_get_print_settings(),
     )
 
     try:
@@ -925,4 +937,25 @@ def form016_export():
         mimetype='application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
         headers={'Content-Disposition': f'attachment; filename="{filename}"'},
     )
+
+
+# ---- Print settings ---------------------------------------------------------
+
+@statisty_bp.route('/print-settings', methods=['GET', 'POST'])
+@role_required('admin')
+def print_settings_edit():
+    ps = _get_print_settings()
+    if request.method == 'POST':
+        ps.ministry       = request.form.get('ministry', '').strip()
+        ps.org_name       = request.form.get('org_name', '').strip()
+        ps.org_short_name = request.form.get('org_short_name', '').strip()
+        ps.org_address    = request.form.get('org_address', '').strip()
+        ps.signer1_title  = request.form.get('signer1_title', '').strip()
+        ps.signer1_name   = request.form.get('signer1_name', '').strip()
+        ps.signer2_label  = request.form.get('signer2_label', '').strip()
+        ps.signer2_name   = request.form.get('signer2_name', '').strip()
+        db.session.commit()
+        flash('Налаштування друку збережено.', 'success')
+        return redirect(url_for('statisty.print_settings_edit'))
+    return render_template('statisty/print_settings.html', ps=ps)
 

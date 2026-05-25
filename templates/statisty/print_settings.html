@@ -1,0 +1,64 @@
+{% extends "base.html" %}
+{% block title %}Налаштування друку форм{% endblock %}
+
+{% block content %}
+<div class="d-flex align-items-center mb-3">
+  <h4 class="mb-0">
+    <i class="bi bi-printer me-2 text-primary"></i>Налаштування друку форм
+  </h4>
+</div>
+
+<div class="card shadow-sm" style="max-width: 700px;">
+  <div class="card-body">
+    <form method="post">
+      <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+
+      <h6 class="text-muted mb-3 border-bottom pb-2">Заклад охорони здоров'я</h6>
+
+      <div class="mb-3">
+        <label class="form-label">Міністерство / відомство</label>
+        <input type="text" class="form-control" name="ministry" value="{{ ps.ministry }}">
+      </div>
+      <div class="mb-3">
+        <label class="form-label">Повна назва закладу</label>
+        <input type="text" class="form-control" name="org_name" value="{{ ps.org_name }}">
+      </div>
+      <div class="mb-3">
+        <label class="form-label">Скорочена назва (для колонтитулів)</label>
+        <input type="text" class="form-control" name="org_short_name" value="{{ ps.org_short_name }}">
+      </div>
+      <div class="mb-4">
+        <label class="form-label">Адреса</label>
+        <input type="text" class="form-control" name="org_address" value="{{ ps.org_address }}">
+      </div>
+
+      <h6 class="text-muted mb-3 border-bottom pb-2">Підписанти</h6>
+
+      <div class="row g-3 mb-3">
+        <div class="col-md-8">
+          <label class="form-label">Посада підписанта 1</label>
+          <input type="text" class="form-control" name="signer1_title" value="{{ ps.signer1_title }}">
+        </div>
+        <div class="col-md-4">
+          <label class="form-label">ПІБ підписанта 1</label>
+          <input type="text" class="form-control" name="signer1_name" value="{{ ps.signer1_name }}">
+        </div>
+      </div>
+      <div class="row g-3 mb-4">
+        <div class="col-md-8">
+          <label class="form-label">Підпис 2 — мітка</label>
+          <input type="text" class="form-control" name="signer2_label" value="{{ ps.signer2_label }}">
+        </div>
+        <div class="col-md-4">
+          <label class="form-label">ПІБ підписанта 2</label>
+          <input type="text" class="form-control" name="signer2_name" value="{{ ps.signer2_name }}">
+        </div>
+      </div>
+
+      <button type="submit" class="btn btn-primary">
+        <i class="bi bi-check2 me-1"></i>Зберегти
+      </button>
+    </form>
+  </div>
+</div>
+{% endblock %}

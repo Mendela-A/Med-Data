@@ -8,7 +8,7 @@
     size: A4 landscape;
     margin: 0.6cm 0.6cm 1.1cm 0.6cm;
     @bottom-center {
-        content: "КНП «Калуська ЦРЛ» — Форма 016/о — {{ from_date.year }}";
+        content: "{{ ps.org_short_name }} — Форма 016/о — {{ from_date.year }}";
         font-size: 7pt;
         color: #666;
     }
@@ -106,9 +106,9 @@ tr.totals-row td {
 
 <div class="header">
   <div class="header-left">
-    Міністерство охорони здоров'я України<br>
-    <strong>КНП «Калуська центральна районна лікарня»</strong><br>
-    <span style="font-size: 6pt; color: #555;">вул. Каракая, 25, м. Калуш, Івано-Франківська обл., 77300</span>
+    {{ ps.ministry }}<br>
+    <strong>{{ ps.org_name }}</strong><br>
+    <span style="font-size: 6pt; color: #555;">{{ ps.org_address }}</span>
   </div>
   <div class="header-right">
     МЕДИЧНА ДОКУМЕНТАЦІЯ<br>
@@ -213,8 +213,8 @@ tr.totals-row td {
 </table>
 
 <div class="signature">
-  Заступник генерального директора КНП «Калуська ЦРЛ»: _______________________ Л. Луців &nbsp;&nbsp;&nbsp;&nbsp;
-  Відповідальний: _______________________ Валерій ПАЛЯНИЦЯ &nbsp;&nbsp;&nbsp;&nbsp;
+  {{ ps.signer1_title }} {{ ps.org_short_name }}: _______________________ {{ ps.signer1_name }} &nbsp;&nbsp;&nbsp;&nbsp;
+  {{ ps.signer2_label }} _______________________ {{ ps.signer2_name }} &nbsp;&nbsp;&nbsp;&nbsp;
   Дата: _______________
 </div>
 
