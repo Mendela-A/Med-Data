@@ -289,6 +289,14 @@ class PrintSettings(db.Model):
                                  default='ЗВЕДЕНА ВІДОМІСТЬ ОБЛІКУ РУХУ ХВОРИХ')
     form016_subtitle = db.Column(db.String(200), nullable=False,
                                  default='і ліжкового фонду стаціонару')
+    form007_form_no  = db.Column(db.String(50),  nullable=False,
+                                 default='Форма № 007/о')
+    form007_decree   = db.Column(db.String(200), nullable=False,
+                                 default='Затверджено наказом МОЗ України від 29.05.2013 р. № 110')
+    form016_form_no  = db.Column(db.String(50),  nullable=False,
+                                 default='Форма № 016/о')
+    form016_decree   = db.Column(db.String(200), nullable=False,
+                                 default='Затверджено наказом МОЗ України від 27.12.05 р. № 760')
 
     def __repr__(self):
         return f"<PrintSettings org={self.org_short_name}>"
