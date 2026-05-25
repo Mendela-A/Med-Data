@@ -116,8 +116,8 @@ tr.totals-row td {
     <span style="font-size: 6pt; color: #555;">Затверджено наказом МОЗ України від 27.12.05 р. № 760</span>
   </div>
   <div class="header-center">
-    <h1>ЗВЕДЕНА ВІДОМІСТЬ ОБЛІКУ РУХУ ХВОРИХ</h1>
-    <div style="font-size: 8pt; font-weight: bold; margin-top: 2px;">і ліжкового фонду стаціонару</div>
+    <h1>{{ ps.form016_title }}</h1>
+    <div style="font-size: 8pt; font-weight: bold; margin-top: 2px;">{{ ps.form016_subtitle }}</div>
     <div style="font-size: 7.5pt; margin-top: 3px;">
       {% if selected_dept %}
         по відділенню: <strong>{{ selected_dept.name }}</strong> —

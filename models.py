@@ -281,6 +281,14 @@ class PrintSettings(db.Model):
                                default='Відповідальний:')
     signer2_name   = db.Column(db.String(100), nullable=False,
                                default='Валерій ПАЛЯНИЦЯ')
+    form007_title    = db.Column(db.String(200), nullable=False,
+                                 default='ЛИСТОК ОБЛІКУ РУХУ ХВОРИХ')
+    form007_subtitle = db.Column(db.String(200), nullable=False,
+                                 default='і ліжкового фонду стаціонару')
+    form016_title    = db.Column(db.String(200), nullable=False,
+                                 default='ЗВЕДЕНА ВІДОМІСТЬ ОБЛІКУ РУХУ ХВОРИХ')
+    form016_subtitle = db.Column(db.String(200), nullable=False,
+                                 default='і ліжкового фонду стаціонару')
 
     def __repr__(self):
         return f"<PrintSettings org={self.org_short_name}>"
