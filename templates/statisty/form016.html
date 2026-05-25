@@ -131,24 +131,24 @@
         {% else %}
           <td class="fw-semibold text-center">{{ row.date_str }}</td>
         {% endif %}
-        <td class="text-center">{{ row.beds_total if row.beds_total is not none else '' }}</td>
-        <td class="text-center excel-computed">{{ row.beds_average if row.beds_average is not none else '' }}</td>
-        <td class="text-center">{{ row.patients_start if row.patients_start is not none else '' }}</td>
-        <td class="text-center fw-bold">{{ row.admitted_total if row.admitted_total is not none else '' }}</td>
-        <td class="text-center">{{ row.admitted_rural if row.admitted_rural is not none else '' }}</td>
-        <td class="text-center">{{ row.admitted_children if row.admitted_children is not none else '' }}</td>
-        <td class="text-center">{{ row.transferred_in if row.transferred_in is not none else '' }}</td>
-        <td class="text-center">{{ row.transferred_out if row.transferred_out is not none else '' }}</td>
-        <td class="text-center fw-bold">{{ row.discharged_total if row.discharged_total is not none else '' }}</td>
-        <td class="text-center">{{ row.discharged_to_other if row.discharged_to_other is not none else '' }}</td>
+        <td class="text-center">{{ row.beds_total | nz }}</td>
+        <td class="text-center excel-computed">{{ row.beds_average | nz }}</td>
+        <td class="text-center">{{ row.patients_start | nz }}</td>
+        <td class="text-center fw-bold">{{ row.admitted_total | nz }}</td>
+        <td class="text-center">{{ row.admitted_rural | nz }}</td>
+        <td class="text-center">{{ row.admitted_children | nz }}</td>
+        <td class="text-center">{{ row.transferred_in | nz }}</td>
+        <td class="text-center">{{ row.transferred_out | nz }}</td>
+        <td class="text-center fw-bold">{{ row.discharged_total | nz }}</td>
+        <td class="text-center">{{ row.discharged_to_other | nz }}</td>
         <td class="text-center {% if row.deaths %}text-danger fw-bold{% endif %}">
-          {{ row.deaths if row.deaths is not none else '' }}
+          {{ row.deaths | nz }}
         </td>
-        <td class="text-center fw-bold">{{ row.patients_end if row.patients_end is not none else '' }}</td>
-        <td class="text-center excel-computed fw-bold">{{ row.bed_days_total if row.bed_days_total is not none else '' }}</td>
-        <td class="text-center">{{ row.bed_days_rural if row.bed_days_rural is not none else '' }}</td>
-        <td class="text-center">{{ row.bed_days_renovation if row.bed_days_renovation is not none else '' }}</td>
-        <td class="text-center">{{ row.bed_days_mothers if row.bed_days_mothers is not none else '' }}</td>
+        <td class="text-center fw-bold">{{ row.patients_end | nz }}</td>
+        <td class="text-center excel-computed fw-bold">{{ row.bed_days_total | nz }}</td>
+        <td class="text-center">{{ row.bed_days_rural | nz }}</td>
+        <td class="text-center">{{ row.bed_days_renovation | nz }}</td>
+        <td class="text-center">{{ row.bed_days_mothers | nz }}</td>
       </tr>
       {% endfor %}
     </tbody>

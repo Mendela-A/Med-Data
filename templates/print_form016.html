@@ -192,22 +192,22 @@ tr.totals-row td {
     {% for row in table %}
     <tr {% if row.is_totals %}class="totals-row"{% endif %}>
       <td class="period-name">{{ row.date_str }}</td>
-      <td>{{ row.beds_total if row.beds_total is not none else '' }}</td>
-      <td>{{ row.beds_average if row.beds_average is not none else '' }}</td>
-      <td>{{ row.patients_start if row.patients_start is not none else '' }}</td>
-      <td>{{ row.admitted_total if row.admitted_total is not none else '' }}</td>
-      <td>{{ row.admitted_rural if row.admitted_rural is not none else '' }}</td>
-      <td>{{ row.admitted_children if row.admitted_children is not none else '' }}</td>
-      <td>{{ row.transferred_in if row.transferred_in is not none else '' }}</td>
-      <td>{{ row.transferred_out if row.transferred_out is not none else '' }}</td>
-      <td>{{ row.discharged_total if row.discharged_total is not none else '' }}</td>
-      <td>{{ row.discharged_to_other if row.discharged_to_other is not none else '' }}</td>
-      <td>{{ row.deaths if row.deaths is not none else '' }}</td>
-      <td>{{ row.patients_end if row.patients_end is not none else '' }}</td>
-      <td>{{ row.bed_days_total if row.bed_days_total is not none else '' }}</td>
-      <td>{{ row.bed_days_rural if row.bed_days_rural is not none else '' }}</td>
-      <td>{{ row.bed_days_renovation if row.bed_days_renovation is not none else '' }}</td>
-      <td>{{ row.bed_days_mothers if row.bed_days_mothers is not none else '' }}</td>
+      <td>{{ row.beds_total | nz }}</td>
+      <td>{{ row.beds_average | nz }}</td>
+      <td>{{ row.patients_start | nz }}</td>
+      <td>{{ row.admitted_total | nz }}</td>
+      <td>{{ row.admitted_rural | nz }}</td>
+      <td>{{ row.admitted_children | nz }}</td>
+      <td>{{ row.transferred_in | nz }}</td>
+      <td>{{ row.transferred_out | nz }}</td>
+      <td>{{ row.discharged_total | nz }}</td>
+      <td>{{ row.discharged_to_other | nz }}</td>
+      <td>{{ row.deaths | nz }}</td>
+      <td>{{ row.patients_end | nz }}</td>
+      <td>{{ row.bed_days_total | nz }}</td>
+      <td>{{ row.bed_days_rural | nz }}</td>
+      <td>{{ row.bed_days_renovation | nz }}</td>
+      <td>{{ row.bed_days_mothers | nz }}</td>
     </tr>
     {% endfor %}
   </tbody>

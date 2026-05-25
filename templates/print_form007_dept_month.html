@@ -153,46 +153,46 @@ tr.totals td {
     {% for day, r in rows %}
     <tr {% if not r %}class="empty-row"{% endif %}>
       <td class="date-cell">{{ day.strftime('%d.%m') }}</td>
-      <td>{{ r.beds_total if r and r.beds_total is not none else '' }}</td>
-      <td>{{ r.beds_renovation if r and r.beds_renovation is not none else '' }}</td>
-      <td>{{ r.patients_start if r and r.patients_start is not none else '' }}</td>
-      <td><strong>{{ r.admitted_total if r and r.admitted_total is not none else '' }}</strong></td>
-      <td>{{ r.admitted_rural if r and r.admitted_rural is not none else '' }}</td>
-      <td>{{ r.admitted_children if r and r.admitted_children is not none else '' }}</td>
-      <td>{{ r.admitted_children_rural if r and r.admitted_children_rural is not none else '' }}</td>
-      <td>{{ r.transferred_in if r and r.transferred_in is not none else '' }}</td>
-      <td>{{ r.transferred_out if r and r.transferred_out is not none else '' }}</td>
-      <td><strong>{{ r.discharged_total if r and r.discharged_total is not none else '' }}</strong></td>
-      <td>{{ r.discharged_to_other if r and r.discharged_to_other is not none else '' }}</td>
-      <td>{{ r.deaths if r and r.deaths is not none else '' }}</td>
-      <td><strong>{{ r.patients_end if r and r.patients_end is not none else '' }}</strong></td>
-      <td>{{ r.patients_end_rural if r and r.patients_end_rural is not none else '' }}</td>
-      <td>{{ r.mothers_with_children if r and r.mothers_with_children is not none else '' }}</td>
-      <td>{{ r.free_male if r and r.free_male is not none else '' }}</td>
-      <td>{{ r.free_female if r and r.free_female is not none else '' }}</td>
+      <td>{{ r.beds_total | nz if r else '' }}</td>
+      <td>{{ r.beds_renovation | nz if r else '' }}</td>
+      <td>{{ r.patients_start | nz if r else '' }}</td>
+      <td><strong>{{ r.admitted_total | nz if r else '' }}</strong></td>
+      <td>{{ r.admitted_rural | nz if r else '' }}</td>
+      <td>{{ r.admitted_children | nz if r else '' }}</td>
+      <td>{{ r.admitted_children_rural | nz if r else '' }}</td>
+      <td>{{ r.transferred_in | nz if r else '' }}</td>
+      <td>{{ r.transferred_out | nz if r else '' }}</td>
+      <td><strong>{{ r.discharged_total | nz if r else '' }}</strong></td>
+      <td>{{ r.discharged_to_other | nz if r else '' }}</td>
+      <td>{{ r.deaths | nz if r else '' }}</td>
+      <td><strong>{{ r.patients_end | nz if r else '' }}</strong></td>
+      <td>{{ r.patients_end_rural | nz if r else '' }}</td>
+      <td>{{ r.mothers_with_children | nz if r else '' }}</td>
+      <td>{{ r.free_male | nz if r else '' }}</td>
+      <td>{{ r.free_female | nz if r else '' }}</td>
     </tr>
     {% endfor %}
   </tbody>
   <tfoot>
     <tr class="totals">
       <td>Разом</td>
-      <td>{{ totals.beds_total if totals.beds_total is not none else '' }}</td>
-      <td>{{ totals.beds_renovation if totals.beds_renovation is not none else '' }}</td>
-      <td>{{ totals.patients_start if totals.patients_start is not none else '' }}</td>
-      <td>{{ totals.admitted_total or '' }}</td>
-      <td>{{ totals.admitted_rural or '' }}</td>
-      <td>{{ totals.admitted_children or '' }}</td>
-      <td>{{ totals.admitted_children_rural or '' }}</td>
-      <td>{{ totals.transferred_in or '' }}</td>
-      <td>{{ totals.transferred_out or '' }}</td>
-      <td>{{ totals.discharged_total or '' }}</td>
-      <td>{{ totals.discharged_to_other or '' }}</td>
-      <td>{{ totals.deaths or '' }}</td>
-      <td>{{ totals.patients_end if totals.patients_end is not none else '' }}</td>
-      <td>{{ totals.patients_end_rural if totals.patients_end_rural is not none else '' }}</td>
-      <td>{{ totals.mothers_with_children or '' }}</td>
-      <td>{{ totals.free_male if totals.free_male is not none else '' }}</td>
-      <td>{{ totals.free_female if totals.free_female is not none else '' }}</td>
+      <td>{{ totals.beds_total | nz }}</td>
+      <td>{{ totals.beds_renovation | nz }}</td>
+      <td>{{ totals.patients_start | nz }}</td>
+      <td>{{ totals.admitted_total | nz }}</td>
+      <td>{{ totals.admitted_rural | nz }}</td>
+      <td>{{ totals.admitted_children | nz }}</td>
+      <td>{{ totals.admitted_children_rural | nz }}</td>
+      <td>{{ totals.transferred_in | nz }}</td>
+      <td>{{ totals.transferred_out | nz }}</td>
+      <td>{{ totals.discharged_total | nz }}</td>
+      <td>{{ totals.discharged_to_other | nz }}</td>
+      <td>{{ totals.deaths | nz }}</td>
+      <td>{{ totals.patients_end | nz }}</td>
+      <td>{{ totals.patients_end_rural | nz }}</td>
+      <td>{{ totals.mothers_with_children | nz }}</td>
+      <td>{{ totals.free_male | nz }}</td>
+      <td>{{ totals.free_female | nz }}</td>
     </tr>
   </tfoot>
 </table>

@@ -177,46 +177,46 @@ tr.totals td {
     <tr>
       <td class="dept-name">{{ dept.bed_profile_name or dept.name }}</td>
       <td>{{ dept.row_no or '' }}</td>
-      <td>{{ r.beds_total or '' }}</td>
-      <td>{{ r.beds_renovation or '' }}</td>
-      <td>{{ r.patients_start or '' }}</td>
-      <td><strong>{{ r.admitted_total or '' }}</strong></td>
-      <td>{{ r.admitted_rural or '' }}</td>
-      <td>{{ r.admitted_children or '' }}</td>
-      <td>{{ r.admitted_children_rural or '' }}</td>
-      <td>{{ r.transferred_in or '' }}</td>
-      <td>{{ r.transferred_out or '' }}</td>
-      <td><strong>{{ r.discharged_total or '' }}</strong></td>
-      <td>{{ r.discharged_to_other or '' }}</td>
-      <td>{{ r.deaths or '' }}</td>
-      <td><strong>{{ r.patients_end or '' }}</strong></td>
-      <td>{{ r.patients_end_rural or '' }}</td>
-      <td>{{ r.mothers_with_children or '' }}</td>
-      <td>{{ r.free_male or '' }}</td>
-      <td>{{ r.free_female or '' }}</td>
+      <td>{{ r.beds_total | nz }}</td>
+      <td>{{ r.beds_renovation | nz }}</td>
+      <td>{{ r.patients_start | nz }}</td>
+      <td><strong>{{ r.admitted_total | nz }}</strong></td>
+      <td>{{ r.admitted_rural | nz }}</td>
+      <td>{{ r.admitted_children | nz }}</td>
+      <td>{{ r.admitted_children_rural | nz }}</td>
+      <td>{{ r.transferred_in | nz }}</td>
+      <td>{{ r.transferred_out | nz }}</td>
+      <td><strong>{{ r.discharged_total | nz }}</strong></td>
+      <td>{{ r.discharged_to_other | nz }}</td>
+      <td>{{ r.deaths | nz }}</td>
+      <td><strong>{{ r.patients_end | nz }}</strong></td>
+      <td>{{ r.patients_end_rural | nz }}</td>
+      <td>{{ r.mothers_with_children | nz }}</td>
+      <td>{{ r.free_male | nz }}</td>
+      <td>{{ r.free_female | nz }}</td>
     </tr>
     {% endfor %}
   </tbody>
   <tfoot>
     <tr class="totals">
       <td class="dept-name" colspan="2">{{ ps.org_short_name }}</td>
-      <td>{{ totals.beds_total or '' }}</td>
-      <td>{{ totals.beds_renovation or '' }}</td>
-      <td>{{ totals.patients_start or '' }}</td>
-      <td>{{ totals.admitted_total or '' }}</td>
-      <td>{{ totals.admitted_rural or '' }}</td>
-      <td>{{ totals.admitted_children or '' }}</td>
-      <td>{{ totals.admitted_children_rural or '' }}</td>
-      <td>{{ totals.transferred_in or '' }}</td>
-      <td>{{ totals.transferred_out or '' }}</td>
-      <td>{{ totals.discharged_total or '' }}</td>
-      <td>{{ totals.discharged_to_other or '' }}</td>
-      <td>{{ totals.deaths or '' }}</td>
-      <td>{{ totals.patients_end or '' }}</td>
-      <td>{{ totals.patients_end_rural or '' }}</td>
-      <td>{{ totals.mothers_with_children or '' }}</td>
-      <td>{{ totals.free_male or '' }}</td>
-      <td>{{ totals.free_female or '' }}</td>
+      <td>{{ totals.beds_total | nz }}</td>
+      <td>{{ totals.beds_renovation | nz }}</td>
+      <td>{{ totals.patients_start | nz }}</td>
+      <td>{{ totals.admitted_total | nz }}</td>
+      <td>{{ totals.admitted_rural | nz }}</td>
+      <td>{{ totals.admitted_children | nz }}</td>
+      <td>{{ totals.admitted_children_rural | nz }}</td>
+      <td>{{ totals.transferred_in | nz }}</td>
+      <td>{{ totals.transferred_out | nz }}</td>
+      <td>{{ totals.discharged_total | nz }}</td>
+      <td>{{ totals.discharged_to_other | nz }}</td>
+      <td>{{ totals.deaths | nz }}</td>
+      <td>{{ totals.patients_end | nz }}</td>
+      <td>{{ totals.patients_end_rural | nz }}</td>
+      <td>{{ totals.mothers_with_children | nz }}</td>
+      <td>{{ totals.free_male | nz }}</td>
+      <td>{{ totals.free_female | nz }}</td>
     </tr>
   </tfoot>
 </table>

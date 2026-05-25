@@ -199,4 +199,12 @@ def create_app(config_class=None):
 
     app.jinja_env.filters['format_suma'] = _format_suma
 
+    def _nz(value):
+        """Returns empty string for None and 0."""
+        if value is None or value == 0:
+            return ''
+        return value
+
+    app.jinja_env.filters['nz'] = _nz
+
     return app
