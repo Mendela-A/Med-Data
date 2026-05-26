@@ -28,17 +28,10 @@
           <div class="form-text">Спеціальне відображення назви у друкованій Формі 007. Якщо залишити порожнім, система виведе стандартну назву відділення.</div>
         </div>
 
-        <div class="row mb-4">
-          <div class="col-md-6 mb-3 mb-md-0">
-            <label class="form-label fw-semibold">№ рядка у Формі 007</label>
-            <input class="form-control" name="row_no" type="number" min="1" value="{{ department.row_no or '' }}" placeholder="наприклад, 1" style="border-radius: 8px;">
-            <div class="form-text">Порядковий номер рядка для правильного сортування в таблиці МОЗ.</div>
-          </div>
-          <div class="col-md-6">
-            <label class="form-label fw-semibold">Ліжковий фонд</label>
-            <input class="form-control" name="bed_capacity" type="number" min="0" value="{{ department.bed_capacity or '' }}" placeholder="наприклад, 30" style="border-radius: 8px;">
-            <div class="form-text">Загальна кількість розгорнутих ліжок у відділенні (для Форми 016/007).</div>
-          </div>
+        <div class="mb-4">
+          <label class="form-label fw-semibold">№ рядка у Формі 007</label>
+          <input class="form-control" name="row_no" type="number" min="1" value="{{ department.row_no or '' }}" placeholder="наприклад, 1" style="border-radius: 8px;">
+          <div class="form-text">Порядковий номер рядка для правильного сортування в таблиці МОЗ.</div>
         </div>
 
         <div class="d-flex gap-2 pt-2 border-top">

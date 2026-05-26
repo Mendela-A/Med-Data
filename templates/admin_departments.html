@@ -19,21 +19,17 @@
     </div>
     <div class="card-body p-4">
       <form method="post" action="{{ url_for('admin.admin_create_department') }}" class="row g-3 needs-validation" novalidate>
-        <div class="col-md-4">
+        <div class="col-md-5">
           <label class="form-label fw-medium">Назва відділення <span class="text-danger">*</span></label>
           <input class="form-control" name="name" required placeholder="наприклад, Терапевтичне відділення" style="border-radius: 8px;">
         </div>
-        <div class="col-md-3">
+        <div class="col-md-4">
           <label class="form-label fw-medium">Профіль ліжка (Форма 007)</label>
           <input class="form-control" name="bed_profile_name" placeholder="наприклад, Терапевтичні" style="border-radius: 8px;">
         </div>
         <div class="col-md-2">
           <label class="form-label fw-medium">№ рядка у Ф-007</label>
           <input class="form-control" name="row_no" type="number" min="1" placeholder="наприклад, 1" style="border-radius: 8px;">
-        </div>
-        <div class="col-md-2">
-          <label class="form-label fw-medium">Ліжковий фонд</label>
-          <input class="form-control" name="bed_capacity" type="number" min="0" placeholder="наприклад, 30" style="border-radius: 8px;">
         </div>
         <div class="col-md-1 d-flex align-items-end">
           <button class="btn btn-success w-100 py-2" type="submit" style="border-radius: 8px; font-weight: 500;">
@@ -51,11 +47,10 @@
         <table class="table table-hover align-middle mb-0">
           <thead class="table-light">
             <tr>
-              <th class="ps-4" style="width: 8%;">ID</th>
-              <th style="width: 25%;">Назва відділення</th>
-              <th style="width: 25%;">Профіль ліжка (Форма 007)</th>
-              <th class="text-center" style="width: 12%;">№ рядка</th>
-              <th class="text-center" style="width: 15%;">Ліжковий фонд</th>
+              <th class="ps-4" style="width: 10%;">ID</th>
+              <th style="width: 35%;">Назва відділення</th>
+              <th style="width: 30%;">Профіль ліжка (Форма 007)</th>
+              <th class="text-center" style="width: 10%;">№ рядка</th>
               <th class="pe-4 text-end" style="width: 15%;">Дія</th>
             </tr>
           </thead>
@@ -78,13 +73,6 @@
                     <span class="text-muted">—</span>
                   {% endif %}
                 </td>
-                <td class="text-center fw-medium">
-                  {% if d.bed_capacity is not none %}
-                    {{ d.bed_capacity }}
-                  {% else %}
-                    <span class="text-muted">—</span>
-                  {% endif %}
-                </td>
                 <td class="pe-4 text-end">
                   <div class="d-inline-flex gap-1">
                     <a href="{{ url_for('admin.admin_edit_department', dept_id=d.id) }}" class="btn btn-sm btn-outline-primary" style="border-radius: 6px;">
@@ -100,7 +88,7 @@
               </tr>
             {% else %}
               <tr>
-                <td colspan="6" class="text-center py-5">
+                <td colspan="5" class="text-center py-5">
                   <i class="bi bi-building text-muted mb-3" style="font-size: 3rem; display: block;"></i>
                   <h6 class="text-secondary">Відділень поки немає</h6>
                   <p class="text-muted mb-0 small">Додайте перше відділення за допомогою форми вище.</p>
