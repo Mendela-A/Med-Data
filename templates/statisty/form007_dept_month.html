@@ -13,15 +13,7 @@
   <span class="badge bg-secondary fs-6">{{ period_label }}</span>
 </div>
 
-<div class="mb-2">
-  <a href="{{ url_for('statisty.form007_dept_month_print', department_id=dept.id, from_date=from_date.strftime('%Y-%m')) }}"
-     target="_blank"
-     class="btn btn-outline-danger btn-sm">
-    <i class="bi bi-printer me-1"></i>Друк PDF
-  </a>
-</div>
-
-<form method="get" class="row g-2 align-items-end mb-3">
+<form method="get" class="row g-2 align-items-end stat-filter-card">
   <div class="col-auto">
     <label class="form-label small mb-1">Відділення</label>
     <select name="department_id" class="form-select form-select-sm" onchange="this.form.submit()" style="min-width:200px;">
@@ -29,13 +21,24 @@
       <option value="{{ d.id }}" {% if d.id == dept.id %}selected{% endif %}>{{ d.bed_profile_name or d.name }}</option>
       {% endfor %}
     </select>
-    <input type="hidden" name="from_date" value="{{ from_date.strftime('%Y-%m') }}">
   </div>
   <div class="col-auto">
     <label class="form-label small mb-1">Місяць</label>
     <input type="month" name="from_date" class="form-control form-control-sm"
            value="{{ from_date.strftime('%Y-%m') }}"
            onchange="this.form.submit()">
+  </div>
+  
+  <div class="col-auto ms-auto">
+    <a href="{{ url_for('statisty.form007_dept_month_print', department_id=dept.id, from_date=from_date.strftime('%Y-%m')) }}"
+       target="_blank"
+       class="btn btn-outline-danger btn-sm">
+      <i class="bi bi-printer me-1"></i>Друк PDF
+    </a>
+    <a href="{{ url_for('statisty.form007', from_date=from_date.strftime('%Y-%m')) }}"
+       class="btn btn-outline-secondary btn-sm ms-1">
+      <i class="bi bi-calendar3 me-1"></i>Форма 007 (по днях)
+    </a>
   </div>
 </form>
 

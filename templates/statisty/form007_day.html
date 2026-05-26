@@ -13,33 +13,43 @@
   <span class="badge bg-secondary fs-6">{{ report_date.strftime('%d.%m.%Y') }}</span>
 </div>
 
-<div class="mb-3 d-flex gap-2 flex-wrap align-items-center">
-  <a href="{{ url_for('statisty.form007_edit', report_date_str=report_date.isoformat()) }}"
-     class="btn btn-primary btn-sm">
-    <i class="bi bi-pencil me-1"></i>Редагувати
-  </a>
-  <form method="get" class="d-flex gap-1 align-items-center ms-auto" id="dept-month-form">
-    <select name="department_id" class="form-select form-select-sm" style="min-width:180px;" id="dept-month-select">
-      <option value="">— Місяць по відділу —</option>
-      {% for d in depts %}
-      <option value="{{ d.id }}">{{ d.bed_profile_name or d.name }}</option>
-      {% endfor %}
-    </select>
-    <button type="submit" class="btn btn-outline-info btn-sm">
+<div class="row g-2 align-items-end stat-filter-card">
+  <div class="col-auto">
+    <a href="{{ url_for('statisty.form007_edit', report_date_str=report_date.isoformat()) }}"
+       class="btn btn-primary btn-sm">
+      <i class="bi bi-pencil me-1"></i>Редагувати
+    </a>
+    <a href="{{ url_for('statisty.form007_print', report_date_str=report_date.isoformat()) }}"
+       target="_blank"
+       class="btn btn-outline-danger btn-sm ms-1">
+      <i class="bi bi-printer me-1"></i>Друк PDF
+    </a>
+  </div>
+  
+  <div class="col-auto ms-auto d-flex gap-2 align-items-end">
+    <div>
+      <label class="form-label mb-1 small text-muted">Місяць по відділу</label>
+      <select class="form-select form-select-sm" style="min-width:180px;" id="dept-month-select">
+        <option value="">— оберіть відділ —</option>
+        {% for d in depts %}
+        <option value="{{ d.id }}">{{ d.bed_profile_name or d.name }}</option>
+        {% endfor %}
+      </select>
+    </div>
+    <button type="button" class="btn btn-outline-info btn-sm" id="btn-dept-month-day">
       <i class="bi bi-bar-chart-steps me-1"></i>Місяць
     </button>
-  </form>
-  <a href="{{ url_for('statisty.form007', from_date=report_date.strftime('%Y-%m')) }}"
-     class="btn btn-outline-secondary btn-sm">
-    <i class="bi bi-arrow-left me-1"></i>Назад до місяця
-  </a>
+    <a href="{{ url_for('statisty.form007', from_date=report_date.strftime('%Y-%m')) }}"
+       class="btn btn-outline-secondary btn-sm">
+      <i class="bi bi-arrow-left me-1"></i>Назад до місяця
+    </a>
+  </div>
 </div>
 <script>
-  document.getElementById('dept-month-form').addEventListener('submit', function(e) {
-    e.preventDefault();
+  document.getElementById('btn-dept-month-day').addEventListener('click', function() {
     const dept = document.getElementById('dept-month-select').value;
     if (!dept) return;
-    window.location.href = '{{ url_for('statisty.form007_dept_month', department_id=0) }}'.replace('dept/0', 'dept/' + dept) + '?from_date={{ report_date.strftime('%Y-%m') }}';
+    window.location.href = "{{ url_for('statisty.form007_dept_month', department_id=0) }}".replace('dept/0', 'dept/' + dept) + '?from_date={{ report_date.strftime('%Y-%m') }}';
   });
 </script>
 

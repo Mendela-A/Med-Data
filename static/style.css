@@ -1083,3 +1083,38 @@ input[list]:focus::-webkit-calendar-picker-indicator { opacity: 1; }
   color: var(--color-primary);
   font-weight: 550;
 }
+
+/* Custom premium toolbar for statistics filters */
+.stat-filter-card {
+  background: #ffffff;
+  border: 1px solid #e2e8f0;
+  border-radius: 8px;
+  padding: 0.75rem 1rem;
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.05);
+  margin-bottom: 1.25rem;
+}
+
+/* Scoped micro-animations for buttons inside the toolbar and action zones */
+.stat-filter-card .btn,
+.mb-3 .btn,
+.mb-2 .btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1) !important;
+}
+
+.stat-filter-card .btn:hover,
+.mb-3 .btn:hover,
+.mb-2 .btn:hover {
+  transform: translateY(-1px);
+  box-shadow: 0 4px 6px rgba(0, 0, 0, 0.05);
+}
+
+.stat-filter-card .btn:active,
+.mb-3 .btn:active,
+.mb-2 .btn:active {
+  transform: translateY(0);
+  box-shadow: none;
+}
+

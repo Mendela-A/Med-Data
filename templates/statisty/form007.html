@@ -12,44 +12,43 @@
   <span class="badge bg-secondary fs-6">{{ period_label }}</span>
 </div>
 
-<div class="row g-2 align-items-end mb-4">
-  <form method="get" class="col-auto d-flex gap-2 align-items-end">
-    <div>
-      <label class="form-label mb-1 small">Місяць</label>
-      <input type="month" name="from_date" class="form-control form-control-sm"
-             value="{{ from_date.strftime('%Y-%m') }}">
-    </div>
+<form method="get" class="row g-2 align-items-end stat-filter-card" id="form007-toolbar">
+  <div class="col-auto">
+    <label class="form-label mb-1 small">Місяць</label>
+    <input type="month" name="from_date" class="form-control form-control-sm"
+           value="{{ from_date.strftime('%Y-%m') }}" id="from-date-007">
+  </div>
+  <div class="col-auto">
     <button type="submit" class="btn btn-primary btn-sm">
       <i class="bi bi-funnel me-1"></i>Показати
     </button>
-  </form>
-  <form method="get" class="col-auto d-flex gap-2 align-items-end ms-auto" id="dept-month-form007">
+  </div>
+  
+  <div class="col-auto ms-auto d-flex gap-2 align-items-end">
     <div>
-      <label class="form-label mb-1 small">Місяць по відділу</label>
-      <select name="department_id" class="form-select form-select-sm" style="min-width:180px;" id="dept-select007">
+      <label class="form-label mb-1 small text-muted">Місяць по відділу</label>
+      <select class="form-select form-select-sm" style="min-width:180px;" id="dept-select007">
         <option value="">— оберіть відділ —</option>
         {% for d in depts %}
         <option value="{{ d.id }}">{{ d.bed_profile_name or d.name }}</option>
         {% endfor %}
       </select>
     </div>
-    <button type="submit" class="btn btn-outline-info btn-sm">
+    <button type="button" class="btn btn-outline-info btn-sm" id="btn-dept-month">
       <i class="bi bi-bar-chart-steps me-1"></i>По відділу
     </button>
-  </form>
-  <div class="col-auto">
     <a href="{{ url_for('statisty.form016', from_date=from_date.isoformat(), to_date=to_date.isoformat()) }}"
        class="btn btn-outline-secondary btn-sm">
       <i class="bi bi-clipboard2-data me-1"></i>Форма 016
     </a>
   </div>
-</div>
+</form>
 <script>
-  document.getElementById('dept-month-form007').addEventListener('submit', function(e) {
-    e.preventDefault();
+  document.getElementById('btn-dept-month').addEventListener('click', function() {
     const dept = document.getElementById('dept-select007').value;
     if (!dept) return;
-    window.location.href = '{{ url_for('statisty.form007_dept_month', department_id=0) }}'.replace('dept/0', 'dept/' + dept) + '?from_date={{ from_date.strftime('%Y-%m') }}';
+    const month = document.getElementById('from-date-007').value;
+    window.location.href = "{{ url_for('statisty.form007_dept_month', department_id=0) }}".replace('dept/0', 'dept/' + dept) + '?from_date=' + month;
   });
 </script>
 
