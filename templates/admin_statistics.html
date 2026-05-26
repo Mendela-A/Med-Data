@@ -269,6 +269,45 @@
   </div>
 </div>
 
+<!-- Section: Visual Charts Dashboard -->
+<div class="row mb-4 g-3">
+  <!-- Chart 1: Discharge status distribution -->
+  <div class="col-md-4">
+    <div class="card stat-card h-100">
+      <div class="card-body">
+        <h6 class="card-title text-muted mb-3"><i class="bi bi-pie-chart me-1"></i>Розподіл статусів виписок</h6>
+        <div style="position: relative; height:250px;">
+          <canvas id="statusChart"></canvas>
+        </div>
+      </div>
+    </div>
+  </div>
+  
+  <!-- Chart 2: Records per Department -->
+  <div class="col-md-4">
+    <div class="card stat-card h-100">
+      <div class="card-body">
+        <h6 class="card-title text-muted mb-3"><i class="bi bi-building me-1"></i>Виписки по відділеннях</h6>
+        <div style="position: relative; height:250px;">
+          <canvas id="deptChart"></canvas>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Chart 3: Top ADSG groups income -->
+  <div class="col-md-4">
+    <div class="card stat-card h-100">
+      <div class="card-body">
+        <h6 class="card-title text-muted mb-3"><i class="bi bi-cash-stack me-1"></i>Сума по групах АДСГ (Top-5)</h6>
+        <div style="position: relative; height:250px;">
+          <canvas id="adsjChart"></canvas>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
 <!-- Section 2: Status distribution by department -->
 <div class="card mb-4">
   <div class="card-body">
@@ -753,5 +792,181 @@
       sortAdsjTable('group', 'asc');
     }
   });
+</script>
+
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+  // Load Chart.js dynamically
+  const script = document.createElement('script');
+  script.src = "https://cdn.jsdelivr.net/npm/chart.js";
+  script.onload = function() {
+    // 1. Status Chart (Doughnut)
+    const ctxStatus = document.getElementById('statusChart');
+    if (ctxStatus) {
+      new Chart(ctxStatus.getContext('2d'), {
+        type: 'doughnut',
+        data: {
+          labels: ['Опрацьовується', 'Виписаний', 'Порушені вимоги', 'Помер'],
+          datasets: [{
+            data: [
+              {{ status_distribution['Опрацьовується'] or 0 }},
+              {{ status_distribution['Виписаний'] or 0 }},
+              {{ status_distribution['Порушені вимоги'] or 0 }},
+              {{ status_distribution['Помер'] or 0 }}
+            ],
+            backgroundColor: ['#f59e0b', '#10b981', '#64748b', '#ef4444'],
+            borderWidth: 2,
+            borderColor: '#ffffff'
+          }]
+        },
+        options: {
+          responsive: true,
+          maintainAspectRatio: false,
+          plugins: {
+            legend: {
+              position: 'bottom',
+              labels: {
+                boxWidth: 10,
+                font: { family: 'Inter', size: 10 }
+              }
+            },
+            tooltip: {
+              callbacks: {
+                label: function(context) {
+                  const value = context.raw;
+                  const total = context.dataset.data.reduce((a, b) => a + b, 0);
+                  const percentage = total > 0 ? ((value / total) * 100).toFixed(1) : 0;
+                  return ` ${context.label}: ${value} (${percentage}%)`;
+                }
+              }
+            }
+          },
+          cutout: '65%'
+        }
+      });
+    }
+
+    // 2. Department Chart (Horizontal Bar)
+    const deptLabels = [];
+    const deptData = [];
+    {% if status_by_dept %}
+      {% for dept in dept_list %}
+        {% set dept_total = status_by_dept[dept]['Опрацьовується'] + status_by_dept[dept]['Виписаний'] + status_by_dept[dept]['Помер'] + status_by_dept[dept]['Порушені вимоги'] %}
+        deptLabels.push("{{ dept }}");
+        deptData.push({{ dept_total }});
+      {% endfor %}
+    {% endif %}
+
+    const ctxDept = document.getElementById('deptChart');
+    if (ctxDept && deptLabels.length > 0) {
+      new Chart(ctxDept.getContext('2d'), {
+        type: 'bar',
+        data: {
+          labels: deptLabels,
+          datasets: [{
+            label: 'Виписки',
+            data: deptData,
+            backgroundColor: '#3b82f6', // primary blue
+            borderRadius: 4
+          }]
+        },
+        options: {
+          indexAxis: 'y',
+          responsive: true,
+          maintainAspectRatio: false,
+          plugins: {
+            legend: { display: false },
+            tooltip: {
+              callbacks: {
+                label: function(context) {
+                  return ` Виписок: ${context.raw}`;
+                }
+              }
+            }
+          },
+          scales: {
+            x: {
+              grid: { display: false },
+              ticks: { font: { family: 'Inter', size: 9 } }
+            },
+            y: {
+              grid: { display: false },
+              ticks: { font: { family: 'Inter', size: 9 } }
+            }
+          }
+        }
+      });
+    }
+
+    // 3. ADSG (ADSJ) Chart (Bar)
+    const allAdsj = [];
+    {% if adsj_stats %}
+      {% for row in adsj_stats %}
+        {% if row.group_name != 'Без групи' %}
+          allAdsj.push({
+            name: "{{ row.group_name }}",
+            suma: {{ row.total_suma or 0 }}
+          });
+        {% endif %}
+      {% endfor %}
+    {% endif %}
+
+    if (allAdsj.length > 0) {
+      // Sort by sum descending
+      allAdsj.sort((a, b) => b.suma - a.suma);
+
+      // Take top 5
+      const topAdsj = allAdsj.slice(0, 5);
+      const adsjLabels = topAdsj.map(x => x.name.length > 25 ? x.name.substring(0, 25) + '...' : x.name);
+      const adsjData = topAdsj.map(x => x.suma);
+
+      const ctxAdsj = document.getElementById('adsjChart');
+      if (ctxAdsj) {
+        new Chart(ctxAdsj.getContext('2d'), {
+          type: 'bar',
+          data: {
+            labels: adsjLabels,
+            datasets: [{
+              label: 'Сума (грн)',
+              data: adsjData,
+              backgroundColor: '#10b981', // success green
+              borderRadius: 4
+            }]
+          },
+          options: {
+            responsive: true,
+            maintainAspectRatio: false,
+            plugins: {
+              legend: { display: false },
+              tooltip: {
+                callbacks: {
+                  label: function(context) {
+                    return ` Сума: ${context.raw.toLocaleString('uk-UA')} грн`;
+                  }
+                }
+              }
+            },
+            scales: {
+              x: {
+                grid: { display: false },
+                ticks: { font: { family: 'Inter', size: 8 }, maxRotation: 15, minRotation: 15 }
+              },
+              y: {
+                grid: { color: '#f1f5f9' },
+                ticks: {
+                  font: { family: 'Inter', size: 9 },
+                  callback: function(value) {
+                    return value >= 1000 ? (value / 1000) + 'k' : value;
+                  }
+                }
+              }
+            }
+          }
+        });
+      }
+    }
+  };
+  document.head.appendChild(script);
+});
 </script>
 {% endblock %}
