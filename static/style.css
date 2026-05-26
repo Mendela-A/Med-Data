@@ -25,6 +25,8 @@
   --color-dropdown-bg: #ffffff;
   --color-table-header-bg: #f8fafc;
   --color-table-hover-bg: #f8fafc;
+  --color-card-bg-glass: rgba(255, 255, 255, 0.78);
+  --color-border-glass: rgba(226, 232, 240, 0.85);
   
   /* Excel table variables */
   --excel-border: #333333;
@@ -73,6 +75,8 @@ html[data-theme="dark"] {
   --color-dropdown-bg: #1f2937;
   --color-table-header-bg: #1f2937;
   --color-table-hover-bg: #2d3748;
+  --color-card-bg-glass: rgba(31, 41, 55, 0.72);
+  --color-border-glass: rgba(55, 65, 81, 0.8);
   
   --color-success: #10b981;
   --color-danger: #ef4444;
@@ -375,8 +379,9 @@ h1, h2, h3, h4, h5, h6,
 .form-control:focus,
 .form-select:focus {
   border-color: var(--color-primary) !important;
-  box-shadow: 0 0 0 3px var(--color-primary-light) !important;
+  box-shadow: 0 0 0 4px var(--color-primary-medium) !important;
   background-color: var(--color-card-bg) !important;
+  transition: all 0.2s cubic-bezier(0.16, 1, 0.3, 1);
 }
 
 .form-label {
@@ -1534,13 +1539,79 @@ html[data-theme="dark"] .text-muted {
   color: var(--color-text-muted) !important;
 }
 
-/* ===== HTMX Indicators ===== */
+/* ===== HTMX Indicators & Animations ===== */
 .htmx-indicator {
   display: none !important;
 }
 .htmx-request .htmx-indicator,
 .htmx-request.htmx-indicator {
   display: inline-block !important;
+}
+
+/* SPA-анімація зміни даних через HTMX */
+@keyframes htmxFadeIn {
+  from {
+    opacity: 0;
+    transform: translateY(6px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+.htmx-added {
+  animation: htmxFadeIn 0.28s cubic-bezier(0.16, 1, 0.3, 1) both;
+}
+
+/* Glassmorphism для панелі фільтрів */
+.stat-filter-card {
+  background: var(--color-card-bg-glass) !important;
+  backdrop-filter: blur(12px) saturate(190%) !important;
+  -webkit-backdrop-filter: blur(12px) saturate(190%) !important;
+  border: 1px solid var(--color-border-glass) !important;
+  box-shadow: 0 8px 32px 0 rgba(0, 0, 0, 0.03) !important;
+}
+
+/* Преміальне підсвічування рядків таблиці з індикатором зліва */
+.records-table tbody tr {
+  transition: all 0.2s ease-in-out;
+}
+.records-table tbody tr:hover {
+  background-color: var(--color-primary-light) !important;
+  box-shadow: inset 4px 0 0 var(--color-primary) !important;
+}
+.records-table tbody tr:hover td {
+  background-color: var(--color-primary-light) !important;
+  color: var(--color-text) !important;
+}
+
+/* Пульсуючий неоновий спінер-індикатор завантаження */
+@keyframes pulseGlow {
+  0% {
+    transform: scale(0.9);
+    box-shadow: 0 0 0 0 rgba(20, 184, 166, 0.6);
+  }
+  70% {
+    transform: scale(1.1);
+    box-shadow: 0 0 0 8px rgba(20, 184, 166, 0);
+  }
+  100% {
+    transform: scale(0.9);
+    box-shadow: 0 0 0 0 rgba(20, 184, 166, 0);
+  }
+}
+#search-spinner {
+  animation: pulseGlow 1.2s infinite ease-in-out !important;
+  border: none !important;
+  background-color: #14b8a6 !important; /* glowing teal */
+  border-radius: 50% !important;
+  width: 10px !important;
+  height: 10px !important;
+  min-width: 10px !important;
+  min-height: 10px !important;
+  display: inline-block !important;
+  margin-left: 0.5rem;
+  vertical-align: middle;
 }
 
 
