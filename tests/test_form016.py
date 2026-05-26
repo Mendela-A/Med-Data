@@ -249,3 +249,40 @@ def test_form016_excel_export(app, client):
         assert row13_vals[9] == 3   # discharged_total
         assert row13_vals[12] == 0  # patients_end on last day of April (no report on 30.04)
         assert row13_vals[13] == 17 # bed_days_total (since patients_end was 17 on April 1st and 0 elsewhere)
+
+
+def test_form016_annual_view_default(app, client):
+    """Test that Form 016 defaults to the whole year when from_date is omitted, and beds_average is an integer."""
+    with app.app_context():
+        u = ensure_user('admin')
+        dept = ensure_department('Терапевтичне', 'Терапія', bed_capacity=30, row_no=1)
+
+        # Create a report in April with a decimal bed average if divided, but since we use beds_total=30, beds_average should be 30 (integer)
+        dr = DailyReport(
+            report_date=datetime.date(2026, 4, 1),
+            department_id=dept.id,
+            beds_total=30,
+            patients_start=15,
+            admitted_total=5,
+            patients_end=17,
+            created_by=u.id
+        )
+        db.session.add(dr)
+        db.session.commit()
+
+        login(client)
+        # Omit 'from_date' to trigger the default annual view
+        response = client.get('/statisty/form016')
+        assert response.status_code == 200
+        html = response.get_data(as_text=True)
+
+        # It should show January and April because it shows the entire year up to December
+        assert 'Січень' in html
+        assert 'Квітень' in html
+        assert 'За рік' in html
+        assert 'Всього за період' not in html  # Since it covers December, it shows "За рік"
+
+        # Check that beds_average is rendered as an integer (e.g. "30" instead of "30.0")
+        assert '30.0' not in html
+        assert 'class="text-center excel-computed">30</td>' in html
+

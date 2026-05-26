@@ -24,7 +24,7 @@ def _get_print_settings():
     return ps
 
 
-def _parse_date_range():
+def _parse_date_range(default_to_year=False):
     today = date.today()
     from_str = request.args.get('from_date', '').strip()
     to_str   = request.args.get('to_date', '').strip()
@@ -41,7 +41,11 @@ def _parse_date_range():
         except ValueError:
             pass
     if from_date is None:
-        from_date = date(today.year, today.month, 1)
+        if default_to_year:
+            from_date = date(today.year, 1, 1)
+            to_date = date(today.year, 12, 31)
+        else:
+            from_date = date(today.year, today.month, 1)
     if to_date is None:
         last_day = calendar.monthrange(from_date.year, from_date.month)[1]
         to_date = date(from_date.year, from_date.month, last_day)
@@ -188,7 +192,7 @@ def _aggregate_period(year, start_month, end_month, department_ids=None):
 
     # beds_average is the average of daily beds_total
     beds_average = sum(s['beds_total'] for s in daily_stats) / total_days
-    beds_average = round(beds_average, 1)
+    beds_average = int(round(beds_average))
 
     return {
         'beds_total': beds_total,
@@ -271,7 +275,7 @@ def _get_form016_data(from_date, to_date, department_ids=None):
         return row
 
     table = []
-    selected_month = from_date.month
+    selected_month = to_date.month
 
     # Q1: Jan–Mar
     q1_months = range(1, min(selected_month, 3) + 1)
@@ -679,7 +683,7 @@ def _parse_department_ids(department_id_str):
 @statisty_bp.route('/form016')
 @role_required('admin', 'viewer')
 def form016():
-    from_date, to_date = _parse_date_range()
+    from_date, to_date = _parse_date_range(default_to_year=True)
 
     department_id_str = request.args.get('department_id', '').strip()
     department_ids, selected_dept = _parse_department_ids(department_id_str)
@@ -708,7 +712,7 @@ def form016():
 @statisty_bp.route('/form016/print')
 @role_required('admin', 'viewer')
 def form016_print():
-    from_date, to_date = _parse_date_range()
+    from_date, to_date = _parse_date_range(default_to_year=True)
     department_id_str = request.args.get('department_id', '').strip()
     department_ids, selected_dept = _parse_department_ids(department_id_str)
 
@@ -751,7 +755,7 @@ def form016_export():
     from openpyxl import Workbook
     from openpyxl.styles import Font, Alignment, PatternFill, Border, Side
 
-    from_date, to_date = _parse_date_range()
+    from_date, to_date = _parse_date_range(default_to_year=True)
 
     department_id_str = request.args.get('department_id', '').strip()
     department_ids, selected_dept = _parse_department_ids(department_id_str)
