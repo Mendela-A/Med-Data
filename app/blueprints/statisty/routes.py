@@ -61,15 +61,15 @@ def _period_label(from_date, to_date):
         return f"{months_ua[from_date.month]} {from_date.year}"
 
 
-def _aggregate_period(year, start_month, end_month, department_id=None):
+def _aggregate_period(year, start_month, end_month, department_ids=None):
     # Start and end dates for the period
     start_date = date(year, start_month, 1)
     last_day = calendar.monthrange(year, end_month)[1]
     end_date = date(year, end_month, last_day)
 
     # Get departments
-    if department_id:
-        depts = [Department.query.get(department_id)]
+    if department_ids:
+        depts = Department.query.filter(Department.id.in_(department_ids)).all()
     else:
         depts = Department.query.all()
 
