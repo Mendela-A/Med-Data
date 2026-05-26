@@ -73,3 +73,13 @@ backup-*-before-*
 # Migration cache
 migrations/__pycache__/
 migrations/versions/__pycache__/
+
+# Coverage reports
+.coverage
+htmlcov/
+
+# Antigravity system files
+.antigravitycli/
+
+# Scratch space
+scratch/
