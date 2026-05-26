@@ -120,7 +120,7 @@
 
             {# col14 — patients_end (computed, read-only display) #}
             <td class="text-center excel-computed">
-              <small>{{ r.patients_end if r and r.patients_end is not none else '' }}</small>
+              <small class="patients-end-val" data-dept-id="{{ dept.id }}">{{ r.patients_end if r and r.patients_end is not none else '' }}</small>
             </td>
 
             {# col15 — patients_end_rural #}
@@ -152,4 +152,110 @@
        class="btn btn-outline-secondary">Скасувати</a>
   </div>
 </form>
+
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+  const table = document.querySelector('.excel-table');
+  if (!table) return;
+
+  const rows = Array.from(table.querySelectorAll('tbody tr'));
+
+  // Function to calculate patients_end and validate beds capacity dynamically
+  function calculateRow(tr) {
+    const bedsTotalInput = tr.querySelector('input[name^="beds_total_"]');
+    const bedsTotal = parseInt(bedsTotalInput ? bedsTotalInput.value : 0) || 0;
+
+    const pStart = parseInt(tr.querySelector('input[name^="patients_start_"]').value || 0) || 0;
+    const admTotal = parseInt(tr.querySelector('input[name^="admitted_total_"]').value || 0) || 0;
+    const txIn = parseInt(tr.querySelector('input[name^="transferred_in_"]').value || 0) || 0;
+    const txOut = parseInt(tr.querySelector('input[name^="transferred_out_"]').value || 0) || 0;
+    const disTotal = parseInt(tr.querySelector('input[name^="discharged_total_"]').value || 0) || 0;
+    const deaths = parseInt(tr.querySelector('input[name^="deaths_"]').value || 0) || 0;
+
+    const pEnd = pStart + admTotal + txIn - txOut - disTotal - deaths;
+
+    const cell = tr.querySelector('.patients-end-val');
+    if (cell) {
+      cell.textContent = pEnd >= 0 ? pEnd : 0;
+
+      // Real-time capacity indicators
+      const tdParent = cell.parentElement;
+      if (pEnd < 0) {
+        tdParent.style.backgroundColor = '#ffedd5'; // soft orange for invalid negative count
+        tdParent.style.color = '#c2410c';
+        tdParent.title = 'Помилка: кількість хворих менша за 0';
+      } else if (pEnd > bedsTotal) {
+        tdParent.style.backgroundColor = '#fee2e2'; // soft red for overcapacity
+        tdParent.style.color = '#b91c1c';
+        tdParent.title = 'Увага: кількість хворих перевищує ліжковий фонд!';
+      } else {
+        tdParent.style.backgroundColor = '#fffbeb'; // default excel-computed formulas style
+        tdParent.style.color = '#1e293b';
+        tdParent.title = '';
+      }
+    }
+  }
+
+  // Bind keydown events and select-on-focus handlers for spreadsheet navigation
+  rows.forEach((tr, rowIndex) => {
+    const inputs = Array.from(tr.querySelectorAll('input[type="number"]'));
+
+    // Initial calculation on load
+    calculateRow(tr);
+
+    inputs.forEach((input, colIndex) => {
+      // Auto-select text on focus so user can immediately overwrite the number
+      input.addEventListener('focus', function() {
+        this.select();
+      });
+
+      // Recalculate on any input change
+      input.addEventListener('input', function() {
+        calculateRow(tr);
+      });
+
+      // Spreadsheet arrows and Enter navigation
+      input.addEventListener('keydown', function(e) {
+        let targetInput = null;
+
+        if (e.key === 'ArrowUp') {
+          if (rowIndex > 0) {
+            const prevRowInputs = Array.from(rows[rowIndex - 1].querySelectorAll('input[type="number"]'));
+            targetInput = prevRowInputs[colIndex];
+          }
+          if (targetInput) {
+            e.preventDefault();
+            targetInput.focus();
+          }
+        } else if (e.key === 'ArrowDown' || e.key === 'Enter') {
+          if (rowIndex < rows.length - 1) {
+            const nextRowInputs = Array.from(rows[rowIndex + 1].querySelectorAll('input[type="number"]'));
+            targetInput = nextRowInputs[colIndex];
+          }
+          if (targetInput) {
+            e.preventDefault();
+            targetInput.focus();
+          }
+        } else if (e.key === 'ArrowLeft') {
+          if (colIndex > 0) {
+            targetInput = inputs[colIndex - 1];
+          }
+          if (targetInput) {
+            e.preventDefault();
+            targetInput.focus();
+          }
+        } else if (e.key === 'ArrowRight') {
+          if (colIndex < inputs.length - 1) {
+            targetInput = inputs[colIndex + 1];
+          }
+          if (targetInput) {
+            e.preventDefault();
+            targetInput.focus();
+          }
+        }
+      });
+    });
+  });
+});
+</script>
 {% endblock %}
