@@ -800,10 +800,12 @@ document.addEventListener('DOMContentLoaded', function() {
   const script = document.createElement('script');
   script.src = "https://cdn.jsdelivr.net/npm/chart.js";
   script.onload = function() {
+    let activeCharts = [];
+
     // 1. Status Chart (Doughnut)
     const ctxStatus = document.getElementById('statusChart');
     if (ctxStatus) {
-      new Chart(ctxStatus.getContext('2d'), {
+      const statusChart = new Chart(ctxStatus.getContext('2d'), {
         type: 'doughnut',
         data: {
           labels: ['Опрацьовується', 'Виписаний', 'Порушені вимоги', 'Помер'],
@@ -844,6 +846,7 @@ document.addEventListener('DOMContentLoaded', function() {
           cutout: '65%'
         }
       });
+      activeCharts.push(statusChart);
     }
 
     // 2. Department Chart (Horizontal Bar)
@@ -859,7 +862,7 @@ document.addEventListener('DOMContentLoaded', function() {
 
     const ctxDept = document.getElementById('deptChart');
     if (ctxDept && deptLabels.length > 0) {
-      new Chart(ctxDept.getContext('2d'), {
+      const deptChart = new Chart(ctxDept.getContext('2d'), {
         type: 'bar',
         data: {
           labels: deptLabels,
@@ -896,6 +899,7 @@ document.addEventListener('DOMContentLoaded', function() {
           }
         }
       });
+      activeCharts.push(deptChart);
     }
 
     // 3. ADSG (ADSJ) Chart (Bar)
@@ -922,7 +926,7 @@ document.addEventListener('DOMContentLoaded', function() {
 
       const ctxAdsj = document.getElementById('adsjChart');
       if (ctxAdsj) {
-        new Chart(ctxAdsj.getContext('2d'), {
+        const adsjChart = new Chart(ctxAdsj.getContext('2d'), {
           type: 'bar',
           data: {
             labels: adsjLabels,
@@ -963,8 +967,69 @@ document.addEventListener('DOMContentLoaded', function() {
             }
           }
         });
+        activeCharts.push(adsjChart);
       }
     }
+
+    // Theme synchronization helper for Chart.js
+    function getThemeColors(theme) {
+      if (theme === 'dark') {
+        return {
+          text: '#9ca3af', // gray-400
+          grid: '#374151', // gray-700
+          border: '#1f2937' // gray-800
+        };
+      } else {
+        return {
+          text: '#64748b', // slate-500
+          grid: '#f1f5f9', // slate-100
+          border: '#ffffff'
+        };
+      }
+    }
+
+    function applyChartTheme(chart, theme) {
+      const colors = getThemeColors(theme);
+      
+      // Update scales grid/ticks
+      if (chart.options.scales) {
+        Object.values(chart.options.scales).forEach(scale => {
+          if (scale.ticks) scale.ticks.color = colors.text;
+          if (scale.grid) {
+            // Only update grid line color if it was visible/not false
+            if (scale.grid.display !== false) {
+              scale.grid.color = colors.grid;
+            }
+          }
+        });
+      }
+      
+      // Update plugins
+      if (chart.options.plugins) {
+        if (chart.options.plugins.legend && chart.options.plugins.legend.labels) {
+          chart.options.plugins.legend.labels.color = colors.text;
+        }
+      }
+      
+      // Update Doughnut borders
+      if (chart.config.type === 'doughnut') {
+        chart.data.datasets.forEach(dataset => {
+          dataset.borderColor = colors.border;
+        });
+      }
+      
+      chart.update();
+    }
+
+    // Initialize charts with the current active theme
+    const activeTheme = document.documentElement.getAttribute('data-theme') || 'light';
+    activeCharts.forEach(chart => applyChartTheme(chart, activeTheme));
+
+    // Listen to theme-changed events
+    window.addEventListener('theme-changed', function(e) {
+      const newTheme = e.detail.theme;
+      activeCharts.forEach(chart => applyChartTheme(chart, newTheme));
+    });
   };
   document.head.appendChild(script);
 });

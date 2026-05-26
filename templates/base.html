@@ -4,6 +4,13 @@
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <meta name="csrf-token" content="{{ csrf_token() }}">
+  <!-- Theme Initialization to prevent Flash of Unstyled Content (FOUC) -->
+  <script>
+    (function() {
+      const savedTheme = localStorage.getItem('theme') || 'light';
+      document.documentElement.setAttribute('data-theme', savedTheme);
+    })();
+  </script>
   <title>{% block title %}Flask App{% endblock %}</title>
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
@@ -88,6 +95,12 @@
     </div>
 
     <div class="topnav-right">
+      <!-- Theme Toggle Button -->
+      <button class="btn btn-link text-muted p-1 me-2 border-0 d-flex align-items-center justify-content-center" id="theme-toggle" type="button" aria-label="Перемикач теми" style="text-decoration: none; box-shadow: none;">
+        <i class="bi bi-moon-stars fs-5" id="theme-toggle-dark-icon"></i>
+        <i class="bi bi-sun fs-5 d-none" id="theme-toggle-light-icon"></i>
+      </button>
+
       <div class="dropdown">
         <button class="topnav-user dropdown-toggle border-0 bg-transparent" type="button"
                 data-bs-toggle="dropdown" aria-expanded="false">
@@ -264,7 +277,37 @@
         }
       });
 
-      // Top navbar — no additional JS needed
+      // Theme Toggle Logic
+      const themeToggleBtn = document.getElementById('theme-toggle');
+      const themeToggleDarkIcon = document.getElementById('theme-toggle-dark-icon');
+      const themeToggleLightIcon = document.getElementById('theme-toggle-light-icon');
+
+      function updateThemeUI(theme) {
+        if (!themeToggleDarkIcon || !themeToggleLightIcon) return;
+        if (theme === 'dark') {
+          themeToggleDarkIcon.classList.add('d-none');
+          themeToggleLightIcon.classList.remove('d-none');
+        } else {
+          themeToggleDarkIcon.classList.remove('d-none');
+          themeToggleLightIcon.classList.add('d-none');
+        }
+      }
+
+      // Initialize UI based on current theme
+      const currentTheme = document.documentElement.getAttribute('data-theme') || 'light';
+      updateThemeUI(currentTheme);
+
+      if (themeToggleBtn) {
+        themeToggleBtn.addEventListener('click', function() {
+          const activeTheme = document.documentElement.getAttribute('data-theme') === 'dark' ? 'light' : 'dark';
+          document.documentElement.setAttribute('data-theme', activeTheme);
+          localStorage.setItem('theme', activeTheme);
+          updateThemeUI(activeTheme);
+          
+          // Dispatch custom event for real-time components like Chart.js
+          window.dispatchEvent(new CustomEvent('theme-changed', { detail: { theme: activeTheme } }));
+        });
+      }
     });
 
     // Helper to add CSRF token to dynamically created forms

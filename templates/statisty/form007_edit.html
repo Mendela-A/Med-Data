@@ -180,17 +180,15 @@ document.addEventListener('DOMContentLoaded', function() {
 
       // Real-time capacity indicators
       const tdParent = cell.parentElement;
+      tdParent.classList.remove('excel-warning', 'excel-danger', 'excel-computed');
       if (pEnd < 0) {
-        tdParent.style.backgroundColor = '#ffedd5'; // soft orange for invalid negative count
-        tdParent.style.color = '#c2410c';
+        tdParent.classList.add('excel-warning');
         tdParent.title = 'Помилка: кількість хворих менша за 0';
       } else if (pEnd > bedsTotal) {
-        tdParent.style.backgroundColor = '#fee2e2'; // soft red for overcapacity
-        tdParent.style.color = '#b91c1c';
+        tdParent.classList.add('excel-danger');
         tdParent.title = 'Увага: кількість хворих перевищує ліжковий фонд!';
       } else {
-        tdParent.style.backgroundColor = '#fffbeb'; // default excel-computed formulas style
-        tdParent.style.color = '#1e293b';
+        tdParent.classList.add('excel-computed');
         tdParent.title = '';
       }
     }

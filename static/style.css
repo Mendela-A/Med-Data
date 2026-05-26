@@ -14,6 +14,34 @@
   --color-info: #0ea5e9;
   --color-secondary: #64748b;
   --color-border: #e2e8f0;
+  
+  /* UI variables */
+  --color-card-bg: #ffffff;
+  --color-navbar-bg: #ffffff;
+  --color-input-bg: #ffffff;
+  --color-input-text: #1e293b;
+  --color-input-border: #cbd5e1;
+  --color-badge-bg: rgba(0, 0, 0, 0.06);
+  --color-dropdown-bg: #ffffff;
+  --color-table-header-bg: #f8fafc;
+  --color-table-hover-bg: #f8fafc;
+  
+  /* Excel table variables */
+  --excel-border: #333333;
+  --excel-text: #111111;
+  --excel-header-bg: #f2f5f9;
+  --excel-header-text: #000000;
+  --excel-header-secondary-bg: #e8edf5;
+  --excel-header-secondary-text: #444444;
+  --excel-body-bg: #ffffff;
+  --excel-hover-bg: #f0f7f4;
+  --excel-computed-bg: #fffbeb;
+  --excel-computed-text: #1e293b;
+  --excel-warning-bg: #ffedd5;
+  --excel-warning-text: #c2410c;
+  --excel-danger-bg: #fee2e2;
+  --excel-danger-text: #b91c1c;
+
   --shadow-xs: 0 1px 2px rgba(0, 0, 0, 0.04);
   --shadow-sm: 0 1px 3px rgba(0, 0, 0, 0.06), 0 1px 2px rgba(0, 0, 0, 0.04);
   --shadow-md: 0 4px 6px -1px rgba(0, 0, 0, 0.07), 0 2px 4px -2px rgba(0, 0, 0, 0.05);
@@ -23,6 +51,55 @@
   --radius-lg: 14px;
   --radius-xl: 18px;
   --font-sans: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+}
+
+/* ===== Dark Mode Override ===== */
+html[data-theme="dark"] {
+  --color-bg-start: #0b0f19; /* premium deep dark slate */
+  --color-bg-end: #111827;   /* deep navy slate */
+  --color-text: #f3f4f6;     /* gray-100 */
+  --color-text-muted: #9ca3af; /* gray-400 */
+  --color-border: #374151;   /* gray-700 */
+  
+  --color-primary-light: rgba(20, 184, 166, 0.15); /* light teal tint */
+  --color-primary-medium: rgba(20, 184, 166, 0.28);
+  
+  --color-card-bg: #1f2937;  /* gray-800 */
+  --color-navbar-bg: #1f2937;
+  --color-input-bg: #111827;  /* gray-900 */
+  --color-input-text: #f3f4f6;
+  --color-input-border: #4b5563; /* gray-600 */
+  --color-badge-bg: rgba(255, 255, 255, 0.15);
+  --color-dropdown-bg: #1f2937;
+  --color-table-header-bg: #1f2937;
+  --color-table-hover-bg: #2d3748;
+  
+  --color-success: #10b981;
+  --color-danger: #ef4444;
+  --color-warning: #f59e0b;
+  --color-info: #0ea5e9;
+  --color-secondary: #9ca3af;
+  
+  /* Excel table variables in dark mode */
+  --excel-border: #4b5563;
+  --excel-text: #f3f4f6;
+  --excel-header-bg: #1f2937;
+  --excel-header-text: #f3f4f6;
+  --excel-header-secondary-bg: #111827;
+  --excel-header-secondary-text: #9ca3af;
+  --excel-body-bg: #1f2937;
+  --excel-hover-bg: rgba(15, 118, 110, 0.25);
+  --excel-computed-bg: #3b2c00;
+  --excel-computed-text: #fde047;
+  --excel-warning-bg: #431407;
+  --excel-warning-text: #fdba74;
+  --excel-danger-bg: #4c0519;
+  --excel-danger-text: #fecdd3;
+
+  --shadow-xs: 0 1px 2px rgba(0, 0, 0, 0.3);
+  --shadow-sm: 0 4px 6px -1px rgba(0, 0, 0, 0.4), 0 2px 4px -2px rgba(0, 0, 0, 0.3);
+  --shadow-md: 0 10px 15px -3px rgba(0, 0, 0, 0.5), 0 4px 6px -2px rgba(0, 0, 0, 0.4);
+  --shadow-lg: 0 20px 25px -5px rgba(0, 0, 0, 0.6), 0 10px 10px -5px rgba(0, 0, 0, 0.5);
 }
 
 /* ===== Base ===== */
@@ -40,6 +117,11 @@ body {
   -moz-osx-font-smoothing: grayscale;
 }
 
+/* Global Transition system for flawless theme switching */
+body, .card, .top-navbar, .form-control, .form-select, td, th, input, .container, .container-fluid, .login-card, .stat-filter-card, .modal-content, .input-group-text, .dropdown-menu, .dropdown-item {
+  transition: background 0.3s ease, background-color 0.3s ease, color 0.3s ease, border-color 0.3s ease, box-shadow 0.3s ease;
+}
+
 /* ===== Top Navbar ===== */
 .top-navbar {
   position: fixed;
@@ -47,7 +129,7 @@ body {
   left: 0;
   right: 0;
   height: 48px;
-  background: #ffffff;
+  background: var(--color-navbar-bg);
   border-bottom: 1px solid var(--color-border);
   display: flex;
   align-items: center;
@@ -154,7 +236,7 @@ body {
   text-transform: uppercase;
   letter-spacing: 0.04em;
   color: var(--color-text-muted);
-  background: rgba(0,0,0,0.06);
+  background: var(--color-badge-bg);
   padding: 0.1rem 0.35rem;
   border-radius: 3px;
 }
@@ -176,7 +258,7 @@ body {
 
 /* ===== Container ===== */
 .container {
-  background: #ffffff;
+  background: var(--color-card-bg);
   padding: 1.75rem;
   border-radius: var(--radius-lg);
   box-shadow: var(--shadow-sm);
@@ -190,7 +272,7 @@ body {
 
 /* Wide container for dashboard */
 .container-fluid.px-4 {
-  background: #ffffff;
+  background: var(--color-card-bg);
   padding: 1.75rem;
   border-radius: var(--radius-lg);
   box-shadow: var(--shadow-sm);
@@ -266,6 +348,7 @@ h1, h2, h3, h4, h5, h6,
   box-shadow: var(--shadow-xs);
   border-radius: var(--radius);
   transition: box-shadow 0.2s ease;
+  background-color: var(--color-card-bg) !important;
 }
 
 .card:hover {
@@ -282,15 +365,18 @@ h1, h2, h3, h4, h5, h6,
 .form-control,
 .form-select {
   border-radius: var(--radius-sm);
-  border: 1px solid var(--color-border);
+  border: 1px solid var(--color-input-border) !important;
+  background-color: var(--color-input-bg) !important;
+  color: var(--color-input-text) !important;
   font-size: 0.9rem;
   transition: border-color 0.15s ease, box-shadow 0.15s ease;
 }
 
 .form-control:focus,
 .form-select:focus {
-  border-color: var(--color-primary);
-  box-shadow: 0 0 0 3px var(--color-primary-light);
+  border-color: var(--color-primary) !important;
+  box-shadow: 0 0 0 3px var(--color-primary-light) !important;
+  background-color: var(--color-card-bg) !important;
 }
 
 .form-label {
@@ -301,9 +387,9 @@ h1, h2, h3, h4, h5, h6,
 }
 
 .input-group-text {
-  border-color: var(--color-border);
-  background-color: #f8fafb;
-  color: var(--color-text-muted);
+  border-color: var(--color-input-border) !important;
+  background-color: var(--color-table-header-bg) !important;
+  color: var(--color-text-muted) !important;
 }
 
 .form-compact .form-control { padding: .35rem .5rem; font-size: .92rem; }
@@ -939,6 +1025,201 @@ input[list]:focus::-webkit-calendar-picker-indicator { opacity: 1; }
   border-color: var(--color-primary-medium);
 }
 .mp-month-btn.active {
+  animation: slideOutRight 0.25s ease-in;
+}
+
+@keyframes slideInRight {
+  from { transform: translateX(100%); opacity: 0; }
+  to { transform: translateX(0); opacity: 1; }
+}
+
+@keyframes slideOutRight {
+  from { transform: translateX(0); opacity: 1; }
+  to { transform: translateX(100%); opacity: 0; }
+}
+
+.toast-container .toast + .toast {
+  margin-top: 0.75rem;
+}
+
+/* ===== Row highlight animation ===== */
+@keyframes highlightRow {
+  0% { background-color: var(--color-primary-medium); }
+  100% { background-color: transparent; }
+}
+
+.table-row-highlight {
+  animation: highlightRow 2s ease-out;
+  background-color: var(--color-primary-light) !important;
+}
+
+/* ===== Sortable headers ===== */
+.sortable-header {
+  cursor: pointer;
+  user-select: none;
+  position: relative;
+  transition: background-color 0.15s ease;
+}
+
+.sortable-header:hover {
+  background-color: var(--color-primary-light) !important;
+}
+
+.sortable-header .sort-icon {
+  font-size: 0.75rem;
+  opacity: 0.4;
+  margin-left: 0.25rem;
+  transition: opacity 0.15s ease, color 0.15s ease;
+}
+
+.sortable-header:hover .sort-icon { opacity: 0.7; }
+
+.sortable-header.sorted-asc .sort-icon,
+.sortable-header.sorted-desc .sort-icon {
+  opacity: 1;
+  color: var(--color-primary);
+}
+
+.sortable-header.sorted-asc .sort-icon::before { content: '\F145'; }
+.sortable-header.sorted-desc .sort-icon::before { content: '\F147'; }
+
+.sortable-header.sorted-asc .bi-chevron-expand,
+.sortable-header.sorted-desc .bi-chevron-expand { display: none; }
+
+#statusByDeptBody { transition: opacity 0.15s ease; }
+#statusByDeptBody.sorting { opacity: 0.6; }
+
+/* ===== Statistics cards ===== */
+.stat-card-link {
+  display: block;
+  transition: transform 0.2s ease;
+}
+
+.stat-card-link:hover {
+  transform: translateY(-3px);
+}
+
+.stat-card {
+  cursor: pointer;
+  transition: box-shadow 0.2s ease, border-color 0.2s ease;
+  border: 1px solid var(--color-border);
+}
+
+.stat-card-link:hover .stat-card {
+  box-shadow: var(--shadow-md);
+  border-color: var(--color-primary-medium);
+}
+
+.stat-card .card-body { padding: 1.25rem; }
+
+.stat-card .card-title {
+  font-size: 0.82rem;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.02em;
+  margin-bottom: 0.5rem;
+  transition: color 0.15s ease;
+}
+
+.stat-card-link:hover .card-title {
+  color: var(--color-primary) !important;
+}
+
+/* ===== Clickable badges ===== */
+.badge-clickable {
+  cursor: pointer;
+  transition: transform 0.15s ease, box-shadow 0.15s ease;
+}
+
+.badge-clickable:hover {
+  transform: scale(1.08);
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.15);
+  filter: brightness(1.05);
+}
+
+.badge-clickable:active { transform: scale(1.03); }
+
+/* ===== Statistics table links ===== */
+#statusByDeptTable tbody td a.text-dark:hover,
+#statusByDeptTable tfoot th a.text-dark:hover {
+  color: var(--color-primary) !important;
+  text-decoration: underline !important;
+}
+
+/* ===== Datalist ===== */
+input[list]::-webkit-calendar-picker-indicator { opacity: 0.6; cursor: pointer; }
+input[list]:focus::-webkit-calendar-picker-indicator { opacity: 1; }
+
+/* ===== Month Picker ===== */
+.month-picker { position: relative; }
+.month-picker-toggle {
+  cursor: pointer;
+  background: var(--bs-body-bg, #fff);
+  user-select: none;
+  white-space: nowrap;
+  overflow: hidden;
+}
+.month-picker-toggle:focus {
+  outline: 0;
+  border-color: var(--color-primary);
+  box-shadow: 0 0 0 0.2rem rgba(15, 118, 110, 0.2);
+}
+.mp-chevron {
+  transition: transform 0.2s ease;
+  flex-shrink: 0;
+}
+.month-picker-panel {
+  position: absolute;
+  top: calc(100% + 4px);
+  left: 0;
+  z-index: 1050;
+  min-width: 228px;
+  background: #fff;
+  border-color: var(--color-border) !important;
+}
+.mp-year-nav {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 8px;
+  padding-bottom: 6px;
+  border-bottom: 1px solid var(--color-border);
+}
+.mp-year-btn {
+  border: 1px solid transparent;
+  background: none;
+  padding: 2px 8px;
+  border-radius: var(--radius-sm);
+  cursor: pointer;
+  color: var(--color-primary);
+  line-height: 1.4;
+  transition: background .15s;
+}
+.mp-year-btn:hover:not(:disabled) { background: var(--color-primary-light); border-color: var(--color-primary-medium); }
+.mp-year-btn:disabled { opacity: 0.3; cursor: default; }
+.mp-year-label { font-weight: 600; font-size: .9rem; color: var(--color-text); }
+.mp-month-grid {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 4px;
+}
+.mp-month-btn {
+  border: 1px solid transparent;
+  border-radius: var(--radius-sm);
+  padding: 6px 4px;
+  font-size: .78rem;
+  cursor: pointer;
+  background: none;
+  transition: background .15s, border-color .15s, color .15s;
+  text-align: center;
+  color: var(--color-text);
+  font-family: var(--font-sans);
+}
+.mp-month-btn:hover:not(:disabled):not(.active) {
+  background: var(--color-primary-light);
+  border-color: var(--color-primary-medium);
+}
+.mp-month-btn.active {
   background: var(--color-primary);
   color: #fff;
   border-color: var(--color-primary);
@@ -951,28 +1232,27 @@ input[list]:focus::-webkit-calendar-picker-indicator { opacity: 1; }
   pointer-events: none;
 }
 
-
 /* ===== Form 007 Excel Table Styling ===== */
 .excel-table {
   border-collapse: collapse !important;
   width: 100%;
   margin-bottom: 1rem;
   background-color: transparent;
-  border-color: #333333 !important;
+  border-color: var(--excel-border) !important;
 }
 
 .excel-table th,
 .excel-table td {
-  border: 1px solid #333333 !important;
+  border: 1px solid var(--excel-border) !important;
   padding: 4px 6px !important;
   vertical-align: middle !important;
   font-size: 0.78rem;
-  color: #111111;
+  color: var(--excel-text) !important;
 }
 
 .excel-table thead th {
-  background-color: #f2f5f9 !important;
-  color: #000000 !important;
+  background-color: var(--excel-header-bg) !important;
+  color: var(--excel-header-text) !important;
   font-weight: 600 !important;
   text-align: center !important;
   font-size: 0.75rem !important;
@@ -984,27 +1264,28 @@ input[list]:focus::-webkit-calendar-picker-indicator { opacity: 1; }
 
 .excel-table thead tr.table-secondary td,
 .excel-table thead td.col-num {
-  background-color: #e8edf5 !important;
+  background-color: var(--excel-header-secondary-bg) !important;
   font-size: 0.7rem !important;
   font-weight: bold !important;
-  color: #444444 !important;
+  color: var(--excel-header-secondary-text) !important;
   text-align: center !important;
-  border: 1px solid #333333 !important;
+  border: 1px solid var(--excel-border) !important;
 }
 
 .excel-table tbody td {
-  background-color: #ffffff;
+  background-color: var(--excel-body-bg) !important;
 }
 
 .excel-table tbody tr:hover td {
-  background-color: #f0f7f4 !important; /* light teal highlight on hover */
+  background-color: var(--excel-hover-bg) !important;
 }
 
 /* Specific styling for inputs in form007_edit.html */
 .excel-table input[type="number"] {
-  border: 1px solid #cbd5e1;
+  border: 1px solid var(--color-input-border);
   border-radius: 3px;
-  background-color: #fafbfc;
+  background-color: var(--color-input-bg);
+  color: var(--color-input-text);
   font-size: 0.8rem;
   text-align: center;
   transition: all 0.15s ease;
@@ -1014,7 +1295,7 @@ input[list]:focus::-webkit-calendar-picker-indicator { opacity: 1; }
 
 .excel-table input[type="number"]:focus {
   border-color: var(--color-primary);
-  background-color: #ffffff;
+  background-color: var(--color-card-bg);
   outline: none;
   box-shadow: 0 0 0 2px var(--color-primary-light);
 }
@@ -1029,15 +1310,33 @@ input[list]:focus::-webkit-calendar-picker-indicator { opacity: 1; }
   -moz-appearance: textfield;
 }
 
-/* Excel-like highlighted cells */
+/* Excel-like highlighted cells and dynamic validation */
 .excel-table td.excel-computed {
-  background-color: #fffbeb !important; /* light yellow-beige for formulas */
+  background-color: var(--excel-computed-bg) !important;
+  color: var(--excel-computed-text) !important;
   font-weight: 600;
-  color: #1e293b;
+}
+
+.excel-table td.excel-warning {
+  background-color: var(--excel-warning-bg) !important;
+  color: var(--excel-warning-text) !important;
+  font-weight: 600;
+}
+
+.excel-table td.excel-danger {
+  background-color: var(--excel-danger-bg) !important;
+  color: var(--excel-danger-text) !important;
+  font-weight: 600;
 }
 
 .excel-table tbody tr:hover td.excel-computed {
-  background-color: #fef3c7 !important; /* amber on hover */
+  background-color: var(--excel-hover-bg) !important;
+}
+.excel-table tbody tr:hover td.excel-warning {
+  background-color: var(--excel-hover-bg) !important;
+}
+.excel-table tbody tr:hover td.excel-danger {
+  background-color: var(--excel-hover-bg) !important;
 }
 
 /* Vertical text headers for Form 016/o to match MoH paper forms */
@@ -1086,8 +1385,8 @@ input[list]:focus::-webkit-calendar-picker-indicator { opacity: 1; }
 
 /* Custom premium toolbar for statistics filters */
 .stat-filter-card {
-  background: #ffffff;
-  border: 1px solid #e2e8f0;
+  background: var(--color-card-bg);
+  border: 1px solid var(--color-border);
   border-radius: 8px;
   padding: 0.75rem 1rem;
   box-shadow: 0 1px 3px rgba(0, 0, 0, 0.05);
@@ -1117,4 +1416,122 @@ input[list]:focus::-webkit-calendar-picker-indicator { opacity: 1; }
   transform: translateY(0);
   box-shadow: none;
 }
+
+/* ===== Premium Theme Overrides for Core UI & Bootstrap components ===== */
+
+/* Modal styling */
+.modal-content {
+  background-color: var(--color-card-bg) !important;
+  color: var(--color-text) !important;
+  border: 1px solid var(--color-border) !important;
+}
+.modal-header, .modal-footer {
+  border-color: var(--color-border) !important;
+}
+.btn-close {
+  filter: var(--bs-btn-close-white-filter, none);
+}
+html[data-theme="dark"] .btn-close {
+  filter: invert(1) grayscale(1) brightness(2);
+}
+
+/* Table styling */
+.table {
+  color: var(--color-text) !important;
+  border-color: var(--color-border) !important;
+  background-color: transparent !important;
+}
+.table > :not(caption) > * > * {
+  background-color: transparent !important;
+  color: var(--color-text) !important;
+  border-color: var(--color-border) !important;
+}
+.table thead th {
+  background-color: var(--color-table-header-bg) !important;
+  color: var(--color-text) !important;
+  border-bottom: 2px solid var(--color-border) !important;
+}
+.table-hover tbody tr:hover td {
+  background-color: var(--color-table-hover-bg) !important;
+}
+
+/* Standard Dropdown override */
+.dropdown-menu {
+  background-color: var(--color-dropdown-bg) !important;
+  border-color: var(--color-border) !important;
+}
+.dropdown-item {
+  color: var(--color-text) !important;
+}
+.dropdown-item:hover, .dropdown-item:focus {
+  background-color: var(--color-primary-light) !important;
+  color: var(--color-primary) !important;
+}
+.dropdown-divider {
+  border-color: var(--color-border) !important;
+}
+
+/* Popover & Tooltip overrides */
+.popover {
+  background-color: var(--color-card-bg) !important;
+  border-color: var(--color-border) !important;
+}
+.popover-header {
+  background-color: var(--color-table-header-bg) !important;
+  color: var(--color-text) !important;
+  border-bottom-color: var(--color-border) !important;
+}
+.popover-body {
+  color: var(--color-text-muted) !important;
+}
+.popover-arrow::after {
+  border-bottom-color: var(--color-card-bg) !important;
+  border-top-color: var(--color-card-bg) !important;
+}
+
+/* Breadcrumbs override */
+.breadcrumb-item + .breadcrumb-item::before {
+  color: var(--color-text-muted);
+}
+.breadcrumb-item.active {
+  color: var(--color-text);
+}
+
+/* Breadcrumbs container background override if applicable */
+.breadcrumb {
+  background-color: transparent !important;
+}
+
+/* Progress bar background */
+.progress {
+  background-color: var(--color-border) !important;
+}
+
+/* Dynamic badges and styles */
+.badge.bg-success-subtle {
+  background-color: rgba(22, 163, 74, 0.15) !important;
+  color: #22c55e !important;
+}
+.badge.bg-danger-subtle {
+  background-color: rgba(220, 38, 38, 0.15) !important;
+  color: #f87171 !important;
+}
+.badge.bg-secondary-subtle {
+  background-color: rgba(100, 116, 139, 0.15) !important;
+  color: #94a3b8 !important;
+}
+.badge.bg-info-subtle {
+  background-color: rgba(14, 165, 233, 0.15) !important;
+  color: #38bdf8 !important;
+}
+.badge.bg-warning {
+  color: #1e293b !important;
+}
+html[data-theme="dark"] .text-dark {
+  color: #f3f4f6 !important;
+}
+html[data-theme="dark"] .text-muted {
+  color: var(--color-text-muted) !important;
+}
+
 
