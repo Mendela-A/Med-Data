@@ -923,7 +923,7 @@ def form016_export():
             col_a_val,
             row['beds_total'] if row['beds_total'] is not None else '',
             row['beds_average'] if row['beds_average'] is not None else '',
-            row['patients_start'] if row['patients_start'] is not None else '',
+            row['patients_start'] if (row['patients_start'] is not None and not is_totals_row) else '',
             row['admitted_total'],
             row['admitted_rural'],
             row['admitted_children'],

@@ -194,7 +194,7 @@ tr.totals-row td {
       <td class="period-name">{{ row.date_str }}</td>
       <td>{{ row.beds_total | nz }}</td>
       <td>{{ row.beds_average | nz }}</td>
-      <td>{{ row.patients_start | nz }}</td>
+      <td>{{ row.patients_start | nz if not row.is_totals else '' }}</td>
       <td>{{ row.admitted_total | nz }}</td>
       <td>{{ row.admitted_rural | nz }}</td>
       <td>{{ row.admitted_children | nz }}</td>
