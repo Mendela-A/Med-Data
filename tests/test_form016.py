@@ -4,8 +4,8 @@ from app import create_app
 from models import db, User, Department, DailyReport
 
 DATE = datetime.date(2026, 4, 1)
-FROM_DATE = "2026-04-01"
-TO_DATE = "2026-04-30"
+FROM_DATE = "2026-12-01"
+TO_DATE = "2026-12-31"
 
 
 class TestConfig:

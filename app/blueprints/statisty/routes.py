@@ -259,39 +259,50 @@ def _get_form016_data(from_date, to_date, department_id=None):
         return row
 
     table = []
+    selected_month = from_date.month
 
     # Q1: Jan–Mar
-    for m in range(1, 4):
+    q1_months = range(1, min(selected_month, 3) + 1)
+    for m in q1_months:
         table.append(_month_row(m))
-    table.append(_subtotal_row('За I квартал', 1, 3))
+    if selected_month >= 3:
+        table.append(_subtotal_row('За I квартал', 1, 3))
 
     # Q2: Apr–Jun
-    for m in range(4, 7):
-        table.append(_month_row(m))
-    table.append(_subtotal_row('За II квартал', 4, 6))
-
-    # H1
-    table.append(_subtotal_row('За півріччя', 1, 6))
+    if selected_month >= 4:
+        q2_months = range(4, min(selected_month, 6) + 1)
+        for m in q2_months:
+            table.append(_month_row(m))
+        if selected_month >= 6:
+            table.append(_subtotal_row('За II квартал', 4, 6))
+            table.append(_subtotal_row('За півріччя', 1, 6))
 
     # Q3: Jul–Sep
-    for m in range(7, 10):
-        table.append(_month_row(m))
-    table.append(_subtotal_row('За III квартал', 7, 9))
+    if selected_month >= 7:
+        q3_months = range(7, min(selected_month, 9) + 1)
+        for m in q3_months:
+            table.append(_month_row(m))
+        if selected_month >= 9:
+            table.append(_subtotal_row('За III квартал', 7, 9))
 
     # Q4: Oct–Dec
-    for m in range(10, 13):
-        table.append(_month_row(m))
-    table.append(_subtotal_row('За IV квартал', 10, 12))
+    if selected_month >= 10:
+        q4_months = range(10, min(selected_month, 12) + 1)
+        for m in q4_months:
+            table.append(_month_row(m))
+        if selected_month >= 12:
+            table.append(_subtotal_row('За IV квартал', 10, 12))
 
-    # Annual
-    full_year_row = _subtotal_row('За рік', 1, 12)
-    table.append(full_year_row)
+    # Annual / period totals
+    if selected_month == 12:
+        totals_row = _subtotal_row('За рік', 1, 12)
+    else:
+        totals_row = _subtotal_row(f"Всього за період (січень–{MONTHS_UA_NOMINATIVE[selected_month].lower()})", 1, selected_month)
+    table.append(totals_row)
 
-    totals = full_year_row
+    totals = totals_row
 
     return table, totals, 'daily_report', dr_count
-
-
 # ---------------------------------------------------------------------------
 
 # Routes
