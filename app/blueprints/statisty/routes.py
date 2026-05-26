@@ -211,7 +211,7 @@ def _aggregate_period(year, start_month, end_month, department_id=None):
     }
 
 
-def _get_form016_data(from_date, to_date, department_id=None):
+def _get_form016_data(from_date, to_date, department_ids=None):
     # Year of the report is determined by from_date
     year = from_date.year
 
@@ -224,13 +224,25 @@ def _get_form016_data(from_date, to_date, department_id=None):
         DailyReport.report_date >= year_start,
         DailyReport.report_date <= year_end,
     )
-    if department_id:
-        dr_query = dr_query.filter(DailyReport.department_id == department_id)
+    if department_ids:
+        dr_query = dr_query.filter(DailyReport.department_id.in_(department_ids))
     dr_count = dr_query.count()
 
     selected_dept = None
-    if department_id:
-        selected_dept = Department.query.get(department_id)
+    if department_ids:
+        if len(department_ids) == 1:
+            selected_dept = Department.query.get(department_ids[0])
+        elif len(department_ids) > 1:
+            if set(department_ids) == {4, 20}:
+                combined_name = "Хірургічне (доросле + дитяче)"
+            elif set(department_ids) == {6, 22}:
+                combined_name = "Травматологічне (доросле + дитяче)"
+            elif set(department_ids) == {12, 21}:
+                combined_name = "Урологічне (доросле + дитяче)"
+            else:
+                depts_in = Department.query.filter(Department.id.in_(department_ids)).all()
+                combined_name = " + ".join([d.name for d in depts_in])
+            selected_dept = Department(name=combined_name)
 
     # Let's map months
     MONTHS_UA_NOMINATIVE = {
@@ -247,13 +259,13 @@ def _get_form016_data(from_date, to_date, department_id=None):
     ]}
 
     def _month_row(m):
-        data = _aggregate_period(year, m, m, department_id)
+        data = _aggregate_period(year, m, m, department_ids)
         row = {'date_str': MONTHS_UA_NOMINATIVE[m], 'is_totals': False}
         row.update(data if data else _ZERO)
         return row
 
     def _subtotal_row(label, start_m, end_m):
-        data = _aggregate_period(year, start_m, end_m, department_id)
+        data = _aggregate_period(year, start_m, end_m, department_ids)
         row = {'date_str': label, 'is_totals': True}
         row.update(data if data else _ZERO)
         return row
@@ -635,6 +647,31 @@ def form007_print(report_date_str):
         download_name=f"forma007_{report_date_str}.pdf",
         mimetype='application/pdf',
     )
+def _parse_department_ids(department_id_str):
+    department_id_str = department_id_str.strip()
+    if ',' in department_id_str:
+        department_ids = [int(x) for x in department_id_str.split(',') if x.isdigit()]
+    elif department_id_str.isdigit():
+        department_ids = [int(department_id_str)]
+    else:
+        department_ids = []
+    
+    selected_dept = None
+    if len(department_ids) == 1:
+        selected_dept = Department.query.get(department_ids[0])
+    elif len(department_ids) > 1:
+        if set(department_ids) == {4, 20}:
+            combined_name = "Хірургічне (доросле + дитяче)"
+        elif set(department_ids) == {6, 22}:
+            combined_name = "Травматологічне (доросле + дитяче)"
+        elif set(department_ids) == {12, 21}:
+            combined_name = "Урологічне (доросле + дитяче)"
+        else:
+            depts_in = Department.query.filter(Department.id.in_(department_ids)).all()
+            combined_name = " + ".join([d.name for d in depts_in])
+        selected_dept = Department(name=combined_name)
+        
+    return department_ids, selected_dept
 
 
 # ---- Form 016 ---------------------------------------------------------------
@@ -645,12 +682,11 @@ def form016():
     from_date, to_date = _parse_date_range()
 
     department_id_str = request.args.get('department_id', '').strip()
-    department_id = int(department_id_str) if department_id_str.isdigit() else None
+    department_ids, selected_dept = _parse_department_ids(department_id_str)
 
     depts = Department.query.order_by(Department.row_no.nullslast(), Department.name).all()
-    selected_dept = Department.query.get(department_id) if department_id else None
 
-    table, totals, data_source, dr_count = _get_form016_data(from_date, to_date, department_id)
+    table, totals, data_source, dr_count = _get_form016_data(from_date, to_date, department_ids)
 
     return render_template(
         'statisty/form016.html',
@@ -662,7 +698,7 @@ def form016():
         data_source=data_source,
         dr_count=dr_count,
         depts=depts,
-        department_id=department_id,
+        department_id_str=department_id_str,
         selected_dept=selected_dept,
     )
 
@@ -674,10 +710,9 @@ def form016():
 def form016_print():
     from_date, to_date = _parse_date_range()
     department_id_str = request.args.get('department_id', '').strip()
-    department_id = int(department_id_str) if department_id_str.isdigit() else None
-    selected_dept = Department.query.get(department_id) if department_id else None
+    department_ids, selected_dept = _parse_department_ids(department_id_str)
 
-    table, totals, _, _ = _get_form016_data(from_date, to_date, department_id)
+    table, totals, _, _ = _get_form016_data(from_date, to_date, department_ids)
 
     html_string = render_template(
         'print_form016.html',
@@ -697,7 +732,7 @@ def form016_print():
         return redirect(url_for('statisty.form016',
                                 from_date=from_date.isoformat(),
                                 to_date=to_date.isoformat(),
-                                department_id=department_id or ''))
+                                department_id=department_id_str or ''))
 
     pdf = HTML(string=html_string).write_pdf()
     bio = BytesIO(pdf)
@@ -719,10 +754,8 @@ def form016_export():
     from_date, to_date = _parse_date_range()
 
     department_id_str = request.args.get('department_id', '').strip()
-    department_id = int(department_id_str) if department_id_str.isdigit() else None
-
-    selected_dept = Department.query.get(department_id) if department_id else None
-    table, totals, data_source, dr_count = _get_form016_data(from_date, to_date, department_id)
+    department_ids, selected_dept = _parse_department_ids(department_id_str)
+    table, totals, data_source, dr_count = _get_form016_data(from_date, to_date, department_ids)
 
     wb = Workbook()
     ws = wb.active

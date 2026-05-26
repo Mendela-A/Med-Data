@@ -33,8 +33,12 @@
     <label class="form-label mb-1 small">Відділення</label>
     <select name="department_id" class="form-select form-select-sm">
       <option value="">Всі відділення (стаціонар)</option>
+      <option value="4,20" {% if department_id_str == '4,20' %}selected{% endif %}>Хірургічне (доросле + дитяче)</option>
+      <option value="6,22" {% if department_id_str == '6,22' %}selected{% endif %}>Травматологічне (доросле + дитяче)</option>
+      <option value="12,21" {% if department_id_str == '12,21' %}selected{% endif %}>Урологічне (доросле + дитяче)</option>
+      <option disabled>──────────</option>
       {% for d in depts %}
-        <option value="{{ d.id }}" {% if d.id == department_id %}selected{% endif %}>{{ d.name }}</option>
+        <option value="{{ d.id }}" {% if d.id|string == department_id_str %}selected{% endif %}>{{ d.name }}</option>
       {% endfor %}
     </select>
   </div>
@@ -49,11 +53,11 @@
     </button>
   </div>
   <div class="col-auto ms-auto">
-    <a href="{{ url_for('statisty.form016_export', from_date=from_date.isoformat(), to_date=to_date.isoformat(), department_id=department_id or '') }}"
+    <a href="{{ url_for('statisty.form016_export', from_date=from_date.isoformat(), to_date=to_date.isoformat(), department_id=department_id_str or '') }}"
        class="btn btn-success btn-sm">
       <i class="bi bi-file-earmark-excel me-1"></i>Excel
     </a>
-    <a href="{{ url_for('statisty.form016_print', from_date=from_date.isoformat(), to_date=to_date.isoformat(), department_id=department_id or '') }}"
+    <a href="{{ url_for('statisty.form016_print', from_date=from_date.isoformat(), to_date=to_date.isoformat(), department_id=department_id_str or '') }}"
        target="_blank"
        class="btn btn-outline-danger btn-sm ms-1">
       <i class="bi bi-printer me-1"></i>Друк PDF
