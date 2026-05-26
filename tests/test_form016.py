@@ -238,14 +238,14 @@ def test_form016_excel_export(app, client):
         assert 'L4:L7' in merged_ranges
         assert ws.cell(row=4, column=12).value == "Померло\n(гр. 11)"
 
-        # Check row values. Row 9 is Січень, Row 10 is Лютий, Row 11 is Березень, Row 12 is Квітень (Month 4)
-        row12_vals = [ws.cell(row=12, column=col).value for col in range(1, 18)]
-        assert row12_vals[0] == 'Квітень'
-        assert row12_vals[1] == 30  # beds_total on last day of April
-        assert row12_vals[3] == 15  # patients_start on April 1st
-        assert row12_vals[4] == 5   # admitted_total
-        assert row12_vals[5] == 2   # admitted_rural
-        assert row12_vals[6] == 1   # admitted_children
-        assert row12_vals[9] == 3   # discharged_total
-        assert row12_vals[12] == 0  # patients_end on last day of April (no report on 30.04)
-        assert row12_vals[13] == 17 # bed_days_total (since patients_end was 17 on April 1st and 0 elsewhere)
+        # Check row values. Row 9 is Січень, Row 10 is Лютий, Row 11 is Березень, Row 12 is "За I квартал", Row 13 is Квітень (Month 4)
+        row13_vals = [ws.cell(row=13, column=col).value for col in range(1, 18)]
+        assert row13_vals[0] == 'Квітень'
+        assert row13_vals[1] == 30  # beds_total on last day of April
+        assert row13_vals[3] == 15  # patients_start on April 1st
+        assert row13_vals[4] == 5   # admitted_total
+        assert row13_vals[5] == 2   # admitted_rural
+        assert row13_vals[6] == 1   # admitted_children
+        assert row13_vals[9] == 3   # discharged_total
+        assert row13_vals[12] == 0  # patients_end on last day of April (no report on 30.04)
+        assert row13_vals[13] == 17 # bed_days_total (since patients_end was 17 on April 1st and 0 elsewhere)

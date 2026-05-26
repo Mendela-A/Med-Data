@@ -39,14 +39,9 @@
     </select>
   </div>
   <div class="col-auto">
-    <label class="form-label mb-1 small">Від</label>
-    <input type="date" name="from_date" class="form-control form-control-sm"
-           value="{{ from_date.isoformat() }}">
-  </div>
-  <div class="col-auto">
-    <label class="form-label mb-1 small">До</label>
-    <input type="date" name="to_date" class="form-control form-control-sm"
-           value="{{ to_date.isoformat() }}">
+    <label class="form-label mb-1 small">Місяць</label>
+    <input type="month" name="from_date" class="form-control form-control-sm"
+           value="{{ from_date.strftime('%Y-%m') }}">
   </div>
   <div class="col-auto">
     <button type="submit" class="btn btn-primary btn-sm">
