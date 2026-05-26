@@ -2,35 +2,13 @@
 {% block title %}Мої записи — поточний місяць{% endblock %}
 {% block container_class %}container-fluid px-4{% endblock %}
 
-{# Macro for sortable column headers #}
-{% macro sort_th(column, label) %}
-  {% if sort_by == column %}
-    {% if sort_order == 'asc' %}
-      {% set new_order = 'desc' %}
-      {% set icon = 'bi-arrow-up' %}
-    {% else %}
-      {% set new_order = 'asc' %}
-      {% set icon = 'bi-arrow-down' %}
-    {% endif %}
-  {% else %}
-    {% set new_order = 'asc' %}
-    {% set icon = '' %}
-  {% endif %}
-  <th>
-    <a href="{{ url_for('records.index', month_filter=month_filter_value, all_months='1' if show_all else '', discharge_status=selected_status, treating_physician=selected_physician, discharge_department=selected_department, history=history_q, full_name=full_name_q, has_death_date='1' if has_death_date else '', per_page=pagination.per_page, sort_by=column, sort_order=new_order) }}" class="text-decoration-none text-dark d-flex align-items-center gap-1" style="cursor: pointer;">
-      <span>{{ label }}</span>
-      {% if icon %}
-        <i class="{{ icon }}" style="font-size: 0.8em;"></i>
-      {% endif %}
-    </a>
-  </th>
-{% endmacro %}
+
 
 {% block content %}
   <!-- Toast container for print notifications -->
   <div id="printToastContainer" class="toast-container position-fixed top-0 end-0 p-3" style="z-index: 9999;"></div>
 
-  <div class="d-flex align-items-center gap-2 mb-3 flex-wrap">
+  <div class="d-flex align-items-center gap-2 mb-3 flex-wrap w-100">
     <h1 class="h4 mb-0 me-1" style="white-space: nowrap;">
       {% if show_all %}
         Записи <span class="text-muted fw-normal">(усі)</span>
@@ -46,55 +24,69 @@
       <i class="bi bi-arrow-left me-1"></i>Статистика
     </a>
     {% endif %}
-    <span class="stat-pill stat-pill-total" data-bs-toggle="tooltip" data-bs-title="Загальна кількість записів (з урахуванням фільтрів)">
-      <i class="bi bi-layers"></i>Всього: <strong>{{ count }}</strong>
-    </span>
-    <span class="stat-pill stat-pill-success{% if count_discharged == 0 %} stat-pill-muted{% endif %}" data-bs-toggle="tooltip" data-bs-title="Записи зі статусом 'Виписаний' без дати смерті">
-      Виписаних: <strong>{{ count_discharged }}</strong>
-      {% if count > 0 %}<span class="stat-pct">({{ "%.0f"|format(count_discharged / count * 100) }}%)</span>{% endif %}
-    </span>
-    <span class="stat-pill stat-pill-warning{% if count_processing == 0 %} stat-pill-muted{% endif %}" data-bs-toggle="tooltip" data-bs-title="Записи зі статусом 'Опрацьовується' без дати смерті">
-      Опрацьовується: <strong>{{ count_processing }}</strong>
-      {% if count > 0 %}<span class="stat-pct">({{ "%.0f"|format(count_processing / count * 100) }}%)</span>{% endif %}
-    </span>
-    <span class="stat-pill stat-pill-danger{% if count_violations == 0 %} stat-pill-muted{% endif %}" data-bs-toggle="tooltip" data-bs-title="Записи зі статусом 'Порушені вимоги' без дати смерті">
-      Порушення: <strong>{{ count_violations }}</strong>
-      {% if count > 0 %}<span class="stat-pct">({{ "%.0f"|format(count_violations / count * 100) }}%)</span>{% endif %}
-    </span>
-    <span class="stat-pill stat-pill-dark{% if count_deceased == 0 %} stat-pill-muted{% endif %}" data-bs-toggle="tooltip" data-bs-title="Всі записи з датою смерті (незалежно від статусу)">
-      Померло: <strong>{{ count_deceased }}</strong>
-      {% if count > 0 %}<span class="stat-pct">({{ "%.0f"|format(count_deceased / count * 100) }}%)</span>{% endif %}
-    </span>
-    <button type="button" class="btn btn-sm btn-link text-muted p-0" data-bs-toggle="popover" data-bs-placement="bottom" data-bs-html="true"
-            data-bs-title="<i class='bi bi-info-circle me-1'></i>Як рахується статистика?"
-            data-bs-content="<ul class='mb-0 ps-3'><li><strong>Померло</strong> — пріоритетна категорія: всі записи з датою смерті</li><li><strong>Виписаних, Опрацьовується, Порушення</strong> — тільки записи БЕЗ дати смерті</li><li><strong>Всього</strong> = сума всіх категорій</li></ul>">
-      <i class="bi bi-question-circle"></i>
-    </button>
-    {% if current_user.role in ['editor', 'admin', 'viewer'] %}
-    <div class="btn-group ms-auto">
-      <button type="button" class="btn btn-primary btn-sm dropdown-toggle" data-bs-toggle="dropdown" aria-expanded="false">
-        <i class="bi bi-file-earmark-arrow-down me-1"></i>Звіти
+
+    <div id="records-stats-container" class="d-flex align-items-center gap-2 flex-wrap flex-grow-1">
+      <span class="stat-pill stat-pill-info{% if count == 0 %} stat-pill-muted{% endif %}" data-bs-toggle="tooltip" data-bs-title="Всі виписки за обраний період">
+        <i class="bi bi-layers"></i>Всього: <strong>{{ count }}</strong>
+      </span>
+      <span class="stat-pill stat-pill-success{% if count_discharged == 0 %} stat-pill-muted{% endif %}" data-bs-toggle="tooltip" data-bs-title="Записи зі статусом 'Виписаний' без дати смерті">
+        Виписаних: <strong>{{ count_discharged }}</strong>
+        {% if count > 0 %}<span class="stat-pct">({{ "%.0f"|format(count_discharged / count * 100) }}%)</span>{% endif %}
+      </span>
+      <span class="stat-pill stat-pill-warning{% if count_processing == 0 %} stat-pill-muted{% endif %}" data-bs-toggle="tooltip" data-bs-title="Записи зі статусом 'Опрацьовується' без дати смерті">
+        Опрацьовується: <strong>{{ count_processing }}</strong>
+        {% if count > 0 %}<span class="stat-pct">({{ "%.0f"|format(count_processing / count * 100) }}%)</span>{% endif %}
+      </span>
+      <span class="stat-pill stat-pill-danger{% if count_violations == 0 %} stat-pill-muted{% endif %}" data-bs-toggle="tooltip" data-bs-title="Записи зі статусом 'Порушені вимоги' без дати смерті">
+        Порушення: <strong>{{ count_violations }}</strong>
+        {% if count > 0 %}<span class="stat-pct">({{ "%.0f"|format(count_violations / count * 100) }}%)</span>{% endif %}
+      </span>
+      <span class="stat-pill stat-pill-dark{% if count_deceased == 0 %} stat-pill-muted{% endif %}" data-bs-toggle="tooltip" data-bs-title="Всі записи з датою смерті (незалежно від статусу)">
+        Померло: <strong>{{ count_deceased }}</strong>
+        {% if count > 0 %}<span class="stat-pct">({{ "%.0f"|format(count_deceased / count * 100) }}%)</span>{% endif %}
+      </span>
+      <button type="button" class="btn btn-sm btn-link text-muted p-0" data-bs-toggle="popover" data-bs-placement="bottom" data-bs-html="true"
+              data-bs-title="<i class='bi bi-info-circle me-1'></i>Як рахується статистика?"
+              data-bs-content="<ul class='mb-0 ps-3'><li><strong>Померло</strong> — пріоритетна категорія: всі записи з датою смерті</li><li><strong>Виписаних, Опрацьовується, Порушення</strong> — тільки записи БЕЗ дати смерті</li><li><strong>Всього</strong> = sum всіх категорій</li></ul>">
+        <i class="bi bi-question-circle"></i>
       </button>
-      <ul class="dropdown-menu dropdown-menu-end">
-        <li><a class="dropdown-item" href="#" onclick="quickExportRecords(); return false;"><i class="bi bi-file-earmark-excel me-2"></i>Експортувати в Excel</a></li>
-        <li><a class="dropdown-item" href="#" onclick="printRecords(); return false;"><i class="bi bi-printer me-2"></i>Друк (PDF)</a></li>
-        <li><hr class="dropdown-divider"></li>
-        <li><a class="dropdown-item" href="#" data-bs-toggle="modal" data-bs-target="#exportRecordsModal"><i class="bi bi-calendar-range me-2"></i>Детальний експорт...</a></li>
-      </ul>
+      {% if current_user.role in ['editor', 'admin', 'viewer'] %}
+      <div class="btn-group ms-auto">
+        <button type="button" class="btn btn-primary btn-sm dropdown-toggle" data-bs-toggle="dropdown" aria-expanded="false">
+          <i class="bi bi-file-earmark-arrow-down me-1"></i>Звіти
+        </button>
+        <ul class="dropdown-menu dropdown-menu-end">
+          <li><a class="dropdown-item" href="#" onclick="quickExportRecords(); return false;"><i class="bi bi-file-earmark-excel me-2"></i>Експортувати в Excel</a></li>
+          <li><a class="dropdown-item" href="#" onclick="printRecords(); return false;"><i class="bi bi-printer me-2"></i>Друк (PDF)</a></li>
+          <li><hr class="dropdown-divider"></li>
+          <li><a class="dropdown-item" href="#" data-bs-toggle="modal" data-bs-target="#exportRecordsModal"><i class="bi bi-calendar-range me-2"></i>Детальний експорт...</a></li>
+        </ul>
+      </div>
+      {% endif %}
     </div>
-    {% endif %}
   </div>
 
 
   <div class="card mb-3">
     <div class="card-body py-3">
-      <h5 class="card-title mb-3">Фільтри</h5>
+      <h5 class="card-title mb-3 d-flex align-items-center gap-2">
+        <span>Фільтри</span>
+        <!-- HTMX search loading spinner indicator -->
+        <div class="spinner-border spinner-border-sm text-primary htmx-indicator" id="search-spinner" role="status" style="width: 1rem; height: 1rem;">
+          <span class="visually-hidden">Завантаження...</span>
+        </div>
+      </h5>
       <form method="get">
         <div class="row g-3 mb-3">
           <div class="col-sm-6 col-md-4 col-xl-2">
             <label class="form-label small mb-1"><i class="bi bi-calendar-month me-1"></i>Місяць</label>
             <div class="month-picker" data-value="{{ month_filter_value }}" data-min="2020-01">
-              <input type="hidden" name="month_filter" id="month_filter" class="mp-hidden-input" value="{{ month_filter_value }}">
+              <input type="hidden" name="month_filter" id="month_filter" class="mp-hidden-input" value="{{ month_filter_value }}"
+                     hx-get="{{ url_for('records.index') }}"
+                     hx-trigger="change"
+                     hx-target="#records-table-container"
+                     hx-include="closest form"
+                     hx-indicator="#search-spinner">
               <button type="button" class="form-control form-control-sm text-start month-picker-toggle d-flex align-items-center justify-content-between">
                 <span><i class="bi bi-calendar-month me-1"></i><span class="mp-label"></span></span>
                 <i class="bi bi-chevron-down small text-muted ms-1 mp-chevron"></i>
@@ -105,7 +97,12 @@
 
           <div class="col-sm-6 col-md-4 col-xl-2">
             <label class="form-label small mb-1"><i class="bi bi-flag me-1"></i>Статус виписки</label>
-            <select class="form-select form-select-sm" name="discharge_status">
+            <select class="form-select form-select-sm" name="discharge_status"
+                    hx-get="{{ url_for('records.index') }}"
+                    hx-trigger="change"
+                    hx-target="#records-table-container"
+                    hx-include="closest form"
+                    hx-indicator="#search-spinner">
               <option value="">Всі</option>
               <option value="Виписаний" {% if selected_status == 'Виписаний' %}selected{% endif %}>Виписаний</option>
               <option value="Опрацьовується" {% if selected_status == 'Опрацьовується' %}selected{% endif %}>Опрацьовується</option>
@@ -115,7 +112,12 @@
 
           <div class="col-sm-6 col-md-4 col-xl-2">
             <label class="form-label small mb-1"><i class="bi bi-hospital me-1"></i>Відділення</label>
-            <select class="form-select form-select-sm" name="discharge_department">
+            <select class="form-select form-select-sm" name="discharge_department"
+                    hx-get="{{ url_for('records.index') }}"
+                    hx-trigger="change"
+                    hx-target="#records-table-container"
+                    hx-include="closest form"
+                    hx-indicator="#search-spinner">
               <option value="">Всі</option>
               {% for d in departments %}
                 <option value="{{ d }}" {% if d == selected_department %}selected{% endif %}>{{ d }}</option>
@@ -125,7 +127,12 @@
 
           <div class="col-sm-6 col-md-4 col-xl-2">
             <label class="form-label small mb-1"><i class="bi bi-person-badge me-1"></i>Лікуючий лікар</label>
-            <select class="form-select form-select-sm" name="treating_physician">
+            <select class="form-select form-select-sm" name="treating_physician"
+                    hx-get="{{ url_for('records.index') }}"
+                    hx-trigger="change"
+                    hx-target="#records-table-container"
+                    hx-include="closest form"
+                    hx-indicator="#search-spinner">
               <option value="">Всі</option>
               {% for p in physicians %}
                 <option value="{{ p }}" {% if p == selected_physician %}selected{% endif %}>{{ p }}</option>
@@ -135,12 +142,22 @@
 
           <div class="col-sm-6 col-md-4 col-xl-2">
             <label class="form-label small mb-1"><i class="bi bi-person-lines-fill me-1"></i>ПІБ</label>
-            <input class="form-control form-control-sm" name="full_name" placeholder="Пошук за ПІБ" value="{{ full_name_q }}">
+            <input class="form-control form-control-sm" name="full_name" placeholder="Пошук за ПІБ" value="{{ full_name_q }}"
+                   hx-get="{{ url_for('records.index') }}"
+                   hx-trigger="keyup delay:200ms, search"
+                   hx-target="#records-table-container"
+                   hx-include="closest form"
+                   hx-indicator="#search-spinner">
           </div>
 
           <div class="col-sm-6 col-md-4 col-xl-2">
             <label class="form-label small mb-1"><i class="bi bi-file-medical me-1"></i>Номер історії</label>
-            <input class="form-control form-control-sm" name="history" placeholder="Введіть номер" value="{{ history_q }}">
+            <input class="form-control form-control-sm" name="history" placeholder="Введіть номер" value="{{ history_q }}"
+                   hx-get="{{ url_for('records.index') }}"
+                   hx-trigger="keyup delay:200ms, search"
+                   hx-target="#records-table-container"
+                   hx-include="closest form"
+                   hx-indicator="#search-spinner">
           </div>
         </div>
 
@@ -154,12 +171,22 @@
             </a>
           </div>
           <div class="form-check mb-0">
-            <input class="form-check-input" type="checkbox" value="1" id="has_death_date" name="has_death_date" {% if has_death_date %}checked{% endif %}>
+            <input class="form-check-input" type="checkbox" value="1" id="has_death_date" name="has_death_date" {% if has_death_date %}checked{% endif %}
+                   hx-get="{{ url_for('records.index') }}"
+                   hx-trigger="change"
+                   hx-target="#records-table-container"
+                   hx-include="closest form"
+                   hx-indicator="#search-spinner">
             <label class="form-check-label" for="has_death_date">З датою смерті</label>
           </div>
           <div class="d-flex align-items-center gap-2 ms-auto">
             <label class="form-label small mb-0"><i class="bi bi-list-ol me-1"></i>На сторінку:</label>
-            <select class="form-select form-select-sm" name="per_page" style="width: auto;">
+            <select class="form-select form-select-sm" name="per_page" style="width: auto;"
+                    hx-get="{{ url_for('records.index') }}"
+                    hx-trigger="change"
+                    hx-target="#records-table-container"
+                    hx-include="closest form"
+                    hx-indicator="#search-spinner">
               <option value="25" {% if pagination.per_page == 25 %}selected{% endif %}>25</option>
               <option value="50" {% if pagination.per_page == 50 %}selected{% endif %}>50</option>
               <option value="100" {% if pagination.per_page == 100 %}selected{% endif %}>100</option>
@@ -171,193 +198,9 @@
     </div>
   </div>
 
-  {% if records %}
-    <div class="card">
-      <div class="card-body p-0">
-        <div class="table-responsive">
-          <table class="table table-hover mb-0 records-table">
-            <thead>
-              <tr>
-                {{ sort_th('date_of_discharge', 'Дата виписки') }}
-                {{ sort_th('full_name', 'ПІБ') }}
-                {{ sort_th('discharge_department', 'Відділення') }}
-                {{ sort_th('treating_physician', 'Лікар') }}
-                {{ sort_th('history', 'Історія') }}
-                {{ sort_th('k_days', 'Днів') }}
-                {{ sort_th('discharge_status', 'Статус') }}
-                {{ sort_th('date_of_death', 'Дата смерті') }}
-                <th>Коментар</th>
-                {% if current_user.role in ['editor', 'admin', 'viewer'] %}
-                  <th>АДСГ</th>
-                  <th>Сума</th>
-                {% endif %}
-                {% if current_user.role in ['editor', 'admin'] %}
-                  <th>Змінив</th>
-                  <th>Змінено</th>
-                  <th>Дія</th>
-                {% endif %}
-              </tr>
-            </thead>
-      <tbody>
-        {% for r in records %}
-          <tr id="record-{{ r.id }}">
-            <td>{{ r.date_of_discharge.strftime('%d.%m.%Y') if r.date_of_discharge else '' }}</td>
-            <td>{{ r.full_name }}</td>
-            <td>{{ r.discharge_department or '' }}</td>
-            <td>{{ r.treating_physician or '' }}</td>
-            <td>{{ r.history or '' }}</td>
-            <td>
-              {% if r.k_days and r.k_days >= 30 %}
-                <span class="badge badge-table bg-danger">{{ r.k_days }}</span>
-              {% elif r.k_days and r.k_days >= 20 %}
-                <span class="badge badge-table bg-warning text-dark">{{ r.k_days }}</span>
-              {% else %}
-                {{ r.k_days or '' }}
-              {% endif %}
-            </td>
-            <td>
-              {% if r.discharge_status == 'Виписаний' %}
-                <span class="badge badge-table bg-success">{{ r.discharge_status }}</span>
-              {% elif r.discharge_status == 'Помер' %}
-                <span class="badge badge-table bg-danger">{{ r.discharge_status }}</span>
-              {% elif r.discharge_status == 'Опрацьовується' %}
-                <span class="badge badge-table bg-warning text-dark">{{ r.discharge_status }}</span>
-              {% elif r.discharge_status == 'Порушені вимоги' %}
-                <span class="badge badge-table bg-danger">{{ r.discharge_status }}</span>
-              {% elif r.discharge_status %}
-                <span class="badge badge-table bg-secondary">{{ r.discharge_status }}</span>
-              {% else %}
-                —
-              {% endif %}
-            </td>
-            <td>
-              {% if r.date_of_death %}
-                <span class="badge badge-table bg-danger">{{ r.date_of_death.strftime('%d.%m.%Y') }}</span>
-              {% endif %}
-            </td>
-            <td>{{ r.comment or '' }}</td>
-            {% if current_user.role in ['editor', 'admin', 'viewer'] %}
-              <td>{{ r.adsj or '' }}</td>
-              <td>{{ r.suma | format_suma }}</td>
-            {% endif %}
-            {% if current_user.role in ['editor', 'admin'] %}
-              <td>{{ r.updater.username if r.updater else (r.creator.username if r.creator else r.updated_by or r.created_by) }}</td>
-              <td>{{ r.updated_at.strftime('%d.%m.%Y %H:%M') if r.updated_at else (r.created_at.strftime('%d.%m.%Y %H:%M') if r.created_at else '') }}</td>
-              <td class="action-cell">
-                <div class="action-buttons-container">
-                  <button
-                    class="btn btn-xs btn-outline-primary edit-record-btn"
-                    data-bs-toggle="modal"
-                    data-bs-target="#editRecordModal"
-                    data-record-id="{{ r.id }}"
-                    data-full-name="{{ r.full_name }}"
-                    data-date-of-discharge="{{ r.date_of_discharge.strftime('%Y-%m-%d') if r.date_of_discharge else '' }}"
-                    data-discharge-department="{{ r.discharge_department or '' }}"
-                    data-treating-physician="{{ r.treating_physician or '' }}"
-                    data-history="{{ r.history or '' }}"
-                    data-k-days="{{ r.k_days if r.k_days is not none else '' }}"
-                    data-discharge-status="{{ r.discharge_status or '' }}"
-                    data-date-of-death="{{ r.date_of_death.strftime('%Y-%m-%d') if r.date_of_death else '' }}"
-                    data-comment="{{ r.comment or '' }}"
-                    data-adsj="{{ r.adsj or '' }}"
-                    data-suma="{{ r.suma if r.suma is not none else '' }}"
-                    title="Редагувати">
-                    <i class="bi bi-pencil"></i>Змінити
-                  </button>
-                  {% if current_user.role == 'admin' %}
-                    <form method="post" action="{{ url_for('records.delete_record', record_id=r.id) }}" class="d-inline delete-form" data-confirm="Ви справді хочете видалити запис #{{ r.id }} ({{ r.full_name }})?">
-                      <input type="hidden" name="discharge_status" value="{{ selected_status }}">
-                      <input type="hidden" name="treating_physician" value="{{ selected_physician }}">
-                      <input type="hidden" name="discharge_department" value="{{ selected_department }}">
-                      <input type="hidden" name="history" value="{{ history_q }}">
-                      <input type="hidden" name="full_name" value="{{ full_name_q }}">
-                      <input type="hidden" name="has_death_date" value="{{ '1' if has_death_date else '' }}">
-                      <button class="btn btn-xs btn-outline-danger" type="submit" title="Видалити">
-                        <i class="bi bi-trash"></i>Видалити
-                      </button>
-                    </form>
-                  {% endif %}
-                </div>
-              </td>
-            {% endif %}
-          </tr>
-        {% endfor %}
-      </tbody>
-    </table>
-        </div>
-      </div>
-    </div>
-
-    <!-- Pagination -->
-    {% if pagination.pages > 1 %}
-    <nav aria-label="Навігація по сторінках">
-      <ul class="pagination justify-content-center">
-        <!-- Previous button -->
-        <li class="page-item {% if not pagination.has_prev %}disabled{% endif %}">
-          <a class="page-link" href="{{ url_for('records.index', page=pagination.prev_num, discharge_status=selected_status, treating_physician=selected_physician, discharge_department=selected_department, history=history_q, full_name=full_name_q, month_filter=month_filter_value, all_months='1' if show_all else '', has_death_date='1' if has_death_date else '') }}"
-             {% if not pagination.has_prev %}tabindex="-1" aria-disabled="true"{% endif %}>
-            <i class="bi bi-chevron-left"></i> Попередня
-          </a>
-        </li>
-
-        <!-- Page numbers -->
-        {% set start_page = [pagination.page - 2, 1] | max %}
-        {% set end_page = [pagination.page + 2, pagination.pages] | min %}
-
-        {% if start_page > 1 %}
-          <li class="page-item">
-            <a class="page-link" href="{{ url_for('records.index', page=1, discharge_status=selected_status, treating_physician=selected_physician, discharge_department=selected_department, history=history_q, full_name=full_name_q, month_filter=month_filter_value, all_months='1' if show_all else '', has_death_date='1' if has_death_date else '') }}">1</a>
-          </li>
-          {% if start_page > 2 %}
-            <li class="page-item disabled"><span class="page-link">...</span></li>
-          {% endif %}
-        {% endif %}
-
-        {% for page_num in range(start_page, end_page + 1) %}
-          <li class="page-item {% if page_num == pagination.page %}active{% endif %}">
-            <a class="page-link" href="{{ url_for('records.index', page=page_num, discharge_status=selected_status, treating_physician=selected_physician, discharge_department=selected_department, history=history_q, full_name=full_name_q, month_filter=month_filter_value, all_months='1' if show_all else '', has_death_date='1' if has_death_date else '') }}">
-              {{ page_num }}
-            </a>
-          </li>
-        {% endfor %}
-
-        {% if end_page < pagination.pages %}
-          {% if end_page < pagination.pages - 1 %}
-            <li class="page-item disabled"><span class="page-link">...</span></li>
-          {% endif %}
-          <li class="page-item">
-            <a class="page-link" href="{{ url_for('records.index', page=pagination.pages, discharge_status=selected_status, treating_physician=selected_physician, discharge_department=selected_department, history=history_q, full_name=full_name_q, month_filter=month_filter_value, all_months='1' if show_all else '', has_death_date='1' if has_death_date else '') }}">{{ pagination.pages }}</a>
-          </li>
-        {% endif %}
-
-        <!-- Next button -->
-        <li class="page-item {% if not pagination.has_next %}disabled{% endif %}">
-          <a class="page-link" href="{{ url_for('records.index', page=pagination.next_num, discharge_status=selected_status, treating_physician=selected_physician, discharge_department=selected_department, history=history_q, full_name=full_name_q, month_filter=month_filter_value, all_months='1' if show_all else '', has_death_date='1' if has_death_date else '') }}"
-             {% if not pagination.has_next %}tabindex="-1" aria-disabled="true"{% endif %}>
-            Наступна <i class="bi bi-chevron-right"></i>
-          </a>
-        </li>
-      </ul>
-
-      <!-- Page info -->
-      <div class="text-center text-muted small">
-        Показано {{ pagination.per_page * (pagination.page - 1) + 1 }} - {{ [pagination.per_page * pagination.page, pagination.total] | min }} з {{ pagination.total }} записів
-      </div>
-    </nav>
-    {% endif %}
-
-  {% else %}
-    <div class="card">
-      <div class="card-body text-center py-5">
-        <i class="bi bi-inbox text-muted" style="font-size: 3rem;"></i>
-        <h5 class="mt-3 text-muted">Записів не знайдено</h5>
-        <p class="text-muted mb-3">За обраний період або фільтри записів немає</p>
-        <a class="btn btn-outline-primary btn-sm" href="{{ url_for('records.index') }}">
-          <i class="bi bi-arrow-clockwise me-1"></i>Скинути фільтри
-        </a>
-      </div>
-    </div>
-  {% endif %}
+  <div id="records-table-container">
+    {% include "_records_table_partial.html" %}
+  </div>
 
   <script>
     // Disable month filter when "all months" checkbox is checked
@@ -384,6 +227,25 @@
           }, 100);
         }
       }
+
+      // Re-initialize tooltips/popovers after HTMX swap
+      document.body.addEventListener('htmx:afterSwap', function(evt) {
+        const targetId = evt.detail.target.id;
+        if (targetId === 'records-table-container' || targetId === 'records-stats-container') {
+          const newTooltips = evt.detail.target.querySelectorAll('[data-bs-toggle="tooltip"]');
+          newTooltips.forEach(el => {
+            if (!bootstrap.Tooltip.getInstance(el)) {
+              new bootstrap.Tooltip(el);
+            }
+          });
+          const newPopovers = evt.detail.target.querySelectorAll('[data-bs-toggle="popover"]');
+          newPopovers.forEach(el => {
+            if (!bootstrap.Popover.getInstance(el)) {
+              new bootstrap.Popover(el);
+            }
+          });
+        }
+      });
     });
   </script>
 

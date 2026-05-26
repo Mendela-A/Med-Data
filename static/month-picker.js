@@ -111,6 +111,7 @@
         btn.addEventListener('click', function () {
           selected = { year: displayYear, month: m };
           hiddenInput.value = formatYM(selected.year, selected.month);
+          hiddenInput.dispatchEvent(new Event('change', { bubbles: true }));
           updateLabel();
           closePanel();
         });
