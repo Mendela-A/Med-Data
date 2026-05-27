@@ -74,6 +74,12 @@
       </div>
 
       <div class="col-auto">
+        <button type="submit" class="btn btn-primary btn-sm shadow-sm transition-all">
+          <i class="bi bi-funnel me-1"></i>Застосувати
+        </button>
+      </div>
+
+      <div class="col-auto">
         {% if action_filter or actor_filter or from_date or to_date or q_search %}
           <a href="{{ url_for('admin.admin_audit') }}" class="btn btn-outline-secondary btn-sm shadow-sm transition-all">
             <i class="bi bi-x-lg me-1"></i>Скинути
