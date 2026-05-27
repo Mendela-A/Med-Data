@@ -1,0 +1,207 @@
+{% extends "base.html" %}
+{% block title %}Форма 016/о — Звіт по відділеннях{% endblock %}
+
+{% block content %}
+{# Official MoH top-left and top-right headers #}
+<div class="row mb-4 small text-muted px-2">
+  <div class="col-md-6 text-start">
+    Міністерство охорони здоров'я України<br>
+    <strong>КНП «Калуська центральна районна лікарня»</strong>
+  </div>
+  <div class="col-md-6 text-md-end text-start mt-2 mt-md-0">
+    МЕДИЧНА ДОКУМЕНТАЦІЯ<br>
+    <strong>Форма № 016/о (по відділеннях)</strong><br>
+    <span style="font-size: 0.8rem;">Затверджено наказом МОЗ України від 27.12.05 р. № 760</span>
+  </div>
+</div>
+
+<div class="d-flex align-items-center justify-content-between mb-3 flex-wrap gap-2">
+  <h4 class="mb-0">
+    <i class="bi bi-building me-2 text-primary"></i>
+    ЗВЕДЕНА ВІДОМІСТЬ обліку руху хворих і ліжкового фонду в стаціонарі по відділеннях
+  </h4>
+  <span class="badge bg-secondary fs-6">{{ period_label }}</span>
+</div>
+
+{# Date range Form #}
+<form method="get" class="row g-2 align-items-end stat-filter-card">
+  <div class="col-auto">
+    <label class="form-label mb-1 small">Місяць</label>
+    <input type="month" name="from_date" class="form-control form-control-sm"
+           value="{% if request.args.get('from_date') %}{{ from_date.strftime('%Y-%m') }}{% endif %}">
+  </div>
+  <div class="col-auto">
+    <button type="submit" class="btn btn-primary btn-sm">
+      <i class="bi bi-funnel me-1"></i>Застосувати
+    </button>
+  </div>
+  <div class="col-auto ms-auto">
+    <a href="{{ url_for('statisty.form016_departments_export', from_date=from_date.isoformat(), to_date=to_date.isoformat()) }}"
+       class="btn btn-success btn-sm">
+      <i class="bi bi-file-earmark-excel me-1"></i>Excel
+    </a>
+    <a href="{{ url_for('statisty.form016_departments_print', from_date=from_date.isoformat(), to_date=to_date.isoformat()) }}"
+       target="_blank"
+       class="btn btn-outline-danger btn-sm ms-1">
+      <i class="bi bi-printer me-1"></i>Друк PDF
+    </a>
+    <a href="{{ url_for('statisty.form007', from_date=from_date.strftime('%Y-%m')) }}"
+       class="btn btn-outline-secondary btn-sm ms-1">
+      <i class="bi bi-calendar3 me-1"></i>Форма 007 (по днях)
+    </a>
+  </div>
+</form>
+
+{% if dr_count > 0 %}
+<div class="alert alert-success py-2 small mb-3">
+  <i class="bi bi-check-circle me-1"></i>
+  Дані агреговано з <strong>Форми 007</strong> ({{ dr_count }} записів за {{ period_label }} по всіх відділеннях).
+</div>
+{% else %}
+<div class="alert alert-warning py-2 small mb-3">
+  <i class="bi bi-exclamation-triangle me-1"></i>
+  Форму 007 ще не введено для жодного відділення за цей період.
+</div>
+{% endif %}
+
+{% if table %}
+<div class="table-responsive">
+  <table class="table table-sm excel-table align-middle text-center" style="min-width: 1600px; font-size: 0.85rem;">
+    <thead>
+      <tr>
+        <th rowspan="4" style="min-width:200px;" class="align-middle bg-light text-dark fw-bold border-secondary">Найменування відділень</th>
+        <th rowspan="4" class="align-middle bg-light text-dark fw-bold border-secondary" style="width: 70px;">Номер рядка</th>
+        <th rowspan="4" class="align-middle bg-light text-dark fw-bold border-secondary vertical-header" style="max-width: 200px; font-size: 0.8rem;">Число ліжок у межах кошторису фактично розгорнутих + згорнутих на ремонт на кінець звітного періоду</th>
+        <th rowspan="4" class="align-middle excel-computed text-dark fw-bold border-secondary vertical-header">Середньомісячних (річних) ліжок</th>
+        <th rowspan="4" class="align-middle bg-light text-dark fw-bold border-secondary vertical-header">Перебувало хворих на початок звітного періоду</th>
+        <th colspan="7" class="align-middle bg-light text-dark fw-bold border-secondary">За звітний період</th>
+        <th rowspan="4" class="align-middle bg-light text-dark fw-bold border-secondary vertical-header">Померло</th>
+        <th rowspan="4" class="align-middle bg-light text-dark fw-bold border-secondary vertical-header">Перебувало хворих на кінець звітного періоду</th>
+        <th rowspan="4" class="align-middle bg-light text-dark fw-bold border-secondary vertical-header" style="max-width: 150px;">Проведено всіма хворими ліжко-днів</th>
+        <th rowspan="4" class="align-middle bg-light text-dark fw-bold border-secondary vertical-header" style="max-width: 130px;">у тому числі сільськими жителями</th>
+        <th rowspan="4" class="align-middle bg-light text-dark fw-bold border-secondary vertical-header">Число ліжко-днів закриття</th>
+        <th rowspan="4" class="align-middle bg-light text-dark fw-bold border-secondary vertical-header" style="max-width: 150px;">Крім того, проведено ліжко-днів матерями з хворими дітьми</th>
+      </tr>
+      <tr>
+        <th colspan="3" class="align-middle bg-light border-secondary">поступило хворих</th>
+        <th colspan="2" class="align-middle bg-light border-secondary">переведено хворих всередині лікарні</th>
+        <th colspan="2" class="align-middle bg-light border-secondary">виписано хворих</th>
+      </tr>
+      <tr>
+        <th rowspan="2" class="align-middle bg-light border-secondary vertical-header">всього</th>
+        <th colspan="2" class="align-middle bg-light border-secondary">із них</th>
+        <th rowspan="2" class="align-middle bg-light border-secondary vertical-header">із інших відділень</th>
+        <th rowspan="2" class="align-middle bg-light border-secondary vertical-header">в інші відділення</th>
+        <th rowspan="2" class="align-middle bg-light border-secondary vertical-header">всього</th>
+        <th rowspan="2" class="align-middle bg-light border-secondary vertical-header" style="max-width: 140px; font-size: 0.75rem;">у тому числі переведені в інші стаціонари (з гр.9)</th>
+      </tr>
+      <tr>
+        <th class="align-middle bg-light border-secondary vertical-header">сільських жителів</th>
+        <th class="align-middle bg-light border-secondary vertical-header">дітей до 17 років включно</th>
+      </tr>
+      <tr class="table-secondary small text-center text-muted border-secondary">
+        <td>А</td><td>Б</td><td>1</td><td>2</td><td>3</td><td>4</td>
+        <td>5</td><td>6</td><td>7</td><td>8</td><td>9</td>
+        <td>10</td><td>11</td><td>12</td><td>13</td><td>14</td>
+        <td>15</td><td>16</td>
+      </tr>
+    </thead>
+    <tbody>
+      {% for row in table %}
+      <tr {% if row.is_totals %}class="fw-bold table-light text-primary border-bottom border-dark" style="font-size: 0.9rem;"{% endif %}>
+        {% if row.is_totals %}
+          <td class="text-start ps-3 fw-bold">{{ row.dept_name }}</td>
+          <td class="text-center fw-bold"></td>
+        {% else %}
+          <td class="fw-semibold text-start ps-3">{{ row.dept_name }}</td>
+          <td class="text-center fw-semibold text-muted">{{ row.row_no if row.row_no is not none else '—' }}</td>
+        {% endif %}
+        <td class="text-center">{{ row.beds_total | nz }}</td>
+        <td class="text-center excel-computed">{{ row.beds_average | nz }}</td>
+        <td class="text-center">{{ row.patients_start | nz if not row.is_totals else '' }}</td>
+        <td class="text-center fw-bold">{{ row.admitted_total | nz }}</td>
+        <td class="text-center">{{ row.admitted_rural | nz }}</td>
+        <td class="text-center">{{ row.admitted_children | nz }}</td>
+        <td class="text-center">{{ row.transferred_in | nz }}</td>
+        <td class="text-center">{{ row.transferred_out | nz }}</td>
+        <td class="text-center fw-bold">{{ row.discharged_total | nz }}</td>
+        <td class="text-center">{{ row.discharged_to_other | nz }}</td>
+        <td class="text-center {% if row.deaths %}text-danger fw-bold{% endif %}">
+          {{ row.deaths | nz }}
+        </td>
+        <td class="text-center fw-bold">{{ row.patients_end | nz }}</td>
+        <td class="text-center excel-computed fw-bold">{{ row.bed_days_total | nz }}</td>
+        <td class="text-center">{{ row.bed_days_rural | nz }}</td>
+        <td class="text-center">{{ row.bed_days_renovation | nz }}</td>
+        <td class="text-center">{{ row.bed_days_mothers | nz }}</td>
+      </tr>
+      {% endfor %}
+    </tbody>
+  </table>
+</div>
+
+{# Official Signature Block #}
+<div class="row mt-4 mb-4 pt-3 pb-3 signature-block bg-light shadow-sm rounded px-3 align-items-center mx-1">
+  <div class="col-md-7 text-start">
+    <div class="fw-bold text-dark mb-1">Заступник генерального директора</div>
+    <div class="text-muted small mb-2">КНП «Калуська ЦРЛ» з адміністративної діяльності</div>
+    <div style="display: flex; align-items: flex-end; gap: 8px;">
+      <span class="text-muted small">Підпис:</span>
+      <div class="signature-line border-bottom border-dark d-inline-block" style="width: 180px; height: 18px;"></div>
+      <span class="fw-semibold text-dark ms-2">Л. Луців</span>
+    </div>
+  </div>
+  <div class="col-md-5 text-md-end text-start mt-3 mt-md-0">
+    <div style="display: flex; align-items: flex-end; justify-content: flex-end; gap: 8px;">
+      <span class="text-muted small">Відповідальний:</span>
+      <div class="signature-line border-bottom border-dark d-inline-block" style="width: 150px; height: 18px;"></div>
+      <span class="fw-bold text-dark text-uppercase ms-2">Валерій ПАЛЯНИЦЯ</span>
+    </div>
+  </div>
+</div>
+
+<div class="alert alert-info py-2 small mt-2 mb-3">
+  <i class="bi bi-info-circle me-1"></i>
+  <strong>Правила відомості Форми 016/о по відділеннях:</strong>
+  <ul>
+    <li><strong>Найменування відділень</strong> (А) — перелік усіх відділень стаціонару, упорядкованих за номером рядка.</li>
+    <li><strong>Номер рядка</strong> (Б) — офіційний порядковий індекс відділення для МОЗ звітності.</li>
+    <li><strong>Графа 1</strong> (ліжка на кінець) та <strong>Графа 12</strong> (хворі на кінець) — відображають фактичні значення на <strong>останній день</strong> обраного звітного періоду.</li>
+    <li><strong>Графа 2</strong> (середньомісячні ліжка) — обчислюється як сума розгорнутих ліжок за кожен день періоду, поділена на число календарних днів у періоді.</li>
+    <li><strong>Графа 3</strong> (хворі на початок) — відображає кількість хворих на початок доби <strong>першого дня</strong> обраного періоду. У підсумковому рядку «Разом» не відображається.</li>
+    <li><strong>Графи 4–11</strong> (рух хворих: поступлення, переведення, виписки, смерть) — обчислюються як <strong>суми</strong> відповідних щоденних показників за весь обраний період.</li>
+    <li><strong>Графи 13–16</strong> (ліжко-дні: загальні, сільські, ремонтні, матері) — обчислюються як <strong>суми</strong> відповідних щоденних показників за весь періоду.</li>
+  </ul>
+</div>
+
+<div class="card bg-light border-0 shadow-sm mb-4">
+  <div class="card-body py-3 px-4 small text-muted">
+    <div class="d-flex align-items-center mb-2">
+      <i class="bi bi-file-earmark-medical text-primary me-2 fs-5"></i>
+      <strong class="text-dark">Медична облікова документація — Форма № 016/о (по відділеннях)</strong>
+    </div>
+    <div class="ps-4">
+      <p class="mb-2">
+        <strong>Зведена відомість обліку руху хворих і ліжкового фонду в стаціонарі по відділеннях.</strong><br>
+        Дозволяє аналізувати ефективність ліжкового фонду та рух пацієнтів по всьому стаціонару за довільний місяць.
+      </p>
+      <div class="border-top pt-2 mt-2">
+        <div class="row g-2">
+          <div class="col-md-7">
+            <i class="bi bi-info-circle me-1"></i><strong>Примітка:</strong> Показник «Середньомісячних ліжок» автоматично округлюється до цілого для відповідності стандартам МОЗ.
+          </div>
+          <div class="col-md-5 text-md-end border-start-md">
+            <div><strong>Термін зберігання:</strong> 1 рік після звітного періоду.</div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+{% else %}
+<div class="alert alert-secondary">
+  <i class="bi bi-inbox me-2"></i>Немає записів за обраний період.
+</div>
+{% endif %}
+{% endblock %}

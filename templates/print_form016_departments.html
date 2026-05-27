@@ -1,0 +1,227 @@
+<!DOCTYPE html>
+<html lang="uk">
+<head>
+<meta charset="UTF-8">
+<title>Форма 016/о (по відділеннях) — {{ period_label }}</title>
+<style>
+@page {
+    size: A4 landscape;
+    margin: 0.6cm 0.6cm 1.1cm 0.6cm;
+    @bottom-center {
+        content: "{{ ps.org_short_name }} — Зведена Форма 016/о — {{ from_date.year }}";
+        font-size: 7pt;
+        color: #666;
+    }
+    @bottom-right {
+        content: "Стор. " counter(page) " з " counter(pages);
+        font-size: 7pt;
+        color: #666;
+    }
+}
+
+* { margin: 0; padding: 0; box-sizing: border-box; }
+
+body {
+    font-family: 'DejaVu Sans', Arial, sans-serif;
+    font-size: 7pt;
+    color: #111;
+}
+
+.header {
+    overflow: hidden;
+    margin-bottom: 10px;
+    border-bottom: 1px solid #ccc;
+    padding-bottom: 7px;
+    line-height: 1.35;
+}
+.header-left {
+    float: left;
+    text-align: left;
+    width: 45%;
+    font-size: 7.5pt;
+}
+.header-right {
+    float: right;
+    text-align: right;
+    width: 45%;
+    font-size: 7.5pt;
+}
+.header-center {
+    clear: both;
+    text-align: center;
+    padding-top: 8px;
+}
+.header-center h1 {
+    font-size: 9.5pt;
+    font-weight: bold;
+    text-transform: uppercase;
+    letter-spacing: 0.4px;
+    margin: 0;
+}
+.header-center .subtitle {
+    font-size: 7.5pt;
+    margin-top: 2px;
+}
+
+table {
+    width: 100%;
+    border-collapse: collapse;
+    table-layout: fixed;
+}
+th, td {
+    border: 1px solid #333;
+    padding: 1px 2px;
+    vertical-align: middle;
+    text-align: center;
+    word-wrap: break-word;
+}
+th {
+    background: #e8edf5;
+    font-size: 6pt;
+    font-weight: bold;
+    line-height: 1.2;
+}
+td.period-name {
+    text-align: left;
+    padding-left: 4px;
+    font-size: 7pt;
+}
+tr.totals-row td {
+    font-weight: bold;
+    background: #d0d8e8;
+}
+.col-num {
+    color: #666;
+    font-size: 5.5pt;
+    background: #f0f0f0;
+}
+
+.signature {
+    margin-top: 10px;
+    font-size: 7.5pt;
+}
+</style>
+</head>
+<body>
+
+<div class="header">
+  <div class="header-left">
+    {{ ps.ministry }}<br>
+    <strong>{{ ps.org_name }}</strong><br>
+    <span style="font-size: 6pt; color: #555;">{{ ps.org_address }}</span>
+  </div>
+  <div class="header-right">
+    МЕДИЧНА ДОКУМЕНТАЦІЯ<br>
+    <strong>{{ ps.form016_form_no }} (по відділеннях)</strong><br>
+    <span style="font-size: 6pt; color: #555;">{{ ps.form016_decree }}</span>
+  </div>
+  <div class="header-center">
+    <h1>{{ ps.form016_title }}</h1>
+    <div style="font-size: 8pt; font-weight: bold; margin-top: 2px;">ПО ВІДДІЛЕННЯХ СТАЦІОНАРУ</div>
+    <div style="font-size: 7.5pt; margin-top: 3px;">
+      за <strong>{{ from_date.year }}</strong> р. — період: <strong>{{ period_label }}</strong>
+    </div>
+  </div>
+</div>
+
+<table>
+  <colgroup>
+    <col style="width:13%">  <!-- А: Назва відділення -->
+    <col style="width:3.5%"> <!-- Б: Номер рядка -->
+    <col style="width:5.1%"> <!-- 1: beds_total -->
+    <col style="width:5.1%"> <!-- 2: beds_average -->
+    <col style="width:5.1%"> <!-- 3: patients_start -->
+    <col style="width:5.1%"> <!-- 4: admitted_total -->
+    <col style="width:5.1%"> <!-- 5: admitted_rural -->
+    <col style="width:5.1%"> <!-- 6: admitted_children -->
+    <col style="width:5.1%"> <!-- 7: transferred_in -->
+    <col style="width:5.1%"> <!-- 8: transferred_out -->
+    <col style="width:5.1%"> <!-- 9: discharged_total -->
+    <col style="width:5.1%"> <!-- 10: discharged_to_other -->
+    <col style="width:4%">   <!-- 11: deaths -->
+    <col style="width:5.1%"> <!-- 12: patients_end -->
+    <col style="width:5.8%"> <!-- 13: bed_days_total -->
+    <col style="width:5.8%"> <!-- 14: bed_days_rural -->
+    <col style="width:5.8%"> <!-- 15: bed_days_renovation -->
+    <col style="width:5.8%"> <!-- 16: bed_days_mothers -->
+  </colgroup>
+  <thead>
+    <tr>
+      <th rowspan="4">Найменування відділень</th>
+      <th rowspan="4" style="font-size: 5.5pt;">Номер рядка</th>
+      <th rowspan="4">Число ліжок кошторису на кінець періоду</th>
+      <th rowspan="4">Середньомісячних ліжок</th>
+      <th rowspan="4">Перебувало хворих на початок періоду</th>
+      <th colspan="7">За звітний період</th>
+      <th rowspan="4">Померло</th>
+      <th rowspan="4">Перебувало хворих на кінець періоду</th>
+      <th rowspan="4">Проведено всіма хворими ліжко-днів</th>
+      <th rowspan="4">у т. ч. сільськими жителями</th>
+      <th rowspan="4">Число ліжко-днів закриття</th>
+      <th rowspan="4">Проведено ліжко-днів матерями з дітьми</th>
+    </tr>
+    <tr>
+      <th colspan="3">поступило хворих</th>
+      <th colspan="2">переведено хворих</th>
+      <th colspan="2">виписано хворих</th>
+    </tr>
+    <tr>
+      <th rowspan="2">всього</th>
+      <th colspan="2">із них</th>
+      <th rowspan="2">із інших відділень</th>
+      <th rowspan="2">в інші відділення</th>
+      <th rowspan="2">всього</th>
+      <th rowspan="2" style="font-size: 5pt;">у т.ч. переведені в інші стаціонари</th>
+    </tr>
+    <tr>
+      <th>сільських жителів</th>
+      <th>дітей до 17 років вкл.</th>
+    </tr>
+    <tr class="col-num">
+      <td>А</td><td>Б</td><td>1</td><td>2</td><td>3</td><td>4</td>
+      <td>5</td><td>6</td><td>7</td><td>8</td><td>9</td>
+      <td>10</td><td>11</td><td>12</td><td>13</td><td>14</td>
+      <td>15</td><td>16</td>
+    </tr>
+  </thead>
+  <tbody>
+    {% for row in table %}
+    <tr {% if row.is_totals %}class="totals-row"{% endif %}>
+      <td class="period-name" style="{% if row.is_totals %}font-weight: bold;{% endif %}">{{ row.dept_name }}</td>
+      <td style="font-size: 6.5pt; color: #555; font-weight: bold;">{{ row.row_no if row.row_no is not none else '' }}</td>
+      <td>{{ row.beds_total | nz }}</td>
+      <td style="{% if not row.is_totals %}background: #fffbeb;{% endif %}">{{ row.beds_average | nz }}</td>
+      <td>{{ row.patients_start | nz if not row.is_totals else '' }}</td>
+      <td style="font-weight: bold;">{{ row.admitted_total | nz }}</td>
+      <td>{{ row.admitted_rural | nz }}</td>
+      <td>{{ row.admitted_children | nz }}</td>
+      <td>{{ row.transferred_in | nz }}</td>
+      <td>{{ row.transferred_out | nz }}</td>
+      <td style="font-weight: bold;">{{ row.discharged_total | nz }}</td>
+      <td>{{ row.discharged_to_other | nz }}</td>
+      <td style="{% if row.deaths %}color: #d00; font-weight: bold;{% endif %}">{{ row.deaths | nz }}</td>
+      <td style="font-weight: bold;">{{ row.patients_end | nz }}</td>
+      <td style="font-weight: bold; {% if not row.is_totals %}background: #fffbeb;{% endif %}">{{ row.bed_days_total | nz }}</td>
+      <td>{{ row.bed_days_rural | nz }}</td>
+      <td>{{ row.bed_days_renovation | nz }}</td>
+      <td>{{ row.bed_days_mothers | nz }}</td>
+    </tr>
+    {% endfor %}
+  </tbody>
+</table>
+
+<div class="signature" style="page-break-inside: avoid;">
+  <div style="float: left; width: 55%; margin-top: 10px;">
+    <strong>Заступник генерального директора</strong><br>
+    <span style="font-size: 6pt; color: #555;">КНП «Калуська ЦРЛ» з адміністративної діяльності</span><br><br>
+    Підпис: ___________________________ <strong>Л. Луців</strong>
+  </div>
+  <div style="float: right; width: 40%; text-align: right; margin-top: 10px;">
+    <br><br>
+    Відповідальний: ___________________________ <strong>Валерій ПАЛЯНИЦЯ</strong>
+  </div>
+  <div style="clear: both;"></div>
+</div>
+
+</body>
+</html>

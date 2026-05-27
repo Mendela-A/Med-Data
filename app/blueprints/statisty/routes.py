@@ -319,6 +319,218 @@ def _get_form016_data(from_date, to_date, department_ids=None):
     totals = totals_row
 
     return table, totals, 'daily_report', dr_count
+
+
+def _get_form016_departments_data(from_date, to_date):
+    # Get all active departments sorted by row_no and name
+    depts = Department.query.order_by(Department.row_no.nullslast(), Department.name).all()
+
+    # Query all reports in the range
+    reports = DailyReport.query.filter(
+        DailyReport.report_date >= from_date,
+        DailyReport.report_date <= to_date
+    ).all()
+
+    # Group reports by department_id and report_date
+    reports_by_dept_date = {}
+    for r in reports:
+        reports_by_dept_date.setdefault(r.department_id, {})[r.report_date] = r
+
+    # Count of daily reports in the period
+    dr_count = len(reports)
+
+    # Date list in the period
+    days_list = []
+    curr = from_date
+    while curr <= to_date:
+        days_list.append(curr)
+        curr += timedelta(days=1)
+    
+    total_days = len(days_list)
+    
+    _ZERO = {k: 0 for k in [
+        'beds_total', 'beds_average', 'patients_start', 'admitted_total',
+        'admitted_rural', 'admitted_children', 'transferred_in', 'transferred_out',
+        'discharged_total', 'discharged_to_other', 'deaths', 'patients_end',
+        'bed_days_total', 'bed_days_rural', 'bed_days_renovation', 'bed_days_mothers',
+    ]}
+
+    table = []
+    
+    # Track grand totals for all columns
+    grand_beds_total = 0
+    grand_beds_average_sum = 0
+    grand_patients_start = 0
+    grand_admitted_total = 0
+    grand_admitted_rural = 0
+    grand_admitted_children = 0
+    grand_admitted_children_rural = 0
+    grand_transferred_in = 0
+    grand_transferred_out = 0
+    grand_discharged_total = 0
+    grand_discharged_to_other = 0
+    grand_deaths = 0
+    grand_patients_end = 0
+    grand_bed_days_total = 0
+    grand_bed_days_rural = 0
+    grand_bed_days_renovation = 0
+    grand_bed_days_mothers = 0
+
+    for dept in depts:
+        dept_reports = reports_by_dept_date.get(dept.id, {})
+        
+        # Calculate daily stats for this department
+        daily_stats = []
+        for d in days_list:
+            r = dept_reports.get(d)
+            if r:
+                beds_total = r.beds_total if r.beds_total is not None else (dept.bed_capacity or 0)
+                patients_start = r.patients_start or 0
+                patients_end = r.patients_end or 0
+                admitted_total = r.admitted_total or 0
+                admitted_rural = r.admitted_rural or 0
+                admitted_children = r.admitted_children or 0
+                admitted_children_rural = r.admitted_children_rural or 0
+                transferred_in = r.transferred_in or 0
+                transferred_out = r.transferred_out or 0
+                discharged_total = r.discharged_total or 0
+                discharged_to_other = r.discharged_to_other or 0
+                deaths = r.deaths or 0
+                bed_days_rural = r.patients_end_rural or 0
+                bed_days_renovation = r.beds_renovation or 0
+                bed_days_mothers = r.mothers_with_children or 0
+            else:
+                beds_total = dept.bed_capacity or 0
+                patients_start = 0
+                patients_end = 0
+                admitted_total = 0
+                admitted_rural = 0
+                admitted_children = 0
+                admitted_children_rural = 0
+                transferred_in = 0
+                transferred_out = 0
+                discharged_total = 0
+                discharged_to_other = 0
+                deaths = 0
+                bed_days_rural = 0
+                bed_days_renovation = 0
+                bed_days_mothers = 0
+
+            daily_stats.append({
+                'beds_total': beds_total,
+                'patients_start': patients_start,
+                'patients_end': patients_end,
+                'admitted_total': admitted_total,
+                'admitted_rural': admitted_rural,
+                'admitted_children': admitted_children,
+                'admitted_children_rural': admitted_children_rural,
+                'transferred_in': transferred_in,
+                'transferred_out': transferred_out,
+                'discharged_total': discharged_total,
+                'discharged_to_other': discharged_to_other,
+                'deaths': deaths,
+                'bed_days_rural': bed_days_rural,
+                'bed_days_renovation': bed_days_renovation,
+                'bed_days_mothers': bed_days_mothers,
+            })
+
+        if total_days > 0:
+            dept_admitted_total = sum(s['admitted_total'] for s in daily_stats)
+            dept_admitted_rural = sum(s['admitted_rural'] for s in daily_stats)
+            dept_admitted_children = sum(s['admitted_children'] for s in daily_stats)
+            dept_admitted_children_rural = sum(s['admitted_children_rural'] for s in daily_stats)
+            dept_transferred_in = sum(s['transferred_in'] for s in daily_stats)
+            dept_transferred_out = sum(s['transferred_out'] for s in daily_stats)
+            dept_discharged_total = sum(s['discharged_total'] for s in daily_stats)
+            dept_discharged_to_other = sum(s['discharged_to_other'] for s in daily_stats)
+            dept_deaths = sum(s['deaths'] for s in daily_stats)
+            dept_bed_days_rural = sum(s['bed_days_rural'] for s in daily_stats)
+            dept_bed_days_renovation = sum(s['bed_days_renovation'] for s in daily_stats)
+            dept_bed_days_mothers = sum(s['bed_days_mothers'] for s in daily_stats)
+
+            dept_bed_days_total = sum(s['patients_end'] for s in daily_stats)
+            dept_beds_total = daily_stats[-1]['beds_total']
+            dept_patients_end = daily_stats[-1]['patients_end']
+            dept_patients_start = daily_stats[0]['patients_start']
+
+            dept_beds_average = sum(s['beds_total'] for s in daily_stats) / total_days
+            dept_beds_average = int(round(dept_beds_average))
+
+            row = {
+                'dept_name': dept.name,
+                'row_no': dept.row_no,
+                'is_totals': False,
+                'beds_total': dept_beds_total,
+                'beds_average': dept_beds_average,
+                'patients_start': dept_patients_start,
+                'admitted_total': dept_admitted_total,
+                'admitted_rural': dept_admitted_rural,
+                'admitted_children': dept_admitted_children,
+                'admitted_children_rural': dept_admitted_children_rural,
+                'transferred_in': dept_transferred_in,
+                'transferred_out': dept_transferred_out,
+                'discharged_total': dept_discharged_total,
+                'discharged_to_other': dept_discharged_to_other,
+                'deaths': dept_deaths,
+                'patients_end': dept_patients_end,
+                'bed_days_total': dept_bed_days_total,
+                'bed_days_rural': dept_bed_days_rural,
+                'bed_days_renovation': dept_bed_days_renovation,
+                'bed_days_mothers': dept_bed_days_mothers,
+            }
+            table.append(row)
+
+            # Add to grand totals
+            grand_beds_total += dept_beds_total
+            grand_beds_average_sum += dept_beds_average
+            grand_patients_start += dept_patients_start
+            grand_admitted_total += dept_admitted_total
+            grand_admitted_rural += dept_admitted_rural
+            grand_admitted_children += dept_admitted_children
+            grand_admitted_children_rural += dept_admitted_children_rural
+            grand_transferred_in += dept_transferred_in
+            grand_transferred_out += dept_transferred_out
+            grand_discharged_total += dept_discharged_total
+            grand_discharged_to_other += dept_discharged_to_other
+            grand_deaths += dept_deaths
+            grand_patients_end += dept_patients_end
+            grand_bed_days_total += dept_bed_days_total
+            grand_bed_days_rural += dept_bed_days_rural
+            grand_bed_days_renovation += dept_bed_days_renovation
+            grand_bed_days_mothers += dept_bed_days_mothers
+        else:
+            row = {'dept_name': dept.name, 'row_no': dept.row_no, 'is_totals': False}
+            row.update(_ZERO)
+            table.append(row)
+
+    totals = {
+        'dept_name': 'Разом',
+        'row_no': '',
+        'is_totals': True,
+        'beds_total': grand_beds_total,
+        'beds_average': grand_beds_average_sum,
+        'patients_start': '',  # Empty/excluded for totals row
+        'admitted_total': grand_admitted_total,
+        'admitted_rural': grand_admitted_rural,
+        'admitted_children': grand_admitted_children,
+        'admitted_children_rural': grand_admitted_children_rural,
+        'transferred_in': grand_transferred_in,
+        'transferred_out': grand_transferred_out,
+        'discharged_total': grand_discharged_total,
+        'discharged_to_other': grand_discharged_to_other,
+        'deaths': grand_deaths,
+        'patients_end': grand_patients_end,
+        'bed_days_total': grand_bed_days_total,
+        'bed_days_rural': grand_bed_days_rural,
+        'bed_days_renovation': grand_bed_days_renovation,
+        'bed_days_mothers': grand_bed_days_mothers,
+    }
+    
+    table.append(totals)
+    
+    return table, totals, 'daily_report', dr_count
+
+
 # ---------------------------------------------------------------------------
 
 # Routes
@@ -980,6 +1192,292 @@ def form016_export():
     buf.seek(0)
 
     filename = f"form016_{from_date.strftime('%Y%m%d')}_{to_date.strftime('%Y%m%d')}.xlsx"
+    return Response(
+        buf.read(),
+        mimetype='application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
+        headers={'Content-Disposition': f'attachment; filename="{filename}"'},
+    )
+
+
+# ---- Form 016 by Departments ------------------------------------------------
+
+@statisty_bp.route('/form016_departments')
+@role_required('admin', 'viewer')
+def form016_departments():
+    from_date, to_date = _parse_date_range(default_to_year=True)
+
+    table, totals, data_source, dr_count = _get_form016_departments_data(from_date, to_date)
+
+    return render_template(
+        'statisty/form016_departments.html',
+        table=table,
+        totals=totals,
+        from_date=from_date,
+        to_date=to_date,
+        period_label=_period_label(from_date, to_date),
+        data_source=data_source,
+        dr_count=dr_count,
+    )
+
+
+# ---- Form 016 by Departments PDF print --------------------------------------
+
+@statisty_bp.route('/form016_departments/print')
+@role_required('admin', 'viewer')
+def form016_departments_print():
+    from_date, to_date = _parse_date_range(default_to_year=True)
+
+    table, totals, _, _ = _get_form016_departments_data(from_date, to_date)
+
+    html_string = render_template(
+        'print_form016_departments.html',
+        table=table,
+        totals=totals,
+        from_date=from_date,
+        to_date=to_date,
+        period_label=_period_label(from_date, to_date),
+        ps=_get_print_settings(),
+    )
+
+    try:
+        from weasyprint import HTML
+    except ImportError:
+        flash('WeasyPrint не встановлено.', 'danger')
+        return redirect(url_for('statisty.form016_departments',
+                                from_date=from_date.isoformat(),
+                                to_date=to_date.isoformat()))
+
+    pdf = HTML(string=html_string).write_pdf()
+    bio = BytesIO(pdf)
+    bio.seek(0)
+    filename = f"forma016_depts_{from_date.year}.pdf"
+    return send_file(bio, as_attachment=False,
+                     download_name=filename, mimetype='application/pdf')
+
+
+# ---- Form 016 by Departments Excel export -----------------------------------
+
+@statisty_bp.route('/form016_departments/export')
+@role_required('admin', 'viewer')
+def form016_departments_export():
+    from openpyxl import Workbook
+    from openpyxl.styles import Font, Alignment, PatternFill, Border, Side
+
+    from_date, to_date = _parse_date_range(default_to_year=True)
+    table, totals, data_source, dr_count = _get_form016_departments_data(from_date, to_date)
+
+    wb = Workbook()
+    ws = wb.active
+    ws.title = "Форма 016 по відділеннях"
+
+    # Common styles
+    center = Alignment(horizontal='center', vertical='center', wrap_text=True)
+    left = Alignment(horizontal='left', vertical='center')
+    right = Alignment(horizontal='right', vertical='center')
+    thin = Side(style='thin')
+    border = Border(left=thin, right=thin, top=thin, bottom=thin)
+    fill_hdr = PatternFill("solid", fgColor="D9E1F2")
+    fill_computed = PatternFill("solid", fgColor="FFFBEB")
+
+    # Column widths (18 columns: A to R)
+    col_widths = [
+        32,  # A: Найменування відділень (Col А)
+        10,  # B: Номер рядка (Col Б)
+        12,  # C: Розгорнуто ліжок на кінець (Col 1)
+        12,  # D: Середньомісячних ліжок (Col 2)
+        12,  # E: Перебувало на початок (Col 3)
+        10,  # F: Поступило - всього (Col 4)
+        10,  # G: Поступило - сільських (Col 5)
+        10,  # H: Поступило - дітей (Col 6)
+        10,  # I: Переведено - із інших (Col 7)
+        10,  # J: Переведено - в інші (Col 8)
+        10,  # K: Виписано - всього (Col 9)
+        10,  # L: Виписано - переведено (Col 10)
+        10,  # M: Померло (Col 11)
+        12,  # N: Перебувало на кінець (Col 12)
+        12,  # O: Ліжко-дні - всього (Col 13)
+        12,  # P: Ліжко-дні - сільськими (Col 14)
+        12,  # Q: Ліжко-дні - ремонт (Col 15)
+        12,  # R: Ліжко-дні - матерями (Col 16)
+    ]
+    for ci, w in enumerate(col_widths, 1):
+        ws.column_dimensions[ws.cell(row=1, column=ci).column_letter].width = w
+
+    # Row 1 & 2: Ministry of Health Ukraine & Official Form Info
+    ws.merge_cells('A1:J1')
+    ws['A1'] = "Міністерство охорони здоров'я України / КНП «Калуська ЦРЛ»"
+    ws['A1'].font = Font(name="Arial", size=8, italic=True)
+    ws['A1'].alignment = left
+
+    ws.merge_cells('K1:R1')
+    ws['K1'] = "МЕДИЧНА ДОКУМЕНТАЦІЯ"
+    ws['K1'].font = Font(name="Arial", size=8, bold=True)
+    ws['K1'].alignment = right
+
+    ws.merge_cells('A2:J2')
+    ws['A2'] = "вул. Каракая, 25, м. Калуш, Івано-Франківська обл., 77300"
+    ws['A2'].font = Font(name="Arial", size=8, italic=True)
+    ws['A2'].alignment = left
+
+    ws.merge_cells('K2:R2')
+    ws['K2'] = "Форма № 016/о (модифікована) / Затверджено наказом МОЗ України від 27.12.05 р. № 760"
+    ws['K2'].font = Font(name="Arial", size=8, italic=True)
+    ws['K2'].alignment = right
+
+    # Period title (A3:R3)
+    period_label = _period_label(from_date, to_date)
+    ws.merge_cells('A3:R3')
+    ws['A3'] = f"ЗВЕДЕНА ВІДОМІСТЬ обліку руху хворих і ліжкового фонду в стаціонарі по відділеннях за період: {period_label}"
+    ws['A3'].font = Font(name="Arial", size=11, bold=True)
+    ws['A3'].alignment = center
+
+    # Setup headers spanning Rows 4, 5, 6, 7, 8
+    for r in range(4, 9):
+        for c in range(1, 19):
+            cell = ws.cell(row=r, column=c)
+            cell.font = Font(name="Arial", size=8, bold=True)
+            cell.alignment = center
+            cell.fill = fill_hdr
+            cell.border = border
+
+    # Row 4 merges and texts
+    ws.merge_cells('A4:A7')
+    ws['A4'] = "Найменування відділень"
+
+    ws.merge_cells('B4:B7')
+    ws['B4'] = "Номер рядка"
+
+    ws.merge_cells('C4:C7')
+    ws['C4'] = "Число ліжок у межах кошторису фактично розгорнутих + згорнутих на ремонт на кінець звітного періоду\n(гр. 1)"
+
+    ws.merge_cells('D4:D7')
+    ws['D4'] = "Число середньомісячних (річних) ліжок\n(гр. 2)"
+
+    ws.merge_cells('E4:E7')
+    ws['E4'] = "Перебувало хворих на початок звітного періоду\n(гр. 3)"
+
+    ws.merge_cells('F4:L4')
+    ws['F4'] = "За звітний період"
+
+    ws.merge_cells('M4:M7')
+    ws['M4'] = "Померло\n(гр. 11)"
+
+    ws.merge_cells('N4:N7')
+    ws['N4'] = "Перебувало хворих на кінець звітного періоду\n(гр. 12)"
+
+    ws.merge_cells('O4:O7')
+    ws['O4'] = "Проведено всіма хворими ліжко-днів\n(гр. 13)"
+
+    ws.merge_cells('P4:P7')
+    ws['P4'] = "у тому числі сільськими жителями\n(гр. 14)"
+
+    ws.merge_cells('Q4:Q7')
+    ws['Q4'] = "Число ліжко-днів закриття\n(гр. 15)"
+
+    ws.merge_cells('R4:R7')
+    ws['R4'] = "Крім того, проведено ліжко-днів матерями з хворими дітьми\n(гр. 16)"
+
+    # Row 5 merges
+    ws.merge_cells('F5:H5')
+    ws['F5'] = "поступило хворих"
+
+    ws.merge_cells('I5:J5')
+    ws['I5'] = "переведено хворих всередині лікарні"
+
+    ws.merge_cells('K5:L5')
+    ws['K5'] = "виписано хворих"
+
+    # Row 6 merges
+    ws.merge_cells('F6:F7')
+    ws['F6'] = "всього\n(гр. 4)"
+
+    ws.merge_cells('G6:H6')
+    ws['G6'] = "із них"
+
+    ws.merge_cells('I6:I7')
+    ws['I6'] = "із інших відділень\n(гр. 7)"
+
+    ws.merge_cells('J6:J7')
+    ws['J6'] = "в інші відділення\n(гр. 8)"
+
+    ws.merge_cells('K6:K7')
+    ws['K6'] = "всього\n(гр. 9)"
+
+    ws.merge_cells('L6:L7')
+    ws['L6'] = "переведені в інші стаціонари\n(гр. 10)"
+
+    # Row 7 texts
+    ws['G7'] = "сільських жителів\n(гр. 5)"
+    ws['H7'] = "дітей до 17 р. вкл.\n(гр. 6)"
+
+    # Row 8: Column letters/numbers row
+    cols_letters = ["А", "Б", "1", "2", "3", "4", "5", "6", "7", "8", "9", "10", "11", "12", "13", "14", "15", "16"]
+    for ci, letter in enumerate(cols_letters, 1):
+        cell = ws.cell(row=8, column=ci, value=letter)
+        cell.font = Font(name="Arial", size=7, italic=True)
+
+    # Insert Data rows (starting at Row 9)
+    current_row = 9
+    for row in table:
+        is_tot = row.get('is_totals', False)
+        
+        ws.cell(row=current_row, column=1, value=row.get('dept_name')).font = Font(name="Arial", size=9, bold=is_tot)
+        ws.cell(row=current_row, column=1).alignment = left if is_tot else center
+        ws.cell(row=current_row, column=1).border = border
+
+        # Column Б (Row Number)
+        val_b = row.get('row_no') if row.get('row_no') is not None else ''
+        ws.cell(row=current_row, column=2, value=val_b).font = Font(name="Arial", size=9, bold=is_tot)
+        ws.cell(row=current_row, column=2).alignment = center
+        ws.cell(row=current_row, column=2).border = border
+
+        # Col 1 - 16 values
+        cols_keys = [
+            'beds_total', 'beds_average', 'patients_start', 'admitted_total',
+            'admitted_rural', 'admitted_children', 'transferred_in', 'transferred_out',
+            'discharged_total', 'discharged_to_other', 'deaths', 'patients_end',
+            'bed_days_total', 'bed_days_rural', 'bed_days_renovation', 'bed_days_mothers'
+        ]
+
+        for ci, key in enumerate(cols_keys, 3):
+            val = row.get(key)
+            if val == 0 or val == '' or val is None:
+                val_disp = ''
+            else:
+                val_disp = val
+
+            cell = ws.cell(row=current_row, column=ci, value=val_disp)
+            cell.font = Font(name="Arial", size=9, bold=is_tot)
+            cell.alignment = center
+            cell.border = border
+            
+            # Highlight computed average & bed days
+            if not is_tot and key in ('beds_average', 'bed_days_total'):
+                cell.fill = fill_computed
+
+            if is_tot:
+                cell.font = Font(name="Arial", size=9, bold=True)
+                cell.fill = fill_hdr
+
+        current_row += 1
+
+    # Apply row heights
+    for ri in range(4, current_row):
+        ws.row_dimensions[ri].height = 20
+
+    # Official Signature Block at the bottom
+    sig_row = current_row + 2
+    ws.cell(row=sig_row, column=1, value="Заступник генерального директора").font = Font(name="Arial", size=9, bold=True)
+    ws.cell(row=sig_row+1, column=1, value="КНП «Калуська ЦРЛ» з адміністративної діяльності").font = Font(name="Arial", size=9)
+    ws.cell(row=sig_row+2, column=1, value="____________________ Л. Луців").font = Font(name="Arial", size=9)
+    
+    ws.cell(row=sig_row+2, column=12, value="____________________ Валерій ПАЛЯНИЦЯ").font = Font(name="Arial", size=9, bold=True)
+
+    buf = BytesIO()
+    wb.save(buf)
+    buf.seek(0)
+
+    filename = f"form016_depts_{from_date.strftime('%Y%m%d')}_{to_date.strftime('%Y%m%d')}.xlsx"
     return Response(
         buf.read(),
         mimetype='application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',

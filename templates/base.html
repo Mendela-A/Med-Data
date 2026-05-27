@@ -68,6 +68,12 @@
                 <i class="bi bi-clipboard2-data me-2"></i>Форма 016 — зведена відомість
               </a>
             </li>
+            <li>
+              <a class="dropdown-item{% if request.endpoint == 'statisty.form016_departments' %} active{% endif %}"
+                 href="{{ url_for('statisty.form016_departments') }}">
+                <i class="bi bi-building me-2"></i>Форма 016 — зведена за місяць по відділеннях
+              </a>
+            </li>
             {% if current_user.role == 'admin' %}
             <li><hr class="dropdown-divider"></li>
             <li>
