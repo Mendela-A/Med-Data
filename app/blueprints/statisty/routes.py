@@ -6,7 +6,7 @@ from io import BytesIO
 from sqlalchemy import func, case
 
 from app.extensions import db
-from models import Record, Department, DailyReport, PrintSettings
+from models import Record, Department, DailyReport, PrintSettings, log_action
 from decorators import role_required
 from . import statisty_bp
 
@@ -784,6 +784,13 @@ def form007_edit(report_date_str):
             # Recompute col14
             r.patients_end = r.compute_patients_end()
 
+        log_action(
+            current_user.id,
+            'daily_report.update',
+            'daily_report',
+            None,
+            f"date={report_date_str}, depts={', '.join([d.name for d in depts])}"
+        )
         db.session.commit()
         flash(f"Форму 007 за {report_date.strftime('%d.%m.%Y')} збережено.", 'success')
         return redirect(url_for('statisty.form007_edit', report_date_str=report_date_str))
@@ -1509,6 +1516,13 @@ def print_settings_edit():
         ps.form007_decree   = request.form.get('form007_decree',  '').strip()
         ps.form016_form_no  = request.form.get('form016_form_no', '').strip()
         ps.form016_decree   = request.form.get('form016_decree',  '').strip()
+        log_action(
+            current_user.id,
+            'print_settings.update',
+            'print_settings',
+            ps.id,
+            f"org_name={ps.org_name}, signer1={ps.signer1_name}, signer2={ps.signer2_name}"
+        )
         db.session.commit()
         flash('Налаштування друку збережено.', 'success')
         return redirect(url_for('statisty.print_settings_edit'))

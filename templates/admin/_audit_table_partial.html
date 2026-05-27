@@ -1,0 +1,185 @@
+{# templates/admin/_audit_table_partial.html #}
+<div id="audit-table-container">
+  <div class="card shadow-sm border-0">
+    <div class="card-body p-0">
+      <div class="table-responsive">
+        <table class="table table-hover align-middle mb-0" x-data="{ expandedRow: null }">
+          <thead class="table-light text-muted uppercase font-monospace" style="font-size: 0.75rem;">
+            <tr>
+              <th style="width: 45px;"></th>
+              <th style="width: 170px;">Дата/час</th>
+              <th style="width: 150px;">Користувач</th>
+              <th style="width: 220px;">Дія</th>
+              <th style="width: 150px;">Об'єкт</th>
+              <th style="width: 80px;">ID</th>
+              <th>Деталі</th>
+            </tr>
+          </thead>
+          <tbody>
+            {% for log in logs %}
+              <tr class="audit-row" 
+                  :class="expandedRow === {{ log.id }} ? 'table-light' : ''"
+                  style="cursor: pointer;"
+                  @click="expandedRow = (expandedRow === {{ log.id }} ? null : {{ log.id }})">
+                <td class="text-center text-muted">
+                  <i class="bi fs-6 transition-all" 
+                     :class="expandedRow === {{ log.id }} ? 'bi-chevron-up text-primary' : 'bi-chevron-down'"></i>
+                </td>
+                <td class="text-nowrap font-monospace text-muted" style="font-size: 0.85rem;">
+                  {{ log.created_at.strftime('%d.%m.%Y %H:%M:%S') if log.created_at else '' }}
+                </td>
+                <td>
+                  <div class="d-flex align-items-center">
+                    <i class="bi bi-person-circle me-2 text-muted" style="font-size: 1.1rem;"></i>
+                    <span class="fw-medium">{{ user_map.get(log.actor_id, '—') }}</span>
+                  </div>
+                </td>
+                <td>
+                  {% if 'create' in log.action or 'add' in log.action %}
+                    <span class="badge bg-success-subtle text-success border border-success-subtle px-2.5 py-1.5 rounded-pill font-monospace" style="font-size: 0.78rem;">
+                      <i class="bi bi-plus-circle me-1"></i>{{ log.action }}
+                    </span>
+                  {% elif 'delete' in log.action or 'remove' in log.action or 'failed' in log.action %}
+                    <span class="badge bg-danger-subtle text-danger border border-danger-subtle px-2.5 py-1.5 rounded-pill font-monospace" style="font-size: 0.78rem;">
+                      <i class="bi bi-dash-circle me-1"></i>{{ log.action }}
+                    </span>
+                  {% elif 'update' in log.action or 'edit' in log.action %}
+                    <span class="badge bg-info-subtle text-info border border-info-subtle px-2.5 py-1.5 rounded-pill font-monospace" style="font-size: 0.78rem;">
+                      <i class="bi bi-pencil me-1"></i>{{ log.action }}
+                    </span>
+                  {% elif 'password' in log.action %}
+                    <span class="badge bg-warning-subtle text-warning border border-warning-subtle px-2.5 py-1.5 rounded-pill font-monospace" style="font-size: 0.78rem;">
+                      <i class="bi bi-key me-1"></i>{{ log.action }}
+                    </span>
+                  {% elif 'login' in log.action or 'logout' in log.action %}
+                    <span class="badge bg-primary-subtle text-primary border border-primary-subtle px-2.5 py-1.5 rounded-pill font-monospace" style="font-size: 0.78rem;">
+                      <i class="bi bi-shield-lock me-1"></i>{{ log.action }}
+                    </span>
+                  {% else %}
+                    <span class="badge bg-secondary-subtle text-secondary border border-secondary-subtle px-2.5 py-1.5 rounded-pill font-monospace" style="font-size: 0.78rem;">
+                      <i class="bi bi-gear me-1"></i>{{ log.action }}
+                    </span>
+                  {% endif %}
+                </td>
+                <td>
+                  {% if log.target_type %}
+                    <span class="text-secondary font-monospace" style="font-size: 0.8rem;">{{ log.target_type }}</span>
+                  {% else %}
+                    <span class="text-muted">—</span>
+                  {% endif %}
+                </td>
+                <td>
+                  {% if log.target_id %}
+                    <span class="badge bg-light text-dark border font-monospace">{{ log.target_id }}</span>
+                  {% else %}
+                    <span class="text-muted">—</span>
+                  {% endif %}
+                </td>
+                <td class="text-muted text-truncate" style="max-width: 250px; font-size: 0.85rem;">
+                  {{ log.details or '—' }}
+                </td>
+              </tr>
+              {# Detailed Row (expands via Alpine.js) #}
+              <tr x-show="expandedRow === {{ log.id }}" x-cloak x-transition class="table-light">
+                <td></td>
+                <td colspan="6" class="p-3 border-top-0">
+                  <div class="bg-white p-3 rounded shadow-sm border border-light">
+                    <h6 class="text-secondary border-bottom pb-2 mb-3" style="font-size: 0.85rem; font-weight: 600;">
+                      <i class="bi bi-card-text me-1 text-primary"></i>Детальна інформація про подію
+                    </h6>
+                    <div class="row g-3" style="font-size: 0.88rem;">
+                      <div class="col-md-4">
+                        <span class="text-muted d-block small">Виконавець</span>
+                        <strong>{{ user_map.get(log.actor_id, '—') }}</strong>
+                        <span class="text-muted font-monospace d-block small mt-1">ID виконавця: {{ log.actor_id or '—' }}</span>
+                      </div>
+                      <div class="col-md-4">
+                        <span class="text-muted d-block small">Об'єкт впливу</span>
+                        <strong>{{ log.target_type or 'Глобальна дія' }}</strong>
+                        {% if log.target_id %}
+                          <span class="text-muted font-monospace d-block small mt-1">ID об'єкта: {{ log.target_id }}</span>
+                        {% endif %}
+                      </div>
+                      <div class="col-md-4">
+                        <span class="text-muted d-block small">Тип операції</span>
+                        <strong class="font-monospace text-primary">{{ log.action }}</strong>
+                      </div>
+                      <div class="col-12 mt-3">
+                        <span class="text-muted d-block small mb-1.5">Специфікація змін / Технічні деталі</span>
+                        {% if log.details %}
+                          <div class="bg-light p-3 rounded border font-monospace text-dark" style="font-size: 0.82rem; white-space: pre-wrap; word-break: break-all;">{{ log.details }}</div>
+                        {% else %}
+                          <span class="text-muted italic">Технічні деталі відсутні</span>
+                        {% endif %}
+                      </div>
+                    </div>
+                  </div>
+                </td>
+              </tr>
+            {% else %}
+              <tr>
+                <td colspan="7" class="text-center py-5">
+                  <div class="text-muted mb-2">
+                    <i class="bi bi-journal-x" style="font-size: 2.5rem;"></i>
+                  </div>
+                  <p class="text-muted mb-0">Жодної дії за обраними критеріями не знайдено</p>
+                </td>
+              </tr>
+            {% endfor %}
+          </tbody>
+        </table>
+      </div>
+    </div>
+  </div>
+
+  {# Pagination #}
+  {% if pagination.pages > 1 %}
+    <nav class="mt-4">
+      <ul class="pagination justify-content-center">
+        {% if pagination.has_prev %}
+          <li class="page-item">
+            <button class="page-link" 
+                    hx-get="{{ url_for('admin.admin_audit', page=pagination.prev_num, action=action_filter, actor=actor_filter, from_date=from_date, to_date=to_date, q_search=q_search) }}"
+                    hx-target="#audit-table-container"
+                    hx-swap="outerHTML"
+                    hx-indicator="#search-spinner">
+              &laquo;
+            </button>
+          </li>
+        {% endif %}
+        
+        {% for p in pagination.iter_pages(left_edge=1, right_edge=1, left_current=2, right_current=2) %}
+          {% if p %}
+            <li class="page-item {% if p == pagination.page %}active{% endif %}">
+              <button class="page-link"
+                      hx-get="{{ url_for('admin.admin_audit', page=p, action=action_filter, actor=actor_filter, from_date=from_date, to_date=to_date, q_search=q_search) }}"
+                      hx-target="#audit-table-container"
+                      hx-swap="outerHTML"
+                      hx-indicator="#search-spinner">
+                {{ p }}
+              </button>
+            </li>
+          {% else %}
+            <li class="page-item disabled"><span class="page-link">&hellip;</span></li>
+          {% endif %}
+        {% endfor %}
+        
+        {% if pagination.has_next %}
+          <li class="page-item">
+            <button class="page-link"
+                    hx-get="{{ url_for('admin.admin_audit', page=pagination.next_num, action=action_filter, actor=actor_filter, from_date=from_date, to_date=to_date, q_search=q_search) }}"
+                    hx-target="#audit-table-container"
+                    hx-swap="outerHTML"
+                    hx-indicator="#search-spinner">
+              &raquo;
+            </button>
+          </li>
+        {% endif %}
+      </ul>
+    </nav>
+  {% endif %}
+
+  <div class="text-center text-muted mt-2" style="font-size: 0.8rem;">
+    Показано {{ logs|length }} з {{ pagination.total }} записів
+  </div>
+</div>

@@ -38,8 +38,12 @@ def login():
         elif user.check_password(password):
             session.permanent = True
             login_user(user)
+            log_action(user.id, 'user.login', 'user', user.id, f"username={user.username}, ip={request.remote_addr}")
+            db.session.commit()
             return redirect(url_for('records.index'))
 
+        log_action(None, 'user.login_failed', 'user', None, f"attempted_username={username}, ip={request.remote_addr}")
+        db.session.commit()
         flash('Невірне ім\'я користувача або пароль', 'danger')
         return redirect(url_for('auth.login'))
 
@@ -52,7 +56,11 @@ def logout():
     """
     Logout current user and redirect to login page
     """
+    actor_id = current_user.id
+    username = current_user.username
     logout_user()
+    log_action(actor_id, 'user.logout', 'user', actor_id, f"username={username}")
+    db.session.commit()
     return redirect(url_for('auth.login'))
 
 

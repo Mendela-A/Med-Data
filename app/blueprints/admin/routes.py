@@ -476,6 +476,7 @@ def admin_audit():
     actor_filter = request.args.get('actor', '').strip()
     from_str = request.args.get('from_date', '').strip()
     to_str = request.args.get('to_date', '').strip()
+    q_search = request.args.get('q_search', '').strip()
 
     q = Audit.query
 
@@ -500,6 +501,22 @@ def admin_audit():
         except ValueError:
             pass
 
+    if q_search:
+        search_pattern = f'%{escape_like(q_search)}%'
+        if q_search.isdigit():
+            q = q.filter(
+                (Audit.details.like(search_pattern, escape='\\')) |
+                (Audit.target_type.like(search_pattern, escape='\\')) |
+                (Audit.action.like(search_pattern, escape='\\')) |
+                (Audit.target_id == int(q_search))
+            )
+        else:
+            q = q.filter(
+                (Audit.details.like(search_pattern, escape='\\')) |
+                (Audit.target_type.like(search_pattern, escape='\\')) |
+                (Audit.action.like(search_pattern, escape='\\'))
+            )
+
     q = q.order_by(Audit.created_at.desc())
 
     # Pagination
@@ -516,6 +533,21 @@ def admin_audit():
     user_map = get_user_map()
     users = User.query.order_by(User.username).all()
 
+    is_htmx = request.headers.get('HX-Request') is not None
+
+    if is_htmx:
+        return render_template(
+            'admin/_audit_table_partial.html',
+            logs=logs,
+            pagination=pagination,
+            action_filter=action_filter,
+            actor_filter=actor_filter,
+            from_date=from_str,
+            to_date=to_str,
+            q_search=q_search,
+            user_map=user_map,
+        )
+
     return render_template(
         'admin_audit.html',
         logs=logs,
@@ -527,4 +559,5 @@ def admin_audit():
         actor_filter=actor_filter,
         from_date=from_str,
         to_date=to_str,
+        q_search=q_search,
     )
