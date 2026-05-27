@@ -20,14 +20,14 @@
   <div class="card-body py-3">
     <form method="get" 
           action="{{ url_for('admin.admin_audit') }}" 
-          class="row g-3 align-items-end"
+          class="row g-2 align-items-end"
           hx-get="{{ url_for('admin.admin_audit') }}"
           hx-trigger="change, keyup delay:250ms from:#q_search"
           hx-target="#audit-table-container"
           hx-select="#audit-table-container"
           hx-indicator="#search-spinner">
       
-      <div class="col-md-3">
+      <div class="col-auto" style="min-width: 280px;">
         <label class="form-label small text-muted mb-1">Пошук за ключовими словами</label>
         <div class="input-group input-group-sm">
           <span class="input-group-text bg-light text-muted border-end-0">
@@ -43,7 +43,7 @@
         </div>
       </div>
 
-      <div class="col-md-2">
+      <div class="col-auto" style="min-width: 180px;">
         <label class="form-label small text-muted mb-1">Дія</label>
         <select class="form-select form-select-sm" name="action">
           <option value="">Усі дії</option>
@@ -53,7 +53,7 @@
         </select>
       </div>
 
-      <div class="col-md-2">
+      <div class="col-auto" style="min-width: 160px;">
         <label class="form-label small text-muted mb-1">Користувач</label>
         <select class="form-select form-select-sm" name="actor">
           <option value="">Усі користувачі</option>
@@ -63,28 +63,27 @@
         </select>
       </div>
 
-      <div class="col-md-2">
+      <div class="col-auto">
         <label class="form-label small text-muted mb-1">Період з</label>
         <input type="date" class="form-control form-control-sm" name="from_date" value="{{ from_date }}">
       </div>
 
-      <div class="col-md-2">
+      <div class="col-auto">
         <label class="form-label small text-muted mb-1">по</label>
         <input type="date" class="form-control form-control-sm" name="to_date" value="{{ to_date }}">
       </div>
 
-      <div class="col-md-1 text-md-end">
+      <div class="col-auto">
         {% if action_filter or actor_filter or from_date or to_date or q_search %}
-          <a href="{{ url_for('admin.admin_audit') }}" class="btn btn-outline-secondary btn-sm w-100 shadow-sm transition-all">
+          <a href="{{ url_for('admin.admin_audit') }}" class="btn btn-outline-secondary btn-sm shadow-sm transition-all">
             <i class="bi bi-x-lg me-1"></i>Скинути
           </a>
         {% else %}
-          <a href="#" class="btn btn-outline-secondary btn-sm w-100 disabled" style="opacity: 0.45; pointer-events: none;">
+          <a href="#" class="btn btn-outline-secondary btn-sm disabled" style="opacity: 0.45; pointer-events: none;">
             <i class="bi bi-x-lg me-1"></i>Скинути
           </a>
         {% endif %}
       </div>
-
     </form>
   </div>
 </div>
