@@ -73,13 +73,18 @@
         <input type="date" class="form-control form-control-sm" name="to_date" value="{{ to_date }}">
       </div>
 
-      {% if action_filter or actor_filter or from_date or to_date or q_search %}
-        <div class="col-md-1 text-md-end">
-          <a href="{{ url_for('admin.admin_audit') }}" class="btn btn-outline-secondary btn-sm w-100">
+      <div class="col-md-1 text-md-end">
+        {% if action_filter or actor_filter or from_date or to_date or q_search %}
+          <a href="{{ url_for('admin.admin_audit') }}" class="btn btn-outline-secondary btn-sm w-100 shadow-sm transition-all">
             <i class="bi bi-x-lg me-1"></i>Скинути
           </a>
-        </div>
-      {% endif %}
+        {% else %}
+          <a href="#" class="btn btn-outline-secondary btn-sm w-100 disabled" style="opacity: 0.45; pointer-events: none;">
+            <i class="bi bi-x-lg me-1"></i>Скинути
+          </a>
+        {% endif %}
+      </div>
+
     </form>
   </div>
 </div>
