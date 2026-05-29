@@ -17,38 +17,39 @@
 
   {% if current_user.is_authenticated %}
   <nav class="top-navbar">
-    <div class="topnav-left">
-      <a href="{{ url_for('ambulatory.index') if current_user.role == 'ambulatory' else url_for('records.index') }}" class="topnav-brand me-3">
-        <i class="bi bi-heart-pulse-fill"></i><span>MedData</span>
-      </a>
+    <a href="{{ url_for('ambulatory.index') if current_user.role == 'ambulatory' else url_for('records.index') }}" class="topnav-brand">
+      <i class="bi bi-heart-pulse-fill"></i><span>MedData</span>
+    </a>
+
+    <div class="topnav-links">
       {% if current_user.role != 'ambulatory' %}
-      <a href="{{ url_for('records.index') }}" class="topnav-link{% if request.endpoint and request.endpoint.startswith('records.') %} active{% endif %}">
+      <a href="{{ url_for('records.index') }}" class="topnav-link{% if request.endpoint and request.endpoint.startswith('records.') %} active{% endif %}" title="Записи">
         <i class="bi bi-journal-text"></i><span>Записи</span>
       </a>
       {% endif %}
-      <a href="{{ url_for('ambulatory.index') }}" class="topnav-link{% if request.endpoint and request.endpoint.startswith('ambulatory.') %} active{% endif %}">
+      <a href="{{ url_for('ambulatory.index') }}" class="topnav-link{% if request.endpoint and request.endpoint.startswith('ambulatory.') %} active{% endif %}" title="Амбулаторна доп.">
         <i class="bi bi-file-earmark-medical"></i><span>Амбулаторна доп.</span>
       </a>
       {% if current_user.role in ['editor', 'admin', 'viewer'] %}
-        <a href="{{ url_for('nszu.nszu_list') }}" class="topnav-link{% if request.endpoint and request.endpoint.startswith('nszu.') %} active{% endif %}">
+        <a href="{{ url_for('nszu.nszu_list') }}" class="topnav-link{% if request.endpoint and request.endpoint.startswith('nszu.') %} active{% endif %}" title="НСЗУ">
           <i class="bi bi-file-medical"></i><span>НСЗУ</span>
         </a>
       {% endif %}
 
       {% if current_user.role in ['admin', 'viewer'] %}
-        <a href="{{ url_for('admin.admin_statistics') }}" class="topnav-link{% if request.endpoint == 'admin.admin_statistics' %} active{% endif %}">
+        <a href="{{ url_for('admin.admin_statistics') }}" class="topnav-link{% if request.endpoint == 'admin.admin_statistics' %} active{% endif %}" title="Статистика">
           <i class="bi bi-bar-chart-line"></i><span>Статистика</span>
         </a>
       {% endif %}
       {% if current_user.role == 'admin' %}
         <div class="topnav-divider"></div>
-        <a href="{{ url_for('admin.admin_users') }}" class="topnav-link{% if request.endpoint and 'user' in request.endpoint %} active{% endif %}">
+        <a href="{{ url_for('admin.admin_users') }}" class="topnav-link{% if request.endpoint and 'user' in request.endpoint %} active{% endif %}" title="Користувачі">
           <i class="bi bi-people"></i><span>Користувачі</span>
         </a>
-        <a href="{{ url_for('admin.admin_departments') }}" class="topnav-link{% if request.endpoint and 'department' in request.endpoint %} active{% endif %}">
+        <a href="{{ url_for('admin.admin_departments') }}" class="topnav-link{% if request.endpoint and 'department' in request.endpoint %} active{% endif %}" title="Відділення">
           <i class="bi bi-building"></i><span>Відділення</span>
         </a>
-        <a href="{{ url_for('admin.admin_audit') }}" class="topnav-link{% if request.endpoint == 'admin.admin_audit' %} active{% endif %}">
+        <a href="{{ url_for('admin.admin_audit') }}" class="topnav-link{% if request.endpoint == 'admin.admin_audit' %} active{% endif %}" title="Аудит">
           <i class="bi bi-journal-text"></i><span>Аудит</span>
         </a>
       {% endif %}
