@@ -418,12 +418,89 @@
 
 {% block scripts %}
 <script>
-  // Tooltips & Popovers initialization
+  // Tooltips, Instant Search and Keyboard Shortcuts
   document.addEventListener('DOMContentLoaded', function() {
+    // 1. Tooltips initialization
     const tooltipTriggerList = [].slice.call(document.querySelectorAll('[data-bs-toggle="tooltip"]'));
     tooltipTriggerList.map(function(el) {
       return new bootstrap.Tooltip(el, { trigger: 'hover' });
     });
+
+    // 2. Real-time client-side search (Instant Filter)
+    const searchName = document.querySelector('input[name="full_name"]');
+    const searchJournal = document.querySelector('input[name="journal_number"]');
+    const searchDiagnosis = document.querySelector('input[name="diagnosis"]');
+    const rows = document.querySelectorAll('.records-table tbody tr');
+
+    if (rows.length > 0) {
+      function filterTable() {
+        const nameQuery = searchName ? searchName.value.toLowerCase().trim() : '';
+        const journalQuery = searchJournal ? searchJournal.value.toLowerCase().trim() : '';
+        const diagQuery = searchDiagnosis ? searchDiagnosis.value.toLowerCase().trim() : '';
+
+        rows.forEach(row => {
+          const cells = row.getElementsByTagName('td');
+          if (cells.length < 6) return;
+
+          // Column indexes: 
+          // 0: Date, 1: Journal Number, 2: Full Name, 3: Birth Date, 4: Doctor, 5: Diagnosis
+          const journalText = cells[1].textContent.toLowerCase();
+          const nameText = cells[2].textContent.toLowerCase();
+          const diagText = cells[5].textContent.toLowerCase();
+
+          const matchesName = !nameQuery || nameText.includes(nameQuery);
+          const matchesJournal = !journalQuery || journalText.includes(journalQuery);
+          const matchesDiag = !diagQuery || diagText.includes(diagQuery);
+
+          if (matchesName && matchesJournal && matchesDiag) {
+            row.style.display = '';
+          } else {
+            row.style.display = 'none';
+          }
+        });
+      }
+
+      if (searchName) searchName.addEventListener('input', filterTable);
+      if (searchJournal) searchJournal.addEventListener('input', filterTable);
+      if (searchDiagnosis) searchDiagnosis.addEventListener('input', filterTable);
+    }
+  });
+
+  // 3. Global Keyboard Shortcuts (Alt+N to add record, / to search)
+  document.addEventListener('keydown', function(e) {
+    const activeEl = document.activeElement;
+    const isTyping = activeEl && (activeEl.tagName === 'INPUT' || activeEl.tagName === 'TEXTAREA' || activeEl.tagName === 'SELECT');
+
+    if (isTyping) {
+      if (e.key === 'Escape') {
+        const modalEl = document.getElementById('addAmbulatoryRecordModal');
+        if (modalEl) {
+          const modalInst = bootstrap.Modal.getInstance(modalEl);
+          if (modalInst) modalInst.hide();
+        }
+      }
+      return;
+    }
+
+    // '/' key focuses patient search field instantly
+    if (e.key === '/') {
+      const searchName = document.querySelector('input[name="full_name"]');
+      if (searchName) {
+        e.preventDefault();
+        searchName.focus();
+        searchName.select();
+      }
+    }
+
+    // 'Alt + N' or 'Alt + Т' to open modal
+    if (e.altKey && (e.key === 'n' || e.key === 'N' || e.key === 'т' || e.key === 'Т')) {
+      const modalEl = document.getElementById('addAmbulatoryRecordModal');
+      if (modalEl) {
+        e.preventDefault();
+        const modalInst = bootstrap.Modal.getOrCreateInstance(modalEl);
+        modalInst.show();
+      }
+    }
   });
 
   {% if current_user.role in ['editor', 'admin', 'viewer'] %}
