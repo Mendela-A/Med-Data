@@ -126,24 +126,25 @@ tr.totals-row td {
 
 <table>
   <colgroup>
-    <col style="width:13%">  <!-- А: Назва відділення -->
+    <col style="width:12%">  <!-- А: Назва відділення -->
     <col style="width:3.5%"> <!-- Б: Номер рядка -->
-    <col style="width:5.1%"> <!-- 1: beds_total -->
-    <col style="width:5.1%"> <!-- 2: beds_average -->
-    <col style="width:5.1%"> <!-- 3: patients_start -->
-    <col style="width:5.1%"> <!-- 4: admitted_total -->
-    <col style="width:5.1%"> <!-- 5: admitted_rural -->
-    <col style="width:5.1%"> <!-- 6: admitted_children -->
-    <col style="width:5.1%"> <!-- 7: transferred_in -->
-    <col style="width:5.1%"> <!-- 8: transferred_out -->
-    <col style="width:5.1%"> <!-- 9: discharged_total -->
-    <col style="width:5.1%"> <!-- 10: discharged_to_other -->
-    <col style="width:4%">   <!-- 11: deaths -->
-    <col style="width:5.1%"> <!-- 12: patients_end -->
-    <col style="width:5.8%"> <!-- 13: bed_days_total -->
-    <col style="width:5.8%"> <!-- 14: bed_days_rural -->
-    <col style="width:5.8%"> <!-- 15: bed_days_renovation -->
-    <col style="width:5.8%"> <!-- 16: bed_days_mothers -->
+    <col style="width:4.8%"> <!-- 1: beds_total -->
+    <col style="width:4.8%"> <!-- 2: beds_average -->
+    <col style="width:4.8%"> <!-- 3: patients_start -->
+    <col style="width:4.8%"> <!-- 4: admitted_total -->
+    <col style="width:4.8%"> <!-- 5: admitted_rural -->
+    <col style="width:4.8%"> <!-- 6: admitted_children -->
+    <col style="width:4.5%"> <!-- 6.1: admitted_children_rural -->
+    <col style="width:4.8%"> <!-- 7: transferred_in -->
+    <col style="width:4.8%"> <!-- 8: transferred_out -->
+    <col style="width:4.8%"> <!-- 9: discharged_total -->
+    <col style="width:4.8%"> <!-- 10: discharged_to_other -->
+    <col style="width:3.8%"> <!-- 11: deaths -->
+    <col style="width:4.8%"> <!-- 12: patients_end -->
+    <col style="width:5.5%"> <!-- 13: bed_days_total -->
+    <col style="width:5.5%"> <!-- 14: bed_days_rural -->
+    <col style="width:5.5%"> <!-- 15: bed_days_renovation -->
+    <col style="width:5.5%"> <!-- 16: bed_days_mothers -->
   </colgroup>
   <thead>
     <tr>
@@ -152,7 +153,7 @@ tr.totals-row td {
       <th rowspan="4">Число ліжок кошторису на кінець періоду</th>
       <th rowspan="4">Середньомісячних ліжок</th>
       <th rowspan="4">Перебувало хворих на початок періоду</th>
-      <th colspan="7">За звітний період</th>
+      <th colspan="8">За звітний період</th>
       <th rowspan="4">Померло</th>
       <th rowspan="4">Перебувало хворих на кінець періоду</th>
       <th rowspan="4">Проведено всіма хворими ліжко-днів</th>
@@ -161,13 +162,13 @@ tr.totals-row td {
       <th rowspan="4">Проведено ліжко-днів матерями з дітьми</th>
     </tr>
     <tr>
-      <th colspan="3">поступило хворих</th>
+      <th colspan="4">поступило хворих</th>
       <th colspan="2">переведено хворих</th>
       <th colspan="2">виписано хворих</th>
     </tr>
     <tr>
       <th rowspan="2">всього</th>
-      <th colspan="2">із них</th>
+      <th colspan="3">із них</th>
       <th rowspan="2">із інших відділень</th>
       <th rowspan="2">в інші відділення</th>
       <th rowspan="2">всього</th>
@@ -176,10 +177,11 @@ tr.totals-row td {
     <tr>
       <th>сільських жителів</th>
       <th>дітей до 17 років вкл.</th>
+      <th>дітей, з них сільських</th>
     </tr>
     <tr class="col-num">
       <td>А</td><td>Б</td><td>1</td><td>2</td><td>3</td><td>4</td>
-      <td>5</td><td>6</td><td>7</td><td>8</td><td>9</td>
+      <td>5</td><td>6</td><td>6.1</td><td>7</td><td>8</td><td>9</td>
       <td>10</td><td>11</td><td>12</td><td>13</td><td>14</td>
       <td>15</td><td>16</td>
     </tr>
@@ -195,6 +197,7 @@ tr.totals-row td {
       <td style="font-weight: bold;">{{ row.admitted_total | nz }}</td>
       <td>{{ row.admitted_rural | nz }}</td>
       <td>{{ row.admitted_children | nz }}</td>
+      <td>{{ row.admitted_children_rural | nz }}</td>
       <td>{{ row.transferred_in | nz }}</td>
       <td>{{ row.transferred_out | nz }}</td>
       <td style="font-weight: bold;">{{ row.discharged_total | nz }}</td>

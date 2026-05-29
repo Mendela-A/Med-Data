@@ -70,11 +70,11 @@
     <thead>
       <tr>
         <th rowspan="4" style="min-width:200px;" class="align-middle bg-light text-dark fw-bold border-secondary">Найменування відділень</th>
-        <th rowspan="4" class="align-middle bg-light text-dark fw-bold border-secondary" style="width: 70px;">Номер рядка</th>
+        <th rowspan="4" class="align-middle bg-light text-dark fw-bold border-secondary vertical-header" style="width: 40px;">Номер рядка</th>
         <th rowspan="4" class="align-middle bg-light text-dark fw-bold border-secondary vertical-header" style="max-width: 200px; font-size: 0.8rem;">Число ліжок у межах кошторису фактично розгорнутих + згорнутих на ремонт на кінець звітного періоду</th>
         <th rowspan="4" class="align-middle excel-computed text-dark fw-bold border-secondary vertical-header">Середньомісячних (річних) ліжок</th>
         <th rowspan="4" class="align-middle bg-light text-dark fw-bold border-secondary vertical-header">Перебувало хворих на початок звітного періоду</th>
-        <th colspan="7" class="align-middle bg-light text-dark fw-bold border-secondary">За звітний період</th>
+        <th colspan="8" class="align-middle bg-light text-dark fw-bold border-secondary">За звітний період</th>
         <th rowspan="4" class="align-middle bg-light text-dark fw-bold border-secondary vertical-header">Померло</th>
         <th rowspan="4" class="align-middle bg-light text-dark fw-bold border-secondary vertical-header">Перебувало хворих на кінець звітного періоду</th>
         <th rowspan="4" class="align-middle bg-light text-dark fw-bold border-secondary vertical-header" style="max-width: 150px;">Проведено всіма хворими ліжко-днів</th>
@@ -83,13 +83,13 @@
         <th rowspan="4" class="align-middle bg-light text-dark fw-bold border-secondary vertical-header" style="max-width: 150px;">Крім того, проведено ліжко-днів матерями з хворими дітьми</th>
       </tr>
       <tr>
-        <th colspan="3" class="align-middle bg-light border-secondary">поступило хворих</th>
+        <th colspan="4" class="align-middle bg-light border-secondary">поступило хворих</th>
         <th colspan="2" class="align-middle bg-light border-secondary">переведено хворих всередині лікарні</th>
         <th colspan="2" class="align-middle bg-light border-secondary">виписано хворих</th>
       </tr>
       <tr>
         <th rowspan="2" class="align-middle bg-light border-secondary vertical-header">всього</th>
-        <th colspan="2" class="align-middle bg-light border-secondary">із них</th>
+        <th colspan="3" class="align-middle bg-light border-secondary">із них</th>
         <th rowspan="2" class="align-middle bg-light border-secondary vertical-header">із інших відділень</th>
         <th rowspan="2" class="align-middle bg-light border-secondary vertical-header">в інші відділення</th>
         <th rowspan="2" class="align-middle bg-light border-secondary vertical-header">всього</th>
@@ -98,10 +98,11 @@
       <tr>
         <th class="align-middle bg-light border-secondary vertical-header">сільських жителів</th>
         <th class="align-middle bg-light border-secondary vertical-header">дітей до 17 років включно</th>
+        <th class="align-middle bg-light border-secondary vertical-header">дітей, з них сільських жителів</th>
       </tr>
       <tr class="table-secondary small text-center text-muted border-secondary">
         <td>А</td><td>Б</td><td>1</td><td>2</td><td>3</td><td>4</td>
-        <td>5</td><td>6</td><td>7</td><td>8</td><td>9</td>
+        <td>5</td><td>6</td><td>6.1</td><td>7</td><td>8</td><td>9</td>
         <td>10</td><td>11</td><td>12</td><td>13</td><td>14</td>
         <td>15</td><td>16</td>
       </tr>
@@ -122,6 +123,7 @@
         <td class="text-center fw-bold">{{ row.admitted_total | nz }}</td>
         <td class="text-center">{{ row.admitted_rural | nz }}</td>
         <td class="text-center">{{ row.admitted_children | nz }}</td>
+        <td class="text-center">{{ row.admitted_children_rural | nz }}</td>
         <td class="text-center">{{ row.transferred_in | nz }}</td>
         <td class="text-center">{{ row.transferred_out | nz }}</td>
         <td class="text-center fw-bold">{{ row.discharged_total | nz }}</td>

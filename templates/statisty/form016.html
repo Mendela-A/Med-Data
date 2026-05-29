@@ -36,6 +36,7 @@
       <option value="4,20" {% if department_id_str == '4,20' %}selected{% endif %}>Хірургічне (доросле + дитяче)</option>
       <option value="6,22" {% if department_id_str == '6,22' %}selected{% endif %}>Травматологічне (доросле + дитяче)</option>
       <option value="12,21" {% if department_id_str == '12,21' %}selected{% endif %}>Урологічне (доросле + дитяче)</option>
+      <option value="1,23,24" {% if department_id_str == '1,23,24' %}selected{% endif %}>Пологовий будинок</option>
       <option disabled>──────────</option>
       {% for d in depts %}
         <option value="{{ d.id }}" {% if d.id|string == department_id_str %}selected{% endif %}>{{ d.name }}</option>
