@@ -253,3 +253,77 @@ def parse_integer(value_str: str, default: Optional[int] = None) -> Optional[int
         return int(value_str)
     except ValueError:
         return default
+
+
+def validate_ambulatory_form(form_data: dict, require_status: bool = False) -> tuple:
+    """
+    Validate ambulatory record form data.
+
+    Args:
+        form_data: dict-like object (e.g., request.form)
+        require_status: if True, discharge_status is required
+
+    Returns:
+        (parsed_data_dict, None) on success
+        (None, error_message) on failure
+    """
+    date_str = form_data.get('date', '').strip()
+    journal_number = form_data.get('journal_number', '').strip()
+    full_name = form_data.get('full_name', '').strip()
+    birth_date_str = form_data.get('birth_date', '').strip()
+    doctor = form_data.get('doctor', '').strip()
+    diagnosis = form_data.get('diagnosis', '').strip()
+    discharge_status = form_data.get('discharge_status', '').strip()
+    comment = form_data.get('comment', '').strip()
+
+    required = [date_str, journal_number, full_name, birth_date_str, doctor, diagnosis]
+    if require_status:
+        required.append(discharge_status)
+    if not all(required):
+        return None, "Будь ласка, заповніть усі обов'язкові поля"
+
+    date_val = parse_date(date_str)
+    if date_val is None:
+        return None, 'Невірний формат дати'
+
+    birth_date_val = parse_date(birth_date_str)
+    if birth_date_val is None:
+        return None, 'Невірний формат дати народження'
+
+    if birth_date_val > date_val:
+        return None, 'Дата народження не може бути пізніше дати запису'
+
+    return {
+        'date': date_val,
+        'journal_number': journal_number,
+        'full_name': full_name,
+        'birth_date': birth_date_val,
+        'doctor': doctor,
+        'diagnosis': diagnosis,
+        'discharge_status': discharge_status or None,
+        'comment': comment or None,
+    }, None
+
+
+def get_distinct_ambulatory_statuses():
+    """Get distinct discharge statuses from database for ambulatory records (cached)."""
+    from app.extensions import cache
+    from models import AmbulatoryRecord, db
+    @cache.memoize(timeout=900)
+    def _inner():
+        return [s[0] for s in db.session.query(AmbulatoryRecord.discharge_status).distinct()
+                .filter(AmbulatoryRecord.discharge_status != None)
+                .order_by(AmbulatoryRecord.discharge_status).all()]
+    return _inner()
+
+
+def get_distinct_ambulatory_doctors():
+    """Get distinct doctors from database for ambulatory records (cached)."""
+    from app.extensions import cache
+    from models import AmbulatoryRecord, db
+    @cache.memoize(timeout=900)
+    def _inner():
+        return [d[0] for d in db.session.query(AmbulatoryRecord.doctor).distinct()
+                .filter(AmbulatoryRecord.doctor != None)
+                .order_by(AmbulatoryRecord.doctor).all()]
+    return _inner()

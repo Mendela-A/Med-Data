@@ -1,0 +1,78 @@
+{% extends "base.html" %}
+{% block title %}Редагувати амбулаторний запис #{{ r.id }}{% endblock %}
+{% block breadcrumbs %}
+  <li class="breadcrumb-item"><a href="{{ url_for('ambulatory.index') }}">Амбулаторна доп.</a></li>
+  <li class="breadcrumb-item active" aria-current="page">Редагувати #{{ r.id }}</li>
+{% endblock %}
+
+{% block content %}
+  <h1 class="h4 mb-4"><i class="bi bi-pencil me-2"></i>Редагувати амбулаторний запис #{{ r.id }}</h1>
+
+  <div class="card">
+    <div class="card-body">
+      <form method="post" class="row g-2 form-compact">
+        <!-- preserve filters so we can return to the filtered list -->
+        <input type="hidden" name="filter_discharge_status" value="{{ selected_status }}">
+        <input type="hidden" name="filter_doctor" value="{{ selected_doctor }}">
+        <input type="hidden" name="filter_full_name" value="{{ full_name_q }}">
+
+        <div class="col-auto">
+          <label class="form-label">Номер у журналі</label>
+          <input class="form-control input-history" name="journal_number" value="{{ r.journal_number }}" maxlength="50" required>
+        </div>
+
+        <div class="col-auto">
+          <label class="form-label">Дата запису</label>
+          <input class="form-control date-input" name="date" type="date" value="{{ r.date.strftime('%Y-%m-%d') if r.date else '' }}" required>
+        </div>
+
+        <div class="col-auto">
+          <label class="form-label">П.І.П (повністю)</label>
+          <input class="form-control input-name" name="full_name" value="{{ r.full_name }}" maxlength="200" required>
+        </div>
+
+        <div class="col-auto">
+          <label class="form-label">Дата народження</label>
+          <input class="form-control date-input" name="birth_date" type="date" value="{{ r.birth_date.strftime('%Y-%m-%d') if r.birth_date else '' }}" required>
+        </div>
+
+        <div class="col-auto">
+          <label class="form-label">Лікар</label>
+          <input class="form-control input-medium" name="doctor" value="{{ r.doctor }}" list="doctors-list" autocomplete="off" required>
+          <datalist id="doctors-list">
+            {% for d in doctors %}
+              <option value="{{ d }}">
+            {% endfor %}
+          </datalist>
+        </div>
+
+        <div class="col-auto">
+          <label class="form-label">Статус виписки</label>
+          <select class="form-select input-medium" name="discharge_status" required>
+            <option value="">Оберіть статус...</option>
+            <option value="Виписаний" {% if r.discharge_status == 'Виписаний' %}selected{% endif %}>Виписаний</option>
+            <option value="Опрацьовується" {% if r.discharge_status == 'Опрацьовується' %}selected{% endif %}>Опрацьовується</option>
+            <option value="Порушені вимоги" {% if r.discharge_status == 'Порушені вимоги' %}selected{% endif %}>Порушені вимоги</option>
+          </select>
+        </div>
+
+        <div class="col-12">
+          <label class="form-label">Діагноз</label>
+          <input class="form-control" name="diagnosis" value="{{ r.diagnosis }}" maxlength="500" required>
+        </div>
+
+        <div class="col-12">
+          <label class="form-label">Коментар</label>
+          <textarea class="form-control" name="comment" rows="2">{{ r.comment or '' }}</textarea>
+        </div>
+
+        <div class="col-12">
+          <div class="d-flex gap-2">
+            <button class="btn btn-primary" type="submit"><i class="bi bi-check-lg me-1"></i>Зберегти</button>
+            <a class="btn btn-outline-secondary" href="{{ url_for('ambulatory.index') }}">Скасувати</a>
+          </div>
+        </div>
+      </form>
+    </div>
+  </div>
+{% endblock %}

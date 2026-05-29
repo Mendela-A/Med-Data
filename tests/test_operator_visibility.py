@@ -81,7 +81,7 @@ def test_operators_can_see_each_others_records(app, client):
         client.post('/logout')
         # login as op2 and assert the record is visible
         client.post('/login', data={'username': 'op2', 'password': 'pass'}, follow_redirects=True)
-        rv = client.get('/')
+        rv = client.get('/?all_months=1')
         txt = rv.get_data(as_text=True)
         assert 'Shared Record' in txt
         # history number should be visible in the dashboard

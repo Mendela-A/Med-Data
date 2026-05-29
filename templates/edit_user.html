@@ -28,9 +28,11 @@
             <option value="editor" {% if user.role == 'editor' %}selected{% endif %}>editor</option>
             <option value="admin" {% if user.role == 'admin' %}selected{% endif %}>admin</option>
             <option value="viewer" {% if user.role == 'viewer' %}selected{% endif %}>viewer</option>
+            <option value="ambulatory" {% if user.role == 'ambulatory' %}selected{% endif %}>ambulatory</option>
           </select>
           <div class="form-text">
             <strong>operator</strong> — додавання записів |
+            <strong>ambulatory</strong> — доступ тільки до амбулаторної допомоги |
             <strong>editor</strong> — редагування та експорт |
             <strong>admin</strong> — повний доступ |
             <strong>viewer</strong> — перегляд та статистика

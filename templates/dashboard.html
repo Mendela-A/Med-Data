@@ -82,6 +82,12 @@
         <li><a class="dropdown-item" href="#" data-bs-toggle="modal" data-bs-target="#exportRecordsModal"><i class="bi bi-calendar-range me-2"></i>Детальний експорт...</a></li>
       </ul>
     </div>
+    {% elif current_user.role == 'operator' %}
+    <div class="ms-auto">
+      <button type="button" class="btn btn-primary btn-sm" data-bs-toggle="modal" data-bs-target="#addRecordModal">
+        <i class="bi bi-plus-circle me-1"></i>Додати запис
+      </button>
+    </div>
     {% endif %}
   </div>
 

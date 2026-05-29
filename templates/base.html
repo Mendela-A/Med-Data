@@ -17,25 +17,24 @@
 
   {% if current_user.is_authenticated %}
   <nav class="top-navbar">
-    <a href="{{ url_for('records.index') }}" class="topnav-brand">
-      <i class="bi bi-clipboard2-pulse"></i>
-      <span>Сервіс виписок</span>
-    </a>
-
-    <div class="topnav-links">
+    <div class="topnav-left">
+      <a href="{{ url_for('ambulatory.index') if current_user.role == 'ambulatory' else url_for('records.index') }}" class="topnav-brand me-3">
+        <i class="bi bi-heart-pulse-fill"></i><span>MedData</span>
+      </a>
+      {% if current_user.role != 'ambulatory' %}
       <a href="{{ url_for('records.index') }}" class="topnav-link{% if request.endpoint and request.endpoint.startswith('records.') %} active{% endif %}">
-        <i class="bi bi-list-ul"></i><span>Записи</span>
+        <i class="bi bi-journal-text"></i><span>Записи</span>
+      </a>
+      {% endif %}
+      <a href="{{ url_for('ambulatory.index') }}" class="topnav-link{% if request.endpoint and request.endpoint.startswith('ambulatory.') %} active{% endif %}">
+        <i class="bi bi-file-earmark-medical"></i><span>Амбулаторна доп.</span>
       </a>
       {% if current_user.role in ['editor', 'admin', 'viewer'] %}
         <a href="{{ url_for('nszu.nszu_list') }}" class="topnav-link{% if request.endpoint and request.endpoint.startswith('nszu.') %} active{% endif %}">
           <i class="bi bi-file-medical"></i><span>НСЗУ</span>
         </a>
       {% endif %}
-      {% if current_user.role == 'operator' %}
-        <a href="#" class="topnav-link" data-bs-toggle="modal" data-bs-target="#addRecordModal">
-          <i class="bi bi-plus-circle"></i><span>Додати</span>
-        </a>
-      {% endif %}
+
       {% if current_user.role in ['admin', 'viewer'] %}
         <a href="{{ url_for('admin.admin_statistics') }}" class="topnav-link{% if request.endpoint == 'admin.admin_statistics' %} active{% endif %}">
           <i class="bi bi-bar-chart-line"></i><span>Статистика</span>

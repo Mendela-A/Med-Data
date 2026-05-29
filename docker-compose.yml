@@ -11,11 +11,12 @@ services:
       #- ADMIN_USER=admin
       # ADMIN_PASSWORD=admin
       - SECRET_KEY=${SECRET_KEY}
+      - DATABASE_URL=sqlite:////app/data/app.db
 
     expose:
       - "8000"
     volumes:
-      - ./data:/app/data
+      - db_data:/app/data
       - ./logs:/app/logs
     restart: unless-stopped
     healthcheck:
@@ -34,7 +35,7 @@ services:
       - DATABASE_URL=sqlite:////app/data/app.db
       - SECRET_KEY=${SECRET_KEY}
     volumes:
-      - ./data:/app/data
+      - db_data:/app/data
     restart: unless-stopped
 
   nginx:
@@ -52,3 +53,6 @@ services:
       - ./static:/app/static:ro
       - ./certs:/etc/nginx/certs:ro
     restart: unless-stopped
+
+volumes:
+  db_data:

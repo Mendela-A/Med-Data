@@ -47,7 +47,7 @@ def test_operator_can_add_without_department(app, client):
         }
         rv = client.post('/records/add', data=data, follow_redirects=True)
         txt = rv.get_data(as_text=True)
-        assert 'Record added' in txt
+        assert 'успішно додано' in txt
         # ensure record exists in DB
         r = Record.query.filter_by(full_name='NoDept Record').first()
         assert r is not None

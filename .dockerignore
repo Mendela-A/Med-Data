@@ -23,3 +23,6 @@ logs
 .gitignore
 tests
 .vscode
+.env
+.env.example
+data/

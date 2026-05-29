@@ -62,7 +62,7 @@ def test_operator_add_does_not_auto_set_discharge_status(app, client):
         client.post('/records/add', data=data, follow_redirects=True)
         r = Record.query.filter_by(full_name='Operator Auto Test').first()
         assert r is not None
-        assert r.discharge_status is None or r.discharge_status == ''
+        assert r.discharge_status == 'Опрацьовується'
 
 def test_editor_can_view_and_set_discharge_status(app, client):
     with app.app_context():

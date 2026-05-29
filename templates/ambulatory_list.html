@@ -1,0 +1,702 @@
+{% extends "base.html" %}
+{% block title %}Амбулаторна допомога{% endblock %}
+{% block container_class %}container-fluid px-4{% endblock %}
+
+{# Macro for sortable column headers #}
+{% macro sort_th(column, label) %}
+  {% if sort_by == column %}
+    {% if sort_order == 'asc' %}
+      {% set new_order = 'desc' %}
+      {% set icon = 'bi-arrow-up' %}
+    {% else %}
+      {% set new_order = 'asc' %}
+      {% set icon = 'bi-arrow-down' %}
+    {% endif %}
+  {% else %}
+    {% set new_order = 'asc' %}
+    {% set icon = '' %}
+  {% endif %}
+  <th>
+    <a href="{{ url_for('ambulatory.index', month_filter=month_filter_value, all_months='1' if show_all else '', discharge_status=selected_status, doctor=selected_doctor, full_name=full_name_q, journal_number=journal_number_q, diagnosis=diagnosis_q, per_page=pagination.per_page, sort_by=column, sort_order=new_order) }}" class="text-decoration-none text-dark d-flex align-items-center gap-1" style="cursor: pointer;">
+      <span>{{ label }}</span>
+      {% if icon %}
+        <i class="{{ icon }}" style="font-size: 0.8em;"></i>
+      {% endif %}
+    </a>
+  </th>
+{% endmacro %}
+
+{% block content %}
+  <!-- Toast container for print notifications -->
+  <div id="printToastContainer" class="toast-container position-fixed top-0 end-0 p-3" style="z-index: 9999;"></div>
+
+  <div class="d-flex align-items-center gap-2 mb-3 flex-wrap">
+    <h1 class="h4 mb-0 me-1" style="white-space: nowrap;">
+      {% if show_all %}
+        Амбулаторна доп. <span class="text-muted fw-normal">(усі)</span>
+      {% elif selected_year and selected_month %}
+        Амбулаторна доп. <span class="text-muted fw-normal">({{ ['Січень', 'Лютий', 'Березень', 'Квітень', 'Травень', 'Червень', 'Липень', 'Серпень', 'Вересень', 'Жовтень', 'Листопад', 'Грудень'][selected_month - 1] }} {{ selected_year }})</span>
+      {% else %}
+        Амбулаторна доп. <span class="text-muted fw-normal">(поточний місяць)</span>
+      {% endif %}
+    </h1>
+
+    <span class="stat-pill stat-pill-total" data-bs-toggle="tooltip" data-bs-title="Загальна кількість записів (з урахуванням фільтрів)">
+      <i class="bi bi-layers"></i>Всього: <strong>{{ count }}</strong>
+    </span>
+    <span class="stat-pill stat-pill-success{% if count_discharged == 0 %} stat-pill-muted{% endif %}" data-bs-toggle="tooltip" data-bs-title="Записи зі статусом 'Виписаний'">
+      Виписаних: <strong>{{ count_discharged }}</strong>
+      {% if count > 0 %}<span class="stat-pct">({{ "%.0f"|format(count_discharged / count * 100) }}%)</span>{% endif %}
+    </span>
+    <span class="stat-pill stat-pill-warning{% if count_processing == 0 %} stat-pill-muted{% endif %}" data-bs-toggle="tooltip" data-bs-title="Записи зі статусом 'Опрацьовується'">
+      Опрацьовується: <strong>{{ count_processing }}</strong>
+      {% if count > 0 %}<span class="stat-pct">({{ "%.0f"|format(count_processing / count * 100) }}%)</span>{% endif %}
+    </span>
+    <span class="stat-pill stat-pill-danger{% if count_violations == 0 %} stat-pill-muted{% endif %}" data-bs-toggle="tooltip" data-bs-title="Записи зі статусом 'Порушені вимоги'">
+      Порушення: <strong>{{ count_violations }}</strong>
+      {% if count > 0 %}<span class="stat-pct">({{ "%.0f"|format(count_violations / count * 100) }}%)</span>{% endif %}
+    </span>
+
+    {% if current_user.role in ['editor', 'admin', 'viewer'] %}
+    <div class="btn-group ms-auto">
+      <button type="button" class="btn btn-primary btn-sm dropdown-toggle" data-bs-toggle="dropdown" aria-expanded="false">
+        <i class="bi bi-file-earmark-arrow-down me-1"></i>Звіти
+      </button>
+      <ul class="dropdown-menu dropdown-menu-end">
+        <li><a class="dropdown-item" href="#" onclick="quickExportRecords(); return false;"><i class="bi bi-file-earmark-excel me-2"></i>Експортувати в Excel</a></li>
+        <li><a class="dropdown-item" href="#" onclick="printRecords(); return false;"><i class="bi bi-printer me-2"></i>Друк (PDF)</a></li>
+        <li><hr class="dropdown-divider"></li>
+        <li><a class="dropdown-item" href="#" data-bs-toggle="modal" data-bs-target="#exportRecordsModal"><i class="bi bi-calendar-range me-2"></i>Детальний експорт...</a></li>
+      </ul>
+    </div>
+    {% elif current_user.role == 'operator' %}
+    <div class="ms-auto">
+      <button type="button" class="btn btn-primary btn-sm" data-bs-toggle="modal" data-bs-target="#addAmbulatoryRecordModal">
+        <i class="bi bi-plus-circle me-1"></i>Додати запис
+      </button>
+    </div>
+    {% endif %}
+  </div>
+
+  <div class="card mb-3">
+    <div class="card-body py-3">
+      <h5 class="card-title mb-3">Фільтри</h5>
+      <form method="get">
+        <div class="row g-3 mb-3">
+          <div class="col-sm-6 col-md-4 col-xl-2">
+            <label class="form-label small mb-1"><i class="bi bi-calendar-month me-1"></i>Місяць</label>
+            <div class="month-picker" data-value="{{ month_filter_value }}" data-min="2020-01">
+              <input type="hidden" name="month_filter" id="month_filter" class="mp-hidden-input" value="{{ month_filter_value }}">
+              <button type="button" class="form-control form-control-sm text-start month-picker-toggle d-flex align-items-center justify-content-between">
+                <span><i class="bi bi-calendar-month me-1"></i><span class="mp-label"></span></span>
+                <i class="bi bi-chevron-down small text-muted ms-1 mp-chevron"></i>
+              </button>
+              <div class="month-picker-panel shadow-sm border rounded-3 p-2 d-none"></div>
+            </div>
+          </div>
+
+          <div class="col-sm-6 col-md-4 col-xl-2">
+            <label class="form-label small mb-1"><i class="bi bi-flag me-1"></i>Статус виписки</label>
+            <select class="form-select form-select-sm" name="discharge_status">
+              <option value="">Всі</option>
+              <option value="Виписаний" {% if selected_status == 'Виписаний' %}selected{% endif %}>Виписаний</option>
+              <option value="Опрацьовується" {% if selected_status == 'Опрацьовується' %}selected{% endif %}>Опрацьовується</option>
+              <option value="Порушені вимоги" {% if selected_status == 'Порушені вимоги' %}selected{% endif %}>Порушені вимоги</option>
+            </select>
+          </div>
+
+          <div class="col-sm-6 col-md-4 col-xl-2">
+            <label class="form-label small mb-1"><i class="bi bi-person-badge me-1"></i>Лікуючий лікар</label>
+            <select class="form-select form-select-sm" name="doctor">
+              <option value="">Всі</option>
+              {% for d in doctors %}
+                <option value="{{ d }}" {% if d == selected_doctor %}selected{% endif %}>{{ d }}</option>
+              {% endfor %}
+            </select>
+          </div>
+
+          <div class="col-sm-6 col-md-4 col-xl-2">
+            <label class="form-label small mb-1"><i class="bi bi-person-lines-fill me-1"></i>П.І.П пацієнта</label>
+            <input class="form-control form-control-sm" name="full_name" placeholder="Пошук за ПІП" value="{{ full_name_q }}">
+          </div>
+
+          <div class="col-sm-6 col-md-4 col-xl-2">
+            <label class="form-label small mb-1"><i class="bi bi-journal-text me-1"></i>№ у журналі</label>
+            <input class="form-control form-control-sm" name="journal_number" placeholder="Введіть номер журналу" value="{{ journal_number_q }}">
+          </div>
+
+          <div class="col-sm-6 col-md-4 col-xl-2">
+            <label class="form-label small mb-1"><i class="bi bi-file-medical me-1"></i>Діагноз</label>
+            <input class="form-control form-control-sm" name="diagnosis" placeholder="Пошук діагнозу" value="{{ diagnosis_q }}">
+          </div>
+        </div>
+
+        <div class="d-flex flex-wrap align-items-center gap-3 pt-2 border-top">
+          <div>
+            <button class="btn btn-primary btn-sm" type="submit">
+              <i class="bi bi-funnel me-1"></i>Застосувати
+            </button>
+            <a class="btn btn-outline-secondary btn-sm ms-2" href="{{ url_for('ambulatory.index') }}">
+              <i class="bi bi-arrow-clockwise me-1"></i>Скинути
+            </a>
+          </div>
+          <div class="form-check mb-0">
+            <input class="form-check-input" type="checkbox" value="1" id="all_months" name="all_months" {% if show_all %}checked{% endif %}>
+            <label class="form-check-label" for="all_months">Показати всі місяці</label>
+          </div>
+          <div class="d-flex align-items-center gap-2 ms-auto">
+            <label class="form-label small mb-0"><i class="bi bi-list-ol me-1"></i>На сторінку:</label>
+            <select class="form-select form-select-sm" name="per_page" style="width: auto;">
+              <option value="25" {% if pagination.per_page == 25 %}selected{% endif %}>25</option>
+              <option value="50" {% if pagination.per_page == 50 %}selected{% endif %}>50</option>
+              <option value="100" {% if pagination.per_page == 100 %}selected{% endif %}>100</option>
+              <option value="200" {% if pagination.per_page == 200 %}selected{% endif %}>200</option>
+            </select>
+          </div>
+        </div>
+      </form>
+    </div>
+  </div>
+
+  {% if records %}
+    <div class="card">
+      <div class="card-body p-0">
+        <div class="table-responsive">
+          <table class="table table-hover mb-0 records-table">
+            <thead>
+              <tr>
+                {{ sort_th('id', 'ID') }}
+                {{ sort_th('journal_number', 'Номер у журналі') }}
+                {{ sort_th('date', 'Дата') }}
+                {{ sort_th('full_name', 'П.І.П (повністю)') }}
+                {{ sort_th('birth_date', 'Дата народження') }}
+                {{ sort_th('doctor', 'Лікар') }}
+                {{ sort_th('diagnosis', 'Діагноз') }}
+                {{ sort_th('discharge_status', 'Статус') }}
+                <th>Коментар</th>
+                {% if current_user.role in ['editor', 'admin'] %}
+                  <th>Змінив</th>
+                  <th>Змінено</th>
+                  <th>Дія</th>
+                {% endif %}
+              </tr>
+            </thead>
+            <tbody>
+              {% for r in records %}
+                <tr id="record-{{ r.id }}" class="align-middle">
+                  <td>{{ r.id }}</td>
+                  <td><span class="badge bg-light text-dark border">{{ r.journal_number }}</span></td>
+                  <td>{{ r.date.strftime('%d.%m.%Y') if r.date else '' }}</td>
+                  <td class="fw-semibold">{{ r.full_name }}</td>
+                  <td>{{ r.birth_date.strftime('%d.%m.%Y') if r.birth_date else '' }}</td>
+                  <td><span class="text-secondary"><i class="bi bi-person me-1"></i>{{ r.doctor }}</span></td>
+                  <td><span class="text-break">{{ r.diagnosis }}</span></td>
+                  <td>
+                    {% if r.discharge_status == 'Виписаний' %}
+                      <span class="badge bg-success-subtle text-success px-2 py-1"><i class="bi bi-check-circle me-1"></i>Виписаний</span>
+                    {% elif r.discharge_status == 'Опрацьовується' %}
+                      <span class="badge bg-warning-subtle text-warning px-2 py-1"><i class="bi bi-clock me-1"></i>Опрацьовується</span>
+                    {% elif r.discharge_status == 'Порушені вимоги' %}
+                      <span class="badge bg-danger-subtle text-danger px-2 py-1"><i class="bi bi-exclamation-triangle me-1"></i>Порушені вимоги</span>
+                    {% else %}
+                      <span class="badge bg-warning-subtle text-warning px-2 py-1"><i class="bi bi-clock me-1"></i>{{ r.discharge_status or 'Опрацьовується' }}</span>
+                    {% endif %}
+                  </td>
+                  <td><small class="text-muted">{{ r.comment or '' }}</small></td>
+                  {% if current_user.role in ['editor', 'admin'] %}
+                    <td><small class="text-muted">{{ user_map.get(r.updated_by, '') }}</small></td>
+                    <td>
+                      {% if r.updated_at %}
+                        <small class="text-muted" data-bs-toggle="tooltip" data-bs-title="{{ r.updated_at.strftime('%d.%m.%Y %H:%M:%S') }}">
+                          {{ r.updated_at.strftime('%d.%m %H:%M') }}
+                        </small>
+                      {% endif %}
+                    </td>
+                    <td>
+                      <div class="d-flex gap-1">
+                        <a href="{{ url_for('ambulatory.edit_record', record_id=r.id, discharge_status=selected_status, doctor=selected_doctor, full_name=full_name_q, journal_number=journal_number_q, diagnosis=diagnosis_q) }}" 
+                           class="btn btn-sm btn-outline-primary" data-bs-toggle="tooltip" data-bs-title="Редагувати">
+                          <i class="bi bi-pencil"></i>
+                        </a>
+                        {% if current_user.role == 'admin' %}
+                          <form class="delete-form" method="post" action="{{ url_for('ambulatory.delete_record', record_id=r.id) }}"
+                                data-confirm="Ви впевнені, що хочете видалити амбулаторний запис пацієнта {{ r.full_name }}?">
+                            <input type="hidden" name="discharge_status" value="{{ selected_status }}">
+                            <input type="hidden" name="doctor" value="{{ selected_doctor }}">
+                            <input type="hidden" name="full_name" value="{{ full_name_q }}">
+                            <input type="hidden" name="journal_number" value="{{ journal_number_q }}">
+                            <input type="hidden" name="diagnosis" value="{{ diagnosis_q }}">
+                            <button type="submit" class="btn btn-sm btn-outline-danger" data-bs-toggle="tooltip" data-bs-title="Видалити">
+                              <i class="bi bi-trash"></i>
+                            </button>
+                          </form>
+                        {% endif %}
+                      </div>
+                    </td>
+                  {% endif %}
+                </tr>
+              {% endfor %}
+            </tbody>
+          </table>
+        </div>
+      </div>
+    </div>
+
+    <!-- Pagination -->
+    {% if pagination.pages > 1 %}
+      <nav class="mt-3">
+        <ul class="pagination pagination-sm justify-content-center">
+          <li class="page-item {% if not pagination.has_prev %}disabled{% endif %}">
+            <a class="page-link" href="{{ url_for('ambulatory.index', page=pagination.prev_num, month_filter=month_filter_value, all_months='1' if show_all else '', discharge_status=selected_status, doctor=selected_doctor, full_name=full_name_q, journal_number=journal_number_q, diagnosis=diagnosis_q, per_page=pagination.per_page, sort_by=sort_by, sort_order=sort_order) }}">&laquo; Попередня</a>
+          </li>
+          {% for p in pagination.iter_pages(left_edge=2, left_current=2, right_current=3, right_edge=2) %}
+            {% if p %}
+              <li class="page-item {% if p == pagination.page %}active{% endif %}">
+                <a class="page-link" href="{{ url_for('ambulatory.index', page=p, month_filter=month_filter_value, all_months='1' if show_all else '', discharge_status=selected_status, doctor=selected_doctor, full_name=full_name_q, journal_number=journal_number_q, diagnosis=diagnosis_q, per_page=pagination.per_page, sort_by=sort_by, sort_order=sort_order) }}">{{ p }}</a>
+              </li>
+            {% else %}
+              <li class="page-item disabled"><span class="page-link">...</span></li>
+            {% endif %}
+          {% endfor %}
+          <li class="page-item {% if not pagination.has_next %}disabled{% endif %}">
+            <a class="page-link" href="{{ url_for('ambulatory.index', page=pagination.next_num, month_filter=month_filter_value, all_months='1' if show_all else '', discharge_status=selected_status, doctor=selected_doctor, full_name=full_name_q, journal_number=journal_number_q, diagnosis=diagnosis_q, per_page=pagination.per_page, sort_by=sort_by, sort_order=sort_order) }}">Наступна &raquo;</a>
+          </li>
+        </ul>
+      </nav>
+    {% endif %}
+  {% else %}
+    <div class="alert alert-info py-3"><i class="bi bi-info-circle me-2"></i>Записів не знайдено для обраного фільтру.</div>
+  {% endif %}
+
+  <!-- Operator Quick Add Modal -->
+  {% if current_user.role == 'operator' %}
+  <div class="modal fade" id="addAmbulatoryRecordModal" tabindex="-1" aria-labelledby="addAmbulatoryRecordModalLabel" aria-hidden="true">
+    <div class="modal-dialog modal-dialog-centered modal-lg">
+      <div class="modal-content">
+        <div class="modal-header py-3">
+          <h5 class="modal-title" id="addAmbulatoryRecordModalLabel"><i class="bi bi-plus-circle text-primary me-2"></i>Додати амбулаторний запис</h5>
+          <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+        </div>
+        <form id="addAmbulatoryRecordForm">
+          <div class="modal-body py-3">
+            <div id="addRecordSuccess" class="alert alert-success d-none alert-dismissible fade" role="alert">
+              <span id="successMessage"></span>
+              <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
+            </div>
+            <div id="addRecordError" class="alert alert-danger d-none alert-dismissible fade" role="alert">
+              <span id="errorMessage"></span>
+              <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
+            </div>
+
+            <div class="row g-3">
+              <div class="col-md-4">
+                <label for="modal_journal_number" class="form-label">№ журналу</label>
+                <input class="form-control" id="modal_journal_number" name="journal_number" required placeholder="Наприклад, 102/А">
+              </div>
+              <div class="col-md-4">
+                <label for="modal_date" class="form-label">Дата запису</label>
+                <input class="form-control" type="date" id="modal_date" name="date" required>
+              </div>
+              <div class="col-md-4">
+                <label for="modal_birth_date" class="form-label">Дата народження</label>
+                <input class="form-control" type="date" id="modal_birth_date" name="birth_date" required>
+              </div>
+              <div class="col-md-6">
+                <label for="modal_full_name" class="form-label">П.І.П (повністю)</label>
+                <input class="form-control" id="modal_full_name" name="full_name" required placeholder="Прізвище Ім'я По батькові">
+              </div>
+              <div class="col-md-6">
+                <label for="modal_doctor" class="form-label">Лікар</label>
+                <input class="form-control" id="modal_doctor" name="doctor" list="modal-doctors-list" autocomplete="off" required placeholder="ПІБ лікаря">
+                <datalist id="modal-doctors-list">
+                  {% for d in doctors %}
+                    <option value="{{ d }}">
+                  {% endfor %}
+                </datalist>
+              </div>
+              <div class="col-12">
+                <label for="modal_diagnosis" class="form-label">Діагноз</label>
+                <input class="form-control" id="modal_diagnosis" name="diagnosis" required placeholder="Введіть діагноз">
+              </div>
+              <div class="col-12">
+                <label for="modal_comment" class="form-label">Коментар</label>
+                <textarea class="form-control" id="modal_comment" name="comment" rows="2" placeholder="Додаткова інформація..."></textarea>
+              </div>
+            </div>
+
+            <div id="recordCounter" class="mt-3 p-2 bg-light border rounded text-secondary d-none">
+              Додано записів за сесію: <strong id="counterValue" class="text-primary">0</strong>
+            </div>
+          </div>
+          <div class="modal-footer py-2 justify-content-between">
+            <div class="form-check">
+              <input class="form-check-input" type="checkbox" id="keepFields" checked>
+              <label class="form-check-label text-muted small" for="keepFields">Зберегти деякі поля для наступного</label>
+            </div>
+            <div class="d-flex gap-2">
+              <button type="button" class="btn btn-secondary btn-sm" data-bs-dismiss="modal">Скасувати</button>
+              <button type="button" class="btn btn-outline-primary btn-sm" id="saveAndClose">Зберегти і завершити</button>
+              <button type="button" class="btn btn-primary btn-sm" id="saveAndAddAnother">Зберегти і додати ще →</button>
+            </div>
+          </div>
+        </form>
+      </div>
+    </div>
+  </div>
+  {% endif %}
+
+  <!-- Detail Export / Print Modal -->
+  {% if current_user.role in ['editor', 'admin', 'viewer'] %}
+  <div class="modal fade" id="exportRecordsModal" tabindex="-1" aria-labelledby="exportRecordsModalLabel" aria-hidden="true">
+    <div class="modal-dialog modal-dialog-centered">
+      <div class="modal-content">
+        <div class="modal-header py-3">
+          <h5 class="modal-title" id="exportRecordsModalLabel"><i class="bi bi-file-earmark-excel text-success me-2"></i>Детальний експорт / Друк</h5>
+          <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+        </div>
+        <form id="detailExportForm" method="post" action="{{ url_for('ambulatory.export') }}">
+          <div class="modal-body py-3">
+            <!-- Hidden filter parameters to preserve active filters in export -->
+            <input type="hidden" name="discharge_status" value="{{ selected_status }}">
+            <input type="hidden" name="doctor" value="{{ selected_doctor }}">
+            <input type="hidden" name="full_name" value="{{ full_name_q }}">
+            <input type="hidden" name="journal_number" value="{{ journal_number_q }}">
+            <input type="hidden" name="diagnosis" value="{{ diagnosis_q }}">
+            <input type="hidden" name="month_filter" value="{{ month_filter_value }}">
+
+            <div class="mb-3">
+              <label class="form-label">Тип експорту</label>
+              <div class="d-flex gap-4">
+                <div class="form-check">
+                  <input class="form-check-input" type="radio" name="export_mode" id="export_mode_month" value="month" checked>
+                  <label class="form-check-label" for="export_mode_month">
+                    За обраний місяць ({{ month_filter_value or 'поточний' }})
+                  </label>
+                </div>
+                <div class="form-check">
+                  <input class="form-check-input" type="radio" name="export_mode" id="export_mode_range" value="range">
+                  <label class="form-check-label" for="export_mode_range">
+                    За діапазон дат
+                  </label>
+                </div>
+              </div>
+            </div>
+
+            <div id="date_range_inputs" class="row g-2 d-none">
+              <div class="col-6">
+                <label for="export_from_date" class="form-label small">З дати</label>
+                <input type="date" class="form-control form-control-sm" id="export_from_date" name="from_date">
+              </div>
+              <div class="col-6">
+                <label for="export_to_date" class="form-label small">По дату</label>
+                <input type="date" class="form-control form-control-sm" id="export_to_date" name="to_date">
+              </div>
+            </div>
+          </div>
+          <div class="modal-footer py-2">
+            <button type="button" class="btn btn-secondary btn-sm" data-bs-dismiss="modal">Скасувати</button>
+            <button type="button" class="btn btn-outline-primary btn-sm" onclick="submitDetailedPrint()"><i class="bi bi-printer me-1"></i>Друк PDF</button>
+            <button type="submit" class="btn btn-success btn-sm"><i class="bi bi-file-earmark-excel me-1"></i>Експортувати</button>
+          </div>
+        </form>
+      </div>
+    </div>
+  </div>
+  {% endif %}
+
+  <!-- Hidden Quick Actions Forms -->
+  <form id="quickExportForm" method="post" action="{{ url_for('ambulatory.export') }}" class="d-none">
+    <input type="hidden" name="export_mode" value="month">
+    <input type="hidden" name="month_filter" value="{{ month_filter_value }}">
+    <input type="hidden" name="discharge_status" value="{{ selected_status }}">
+    <input type="hidden" name="doctor" value="{{ selected_doctor }}">
+    <input type="hidden" name="full_name" value="{{ full_name_q }}">
+    <input type="hidden" name="journal_number" value="{{ journal_number_q }}">
+    <input type="hidden" name="diagnosis" value="{{ diagnosis_q }}">
+  </form>
+
+  <form id="quickPrintForm" method="post" action="{{ url_for('ambulatory.print_records') }}" class="d-none">
+    <input type="hidden" name="from_date" id="qp_from_date">
+    <input type="hidden" name="to_date" id="qp_to_date">
+    <input type="hidden" name="discharge_status" value="{{ selected_status }}">
+    <input type="hidden" name="doctor" value="{{ selected_doctor }}">
+    <input type="hidden" name="full_name" value="{{ full_name_q }}">
+    <input type="hidden" name="journal_number" value="{{ journal_number_q }}">
+    <input type="hidden" name="diagnosis" value="{{ diagnosis_q }}">
+  </form>
+{% endblock %}
+
+{% block scripts %}
+<script>
+  // Tooltips & Popovers initialization
+  document.addEventListener('DOMContentLoaded', function() {
+    const tooltipTriggerList = [].slice.call(document.querySelectorAll('[data-bs-toggle="tooltip"]'));
+    tooltipTriggerList.map(function(el) {
+      return new bootstrap.Tooltip(el, { trigger: 'hover' });
+    });
+  });
+
+  {% if current_user.role in ['editor', 'admin', 'viewer'] %}
+  // Quick Export
+  function quickExportRecords() {
+    document.getElementById('quickExportForm').submit();
+  }
+
+  // Quick Print (current month range)
+  function printRecords() {
+    // Generate dates based on selected month/year
+    const monthVal = "{{ month_filter_value }}";
+    let fromStr, toStr;
+    if (monthVal) {
+      const parts = monthVal.split('-');
+      const y = parseInt(parts[0]), m = parseInt(parts[1]);
+      fromStr = `${y}-${String(m).padStart(2,'0')}-01`;
+      const lastDay = new Date(y, m, 0).getDate();
+      toStr = `${y}-${String(m).padStart(2,'0')}-${String(lastDay).padStart(2,'0')}`;
+    } else {
+      const d = new Date();
+      const y = d.getFullYear(), m = d.getMonth() + 1;
+      fromStr = `${y}-${String(m).padStart(2,'0')}-01`;
+      const lastDay = new Date(y, m, 0).getDate();
+      toStr = `${y}-${String(m).padStart(2,'0')}-${String(lastDay).padStart(2,'0')}`;
+    }
+    
+    document.getElementById('qp_from_date').value = fromStr;
+    document.getElementById('qp_to_date').value = toStr;
+    document.getElementById('quickPrintForm').submit();
+
+    // Show dynamic print toast
+    showPrintToast();
+  }
+
+  function showPrintToast() {
+    const container = document.getElementById('printToastContainer');
+    if (!container) return;
+    const toast = document.createElement('div');
+    toast.className = 'toast align-items-center text-bg-primary border-0 show';
+    toast.setAttribute('role', 'alert');
+    toast.setAttribute('aria-live', 'assertive');
+    toast.setAttribute('aria-atomic', 'true');
+    toast.innerHTML = `
+      <div class="d-flex">
+        <div class="toast-body">
+          <i class="bi bi-printer me-2"></i>Генерується PDF для друку... Будь ласка, зачекайте.
+        </div>
+        <button type="button" class="btn-close btn-close-white me-2 m-auto" data-bs-dismiss="toast" aria-label="Close"></button>
+      </div>
+    `;
+    container.appendChild(toast);
+    setTimeout(() => {
+      toast.classList.remove('show');
+      setTimeout(() => toast.remove(), 500);
+    }, 4000);
+  }
+
+  // Handle Export Modal Toggle Range
+  const rangeRadio = document.getElementById('export_mode_range');
+  const monthRadio = document.getElementById('export_mode_month');
+  const rangeInputs = document.getElementById('date_range_inputs');
+
+  if (rangeRadio && monthRadio && rangeInputs) {
+    rangeRadio.addEventListener('change', function() {
+      if (this.checked) rangeInputs.classList.remove('d-none');
+    });
+    monthRadio.addEventListener('change', function() {
+      if (this.checked) rangeInputs.classList.add('d-none');
+    });
+  }
+
+  function submitDetailedPrint() {
+    const form = document.getElementById('detailExportForm');
+    const oldAction = form.action;
+    form.action = "{{ url_for('ambulatory.print_records') }}";
+    form.submit();
+    form.action = oldAction; // restore
+    bootstrap.Modal.getInstance(document.getElementById('exportRecordsModal')).hide();
+    showPrintToast();
+  }
+  {% endif %}
+
+  {% if current_user.role == 'operator' %}
+  // Operator Quick Add Modal Functionality
+  (function() {
+    const modal = document.getElementById('addAmbulatoryRecordModal');
+    const form = document.getElementById('addAmbulatoryRecordForm');
+    const successAlert = document.getElementById('addRecordSuccess');
+    const errorAlert = document.getElementById('addRecordError');
+    const successMessage = document.getElementById('successMessage');
+    const errorMessage = document.getElementById('errorMessage');
+    const counterDiv = document.getElementById('recordCounter');
+    const counterValue = document.getElementById('counterValue');
+    const keepFieldsCheckbox = document.getElementById('keepFields');
+
+    if (!modal || !form) return;
+
+    let recordCount = 0;
+
+    // Load preferences
+    const keepFieldsPref = localStorage.getItem('keepAmbulatoryFields');
+    if (keepFieldsPref !== null) {
+      keepFieldsCheckbox.checked = keepFieldsPref === 'true';
+    }
+
+    keepFieldsCheckbox.addEventListener('change', function() {
+      localStorage.setItem('keepAmbulatoryFields', this.checked);
+    });
+
+    // Reset when completely closed
+    // Reset when completely closed and reload if records were added
+    modal.addEventListener('hidden.bs.modal', function() {
+      if (recordCount > 0) {
+        location.reload();
+      } else {
+        form.reset();
+        successAlert.style.display = 'none';
+        successAlert.classList.remove('show');
+        errorAlert.style.display = 'none';
+        errorAlert.classList.remove('show');
+        counterDiv.style.display = 'none';
+      }
+      recordCount = 0;
+    });
+
+    // Focus on open
+    modal.addEventListener('shown.bs.modal', function() {
+      // Auto fill today
+      const dateInput = document.getElementById('modal_date');
+      if (dateInput && !dateInput.value) {
+        const today = new Date();
+        const year = today.getFullYear();
+        const month = String(today.getMonth() + 1).padStart(2, '0');
+        const day = String(today.getDate()).padStart(2, '0');
+        dateInput.value = `${year}-${month}-${day}`;
+      }
+      document.getElementById('modal_journal_number').focus();
+    });
+
+    function submitForm(closeAfter) {
+      successAlert.style.display = 'none';
+      successAlert.classList.remove('show');
+      errorAlert.style.display = 'none';
+      errorAlert.classList.remove('show');
+
+      const formData = new FormData(form);
+      const saveBtn = closeAfter ? document.getElementById('saveAndClose') : document.getElementById('saveAndAddAnother');
+      const originalText = saveBtn.innerHTML;
+      saveBtn.innerHTML = '<span class="spinner-border spinner-border-sm me-2"></span>Збереження...';
+      saveBtn.disabled = true;
+
+      fetch("{{ url_for('ambulatory.api_add_record') }}", {
+        method: 'POST',
+        body: formData,
+        headers: {
+          'X-Requested-With': 'XMLHttpRequest'
+        }
+      })
+      .then(response => response.json())
+      .then(data => {
+        saveBtn.innerHTML = originalText;
+        saveBtn.disabled = false;
+
+        if (data.success) {
+          successMessage.textContent = data.message;
+          successAlert.style.display = 'block';
+          successAlert.classList.add('show');
+          successAlert.classList.remove('d-none');
+          
+          recordCount++;
+          counterValue.textContent = recordCount;
+          counterDiv.classList.remove('d-none');
+          counterDiv.style.display = 'block';
+
+          if (closeAfter) {
+            // Close modal and reload page after short delay
+            setTimeout(function() {
+              bootstrap.Modal.getInstance(modal).hide();
+              location.reload();
+            }, 1000);
+          } else {
+            // Preserve fields if option checked
+            const prevJournalNum = document.getElementById('modal_journal_number').value;
+            const prevDate = document.getElementById('modal_date').value;
+            const prevBirth = document.getElementById('modal_birth_date').value;
+            const prevDoctor = document.getElementById('modal_doctor').value;
+            const prevDiagnosis = document.getElementById('modal_diagnosis').value;
+
+            form.reset();
+
+            if (keepFieldsCheckbox.checked) {
+              document.getElementById('modal_date').value = prevDate;
+              document.getElementById('modal_doctor').value = prevDoctor;
+              // Attempt to increment journal number if numeric ending
+              const match = prevJournalNum.match(/^(\d+)(.*)$/);
+              if (match) {
+                const num = parseInt(match[1]) + 1;
+                document.getElementById('modal_journal_number').value = num + match[2];
+              } else {
+                document.getElementById('modal_journal_number').value = prevJournalNum;
+              }
+              document.getElementById('modal_birth_date').value = prevBirth;
+              document.getElementById('modal_diagnosis').value = prevDiagnosis;
+              document.getElementById('modal_full_name').focus();
+            } else {
+              // Re-fill date
+              document.getElementById('modal_date').value = prevDate;
+              document.getElementById('modal_journal_number').focus();
+            }
+          }
+        } else {
+          errorMessage.textContent = data.error || 'Помилка при збереженні запису';
+          errorAlert.style.display = 'block';
+          errorAlert.classList.add('show');
+          errorAlert.classList.remove('d-none');
+        }
+      })
+      .catch(error => {
+        saveBtn.innerHTML = originalText;
+        saveBtn.disabled = false;
+        console.error('Error:', error);
+        errorMessage.textContent = 'Виникла помилка з\'єднання. Спробуйте пізніше.';
+        errorAlert.style.display = 'block';
+        errorAlert.classList.add('show');
+        errorAlert.classList.remove('d-none');
+      });
+    }
+
+    // Handle Form Submit Event (e.g. Enter key) - defaults to Save and Add Another
+    form.addEventListener('submit', function(e) {
+      e.preventDefault();
+      if (form.checkValidity()) {
+        submitForm(false);
+      } else {
+        form.reportValidity();
+      }
+    });
+
+    // Save and close button
+    const saveAndCloseBtn = document.getElementById('saveAndClose');
+    if (saveAndCloseBtn) {
+      saveAndCloseBtn.addEventListener('click', function() {
+        if (form.checkValidity()) {
+          submitForm(true);
+        } else {
+          form.reportValidity();
+        }
+      });
+    }
+
+    // Save and add another button
+    const saveAndAddAnotherBtn = document.getElementById('saveAndAddAnother');
+    if (saveAndAddAnotherBtn) {
+      saveAndAddAnotherBtn.addEventListener('click', function() {
+        if (form.checkValidity()) {
+          submitForm(false);
+        } else {
+          form.reportValidity();
+        }
+      });
+    }
+  })();
+  {% endif %}
+</script>
+{% endblock %}

@@ -24,6 +24,10 @@ from . import records_bp
 @records_bp.route('/')
 @login_required
 def index():
+    # Redirect ambulatory role to ambulatory index
+    if current_user.role == 'ambulatory':
+        return redirect(url_for('ambulatory.index'))
+
     # Redirect viewer to statistics page ONLY if no filters applied
     if current_user.role == 'viewer' and not request.args:
         return redirect(url_for('admin.admin_statistics'))

@@ -157,6 +157,38 @@ class NSZUCorrection(db.Model):
         return f"<NSZUCorrection {self.id} {self.nszu_record_id}>"
 
 
+class AmbulatoryRecord(db.Model):
+    __tablename__ = 'ambulatory_records'
+    __table_args__ = (
+        db.Index('idx_amb_discharge_status', 'discharge_status'),
+        db.Index('idx_amb_doctor', 'doctor'),
+        db.Index('idx_amb_date', 'date'),
+        db.Index('idx_amb_full_name', 'full_name'),
+        db.Index('idx_amb_updated_at', 'updated_at'),
+    )
+
+    id = db.Column(db.Integer, primary_key=True)
+    journal_number = db.Column(db.String(100), nullable=False)  # "Номер у журналі"
+    date = db.Column(db.Date, nullable=False)  # "Дата"
+    full_name = db.Column(db.String(200), nullable=False)  # "П.І.П (повністю)"
+    birth_date = db.Column(db.Date, nullable=False)  # "Дата народження"
+    doctor = db.Column(db.String(200), nullable=False)  # "Лікар"
+    diagnosis = db.Column(db.Text, nullable=False)  # "Діагноз"
+    discharge_status = db.Column(db.String(200), nullable=True)  # "Статус виписки"
+    comment = db.Column(db.Text, nullable=True)  # "Коментар"
+
+    created_by = db.Column(db.Integer, db.ForeignKey('users.id'), nullable=True)
+    created_at = db.Column(db.DateTime, default=lambda: datetime.now(timezone.utc))
+    updated_by = db.Column(db.Integer, db.ForeignKey('users.id'), nullable=True)
+    updated_at = db.Column(db.DateTime, default=lambda: datetime.now(timezone.utc), onupdate=lambda: datetime.now(timezone.utc))
+
+    creator = db.relationship('User', foreign_keys=[created_by], backref='amb_records_created')
+    updater = db.relationship('User', foreign_keys=[updated_by], backref='amb_records_updated')
+
+    def __repr__(self):
+        return f"<AmbulatoryRecord {self.id} {self.full_name}>"
+
+
 def log_action(actor_id, action, target_type=None, target_id=None, details=None):
     """Create an audit log entry. Caller is responsible for committing."""
     a = Audit(actor_id=actor_id, action=action, target_type=target_type, target_id=target_id, details=details)
