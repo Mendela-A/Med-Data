@@ -48,14 +48,6 @@
       Виписаних: <strong>{{ count_discharged }}</strong>
       {% if count > 0 %}<span class="stat-pct">({{ "%.0f"|format(count_discharged / count * 100) }}%)</span>{% endif %}
     </span>
-    <span class="stat-pill stat-pill-warning{% if count_processing == 0 %} stat-pill-muted{% endif %}" data-bs-toggle="tooltip" data-bs-title="Записи зі статусом 'Опрацьовується'">
-      Опрацьовується: <strong>{{ count_processing }}</strong>
-      {% if count > 0 %}<span class="stat-pct">({{ "%.0f"|format(count_processing / count * 100) }}%)</span>{% endif %}
-    </span>
-    <span class="stat-pill stat-pill-danger{% if count_violations == 0 %} stat-pill-muted{% endif %}" data-bs-toggle="tooltip" data-bs-title="Записи зі статусом 'Порушені вимоги'">
-      Порушення: <strong>{{ count_violations }}</strong>
-      {% if count > 0 %}<span class="stat-pct">({{ "%.0f"|format(count_violations / count * 100) }}%)</span>{% endif %}
-    </span>
 
     {% if current_user.role in ['editor', 'admin', 'viewer'] %}
     <div class="btn-group ms-auto">
@@ -165,9 +157,8 @@
           <table class="table table-hover mb-0 records-table">
             <thead>
               <tr>
-                {{ sort_th('id', 'ID') }}
-                {{ sort_th('journal_number', 'Номер у журналі') }}
                 {{ sort_th('date', 'Дата') }}
+                {{ sort_th('journal_number', 'Номер у журналі') }}
                 {{ sort_th('full_name', 'П.І.П (повністю)') }}
                 {{ sort_th('birth_date', 'Дата народження') }}
                 {{ sort_th('doctor', 'Лікар') }}
@@ -184,9 +175,8 @@
             <tbody>
               {% for r in records %}
                 <tr id="record-{{ r.id }}" class="align-middle">
-                  <td>{{ r.id }}</td>
-                  <td><span class="badge bg-light text-dark border">{{ r.journal_number }}</span></td>
                   <td>{{ r.date.strftime('%d.%m.%Y') if r.date else '' }}</td>
+                  <td><span class="badge bg-light text-dark border">{{ r.journal_number }}</span></td>
                   <td class="fw-semibold">{{ r.full_name }}</td>
                   <td>{{ r.birth_date.strftime('%d.%m.%Y') if r.birth_date else '' }}</td>
                   <td><span class="text-secondary"><i class="bi bi-person me-1"></i>{{ r.doctor }}</span></td>
