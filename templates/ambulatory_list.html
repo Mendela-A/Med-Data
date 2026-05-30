@@ -61,7 +61,7 @@
         <li><a class="dropdown-item" href="#" data-bs-toggle="modal" data-bs-target="#exportRecordsModal"><i class="bi bi-calendar-range me-2"></i>Детальний експорт...</a></li>
       </ul>
     </div>
-    {% elif current_user.role == 'operator' %}
+    {% elif current_user.role in ['operator', 'ambulatory'] %}
     <div class="ms-auto">
       <button type="button" class="btn btn-primary btn-sm" data-bs-toggle="modal" data-bs-target="#addAmbulatoryRecordModal">
         <i class="bi bi-plus-circle me-1"></i>Додати запис
@@ -259,7 +259,7 @@
   {% endif %}
 
   <!-- Operator Quick Add Modal -->
-  {% if current_user.role == 'operator' %}
+  {% if current_user.role in ['operator', 'ambulatory'] %}
   <div class="modal fade" id="addAmbulatoryRecordModal" tabindex="-1" aria-labelledby="addAmbulatoryRecordModalLabel" aria-hidden="true">
     <div class="modal-dialog modal-dialog-centered modal-lg">
       <div class="modal-content">
@@ -584,7 +584,7 @@
   }
   {% endif %}
 
-  {% if current_user.role == 'operator' %}
+  {% if current_user.role in ['operator', 'ambulatory'] %}
   // Operator Quick Add Modal Functionality
   (function() {
     const modal = document.getElementById('addAmbulatoryRecordModal');
