@@ -266,7 +266,6 @@ h1, h2, h3, h4, h5, h6,
 }
 
 .btn:hover {
-  transform: translateY(-1px);
   box-shadow: 0 4px 12px rgba(15, 118, 110, 0.15);
 }
 
@@ -319,7 +318,6 @@ h1, h2, h3, h4, h5, h6,
 }
 
 .card:hover {
-  transform: translateY(-2px);
   box-shadow: var(--shadow-md);
   border-color: var(--color-primary-medium);
 }
@@ -431,7 +429,6 @@ h1, h2, h3, h4, h5, h6,
 
 .table-hover tbody tr:hover {
   background-color: var(--color-primary-light) !important;
-  transform: scale(1.002);
 }
 
 .table-striped > tbody > tr:nth-of-type(odd) {
@@ -867,9 +864,7 @@ td .badge {
   transition: transform 0.2s ease;
 }
 
-.stat-card-link:hover {
-  transform: translateY(-3px);
-}
+
 
 .stat-card {
   cursor: pointer;
@@ -904,7 +899,6 @@ td .badge {
 }
 
 .badge-clickable:hover {
-  transform: scale(1.08);
   box-shadow: 0 2px 8px rgba(0, 0, 0, 0.15);
   filter: brightness(1.05);
 }
