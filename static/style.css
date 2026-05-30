@@ -998,3 +998,12 @@ input[list]:focus::-webkit-calendar-picker-indicator { opacity: 1; }
   pointer-events: none;
 }
 
+/* Urgent record highlighting */
+.table tbody tr.table-urgent td {
+  background-color: #eafaf1 !important; /* extremely soft light green */
+}
+.table-hover tbody tr.table-urgent:hover td {
+  background-color: #d1f2db !important; /* slightly darker green on hover */
+}
+
+

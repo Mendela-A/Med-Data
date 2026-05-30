@@ -48,6 +48,10 @@
       Виписаних: <strong>{{ count_discharged }}</strong>
       {% if count > 0 %}<span class="stat-pct">({{ "%.0f"|format(count_discharged / count * 100) }}%)</span>{% endif %}
     </span>
+    <span class="stat-pill stat-pill-danger{% if count_urgent == 0 %} stat-pill-muted{% endif %}" data-bs-toggle="tooltip" data-bs-title="Записи з ургентним станом">
+      <i class="bi bi-exclamation-triangle-fill"></i>Ургентних станів: <strong>{{ count_urgent }}</strong>
+      {% if count > 0 %}<span class="stat-pct">({{ "%.0f"|format(count_urgent / count * 100) }}%)</span>{% endif %}
+    </span>
 
     {% if current_user.role in ['editor', 'admin', 'viewer'] %}
     <div class="btn-group ms-auto">
@@ -174,7 +178,7 @@
             </thead>
             <tbody>
               {% for r in records %}
-                <tr id="record-{{ r.id }}" class="align-middle">
+                <tr id="record-{{ r.id }}" class="align-middle{% if r.is_urgent %} table-urgent{% endif %}">
                   <td>{{ r.date.strftime('%d.%m.%Y') if r.date else '' }}</td>
                   <td><span class="badge bg-light text-dark border">{{ r.journal_number }}</span></td>
                   <td class="fw-semibold">{{ r.full_name }}</td>
@@ -204,10 +208,22 @@
                     </td>
                     <td>
                       <div class="d-flex gap-1">
-                        <a href="{{ url_for('ambulatory.edit_record', record_id=r.id, discharge_status=selected_status, doctor=selected_doctor, full_name=full_name_q, journal_number=journal_number_q, diagnosis=diagnosis_q) }}" 
-                           class="btn btn-sm btn-outline-primary" data-bs-toggle="tooltip" data-bs-title="Редагувати">
+                        <button type="button" 
+                           class="btn btn-sm btn-outline-primary edit-record-btn" 
+                           data-id="{{ r.id }}"
+                           data-journal-number="{{ r.journal_number }}"
+                           data-date="{{ r.date.strftime('%Y-%m-%d') if r.date else '' }}"
+                           data-full-name="{{ r.full_name }}"
+                           data-birth-date="{{ r.birth_date.strftime('%Y-%m-%d') if r.birth_date else '' }}"
+                           data-doctor="{{ r.doctor }}"
+                           data-diagnosis="{{ r.diagnosis }}"
+                           data-discharge-status="{{ r.discharge_status or '' }}"
+                           data-comment="{{ r.comment or '' }}"
+                           data-is-urgent="{% if r.is_urgent %}true{% else %}false{% endif %}"
+                           data-bs-toggle="tooltip" 
+                           data-bs-title="Редагувати">
                           <i class="bi bi-pencil"></i>
-                        </a>
+                        </button>
                         {% if current_user.role == 'admin' %}
                           <form class="delete-form" method="post" action="{{ url_for('ambulatory.delete_record', record_id=r.id) }}"
                                 data-confirm="Ви впевнені, що хочете видалити амбулаторний запис пацієнта {{ r.full_name }}?">
@@ -312,6 +328,14 @@
                 <label for="modal_comment" class="form-label">Коментар</label>
                 <textarea class="form-control" id="modal_comment" name="comment" rows="2" placeholder="Додаткова інформація..."></textarea>
               </div>
+              <div class="col-12">
+                <div class="form-check form-switch">
+                  <input class="form-check-input" type="checkbox" id="modal_is_urgent" name="is_urgent">
+                  <label class="form-check-label fw-semibold text-danger" for="modal_is_urgent">
+                    <i class="bi bi-exclamation-triangle-fill me-1"></i>Ургентний стан
+                  </label>
+                </div>
+              </div>
             </div>
 
             <div id="recordCounter" class="mt-3 p-2 bg-light border rounded text-secondary d-none">
@@ -328,6 +352,86 @@
               <button type="button" class="btn btn-outline-primary btn-sm" id="saveAndClose">Зберегти і завершити</button>
               <button type="button" class="btn btn-primary btn-sm" id="saveAndAddAnother">Зберегти і додати ще →</button>
             </div>
+          </div>
+        </form>
+      </div>
+    </div>
+  </div>
+  {% endif %}
+
+  <!-- Editor Edit Modal -->
+  {% if current_user.role in ['editor', 'admin'] %}
+  <div class="modal fade" id="editAmbulatoryRecordModal" tabindex="-1" aria-labelledby="editAmbulatoryRecordModalLabel" aria-hidden="true">
+    <div class="modal-dialog modal-dialog-centered modal-lg">
+      <div class="modal-content">
+        <div class="modal-header py-3">
+          <h5 class="modal-title" id="editAmbulatoryRecordModalLabel"><i class="bi bi-pencil text-primary me-2"></i>Редагувати амбулаторний запис</h5>
+          <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+        </div>
+        <form id="editAmbulatoryRecordForm">
+          <input type="hidden" id="edit_record_id" name="record_id">
+          <div class="modal-body py-3">
+            <div id="editRecordError" class="alert alert-danger d-none alert-dismissible fade" role="alert">
+              <span id="editErrorMessage"></span>
+              <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
+            </div>
+
+            <div class="row g-3">
+              <div class="col-md-4">
+                <label for="edit_journal_number" class="form-label">№ журналу</label>
+                <input class="form-control" id="edit_journal_number" name="journal_number" required placeholder="Наприклад, 102/А">
+              </div>
+              <div class="col-md-4">
+                <label for="edit_date" class="form-label">Дата запису</label>
+                <input class="form-control" type="date" id="edit_date" name="date" required>
+              </div>
+              <div class="col-md-4">
+                <label for="edit_birth_date" class="form-label">Дата народження</label>
+                <input class="form-control" type="date" id="edit_birth_date" name="birth_date" required>
+              </div>
+              <div class="col-md-6">
+                <label for="edit_full_name" class="form-label">П.І.П (повністю)</label>
+                <input class="form-control" id="edit_full_name" name="full_name" required placeholder="Прізвище Ім'я По батькові">
+              </div>
+              <div class="col-md-3">
+                <label for="edit_doctor" class="form-label">Лікар</label>
+                <input class="form-control" id="edit_doctor" name="doctor" list="edit-doctors-list" autocomplete="off" required placeholder="ПІБ лікаря">
+                <datalist id="edit-doctors-list">
+                  {% for d in doctors %}
+                    <option value="{{ d }}">
+                  {% endfor %}
+                </datalist>
+              </div>
+              <div class="col-md-3">
+                <label for="edit_discharge_status" class="form-label">Статус виписки</label>
+                <select class="form-select" id="edit_discharge_status" name="discharge_status" required>
+                  <option value="">Оберіть статус...</option>
+                  <option value="Виписаний">Виписаний</option>
+                  <option value="Опрацьовується">Опрацьовується</option>
+                  <option value="Порушені вимоги">Порушені вимоги</option>
+                </select>
+              </div>
+              <div class="col-12">
+                <label for="edit_diagnosis" class="form-label">Діагноз</label>
+                <input class="form-control" id="edit_diagnosis" name="diagnosis" required placeholder="Введіть діагноз">
+              </div>
+              <div class="col-12">
+                <label for="edit_comment" class="form-label">Коментар</label>
+                <textarea class="form-control" id="edit_comment" name="comment" rows="2" placeholder="Додаткова інформація..."></textarea>
+              </div>
+              <div class="col-12">
+                <div class="form-check form-switch">
+                  <input class="form-check-input" type="checkbox" id="edit_is_urgent" name="is_urgent">
+                  <label class="form-check-label fw-semibold text-danger" for="edit_is_urgent">
+                    <i class="bi bi-exclamation-triangle-fill me-1"></i>Ургентний стан
+                  </label>
+                </div>
+              </div>
+            </div>
+          </div>
+          <div class="modal-footer py-2">
+            <button type="button" class="btn btn-secondary btn-sm" data-bs-dismiss="modal">Скасувати</button>
+            <button type="submit" class="btn btn-primary btn-sm" id="saveEditBtn">Зберегти зміни</button>
           </div>
         </form>
       </div>
@@ -763,6 +867,100 @@
         }
       });
     }
+  })();
+  {% endif %}
+
+  {% if current_user.role in ['editor', 'admin'] %}
+  (function() {
+    const editModalEl = document.getElementById('editAmbulatoryRecordModal');
+    const editForm = document.getElementById('editAmbulatoryRecordForm');
+    const editErrorAlert = document.getElementById('editRecordError');
+    const editErrorMessage = document.getElementById('editErrorMessage');
+    const saveEditBtn = document.getElementById('saveEditBtn');
+    
+    if (!editModalEl || !editForm) return;
+    
+    const editModal = bootstrap.Modal.getOrCreateInstance(editModalEl);
+    
+    // Bind click events on all edit-record-btn elements
+    document.addEventListener('click', function(e) {
+      const btn = e.target.closest('.edit-record-btn');
+      if (!btn) return;
+      
+      e.preventDefault();
+      
+      // Populate fields from data- attributes
+      document.getElementById('edit_record_id').value = btn.getAttribute('data-id');
+      document.getElementById('edit_journal_number').value = btn.getAttribute('data-journal-number');
+      document.getElementById('edit_date').value = btn.getAttribute('data-date');
+      document.getElementById('edit_birth_date').value = btn.getAttribute('data-birth-date');
+      document.getElementById('edit_full_name').value = btn.getAttribute('data-full-name');
+      document.getElementById('edit_doctor').value = btn.getAttribute('data-doctor');
+      document.getElementById('edit_discharge_status').value = btn.getAttribute('data-discharge-status');
+      document.getElementById('edit_diagnosis').value = btn.getAttribute('data-diagnosis');
+      document.getElementById('edit_comment').value = btn.getAttribute('data-comment');
+      document.getElementById('edit_is_urgent').checked = btn.getAttribute('data-is-urgent') === 'true';
+      
+      // Hide any previous errors
+      editErrorAlert.classList.add('d-none');
+      editErrorAlert.style.display = 'none';
+      
+      // Show modal
+      editModal.show();
+    });
+    
+    // Submit form via AJAX
+    editForm.addEventListener('submit', function(e) {
+      e.preventDefault();
+      
+      if (!editForm.checkValidity()) {
+        editForm.reportValidity();
+        return;
+      }
+      
+      editErrorAlert.classList.add('d-none');
+      editErrorAlert.style.display = 'none';
+      
+      const recordId = document.getElementById('edit_record_id').value;
+      const formData = new FormData(editForm);
+      const originalText = saveEditBtn.innerHTML;
+      
+      saveEditBtn.innerHTML = '<span class="spinner-border spinner-border-sm me-2"></span>Збереження...';
+      saveEditBtn.disabled = true;
+      
+      fetch(`/ambulatory/api/${recordId}/edit`, {
+        method: 'POST',
+        body: formData,
+        headers: {
+          'X-Requested-With': 'XMLHttpRequest'
+        }
+      })
+      .then(response => response.json())
+      .then(data => {
+        saveEditBtn.innerHTML = originalText;
+        saveEditBtn.disabled = false;
+        
+        if (data.success) {
+          // Success! Close modal and reload page to reflect changes
+          editModal.hide();
+          location.reload();
+        } else {
+          editErrorMessage.textContent = data.error || 'Помилка при збереженні запису';
+          editErrorAlert.style.display = 'block';
+          editErrorAlert.classList.remove('d-none');
+          editErrorAlert.classList.add('show');
+        }
+      })
+      .catch(error => {
+        saveEditBtn.innerHTML = originalText;
+        saveEditBtn.disabled = false;
+        console.error('Error:', error);
+        editErrorMessage.textContent = 'Виникла помилка з\'єднання. Спробуйте пізніше.';
+        editErrorAlert.style.display = 'block';
+        editErrorAlert.classList.remove('d-none');
+        editErrorAlert.classList.add('show');
+      });
+    });
   })();
   {% endif %}
 </script>

@@ -204,3 +204,50 @@ def test_ambulatory_role_has_access_only_to_ambulatory(app, client):
         assert r is not None
         assert r.full_name == 'Амбулаторний Користувач Тест'
         assert r.discharge_status == 'Опрацьовується'
+
+
+def test_is_urgent_ambulatory_record(app, client):
+    with app.app_context():
+        ensure_user('ed_user', role='editor')
+        op = ensure_user('op_user', role='operator')
+        
+        # 1. Add record with is_urgent=True via operator
+        client.post('/login', data={'username': 'op_user', 'password': 'password123'}, follow_redirects=True)
+        data = {
+            'journal_number': '1001/A',
+            'date': '2026-05-30',
+            'full_name': 'Ургентний Пацієнт',
+            'birth_date': '1990-01-01',
+            'doctor': 'Д-р Лікар',
+            'diagnosis': 'Апендицит',
+            'is_urgent': 'on',
+            'comment': 'Потрібна термінова операція'
+        }
+        rv = client.post('/ambulatory/add', data=data, follow_redirects=True)
+        assert 'успішно додано' in rv.get_data(as_text=True)
+        
+        # Verify in DB
+        r = AmbulatoryRecord.query.filter_by(journal_number='1001/A').first()
+        assert r is not None
+        assert r.is_urgent is True
+        
+        # 2. Edit record to set is_urgent=False via editor
+        client.post('/logout')
+        client.post('/login', data={'username': 'ed_user', 'password': 'password123'}, follow_redirects=True)
+        edit_data = {
+            'journal_number': '1001/A',
+            'date': '2026-05-30',
+            'full_name': 'Ургентний Пацієнт',
+            'birth_date': '1990-01-01',
+            'doctor': 'Д-р Лікар',
+            'diagnosis': 'Апендицит',
+            'discharge_status': 'Виписаний',
+            'comment': 'Вже одужав'
+            # no 'is_urgent' here to simulate unchecked checkbox
+        }
+        rv2 = client.post(f'/ambulatory/{r.id}/edit', data=edit_data, follow_redirects=True)
+        assert 'успішно оновлено' in rv2.get_data(as_text=True)
+        
+        db.session.refresh(r)
+        assert r.is_urgent is False
+

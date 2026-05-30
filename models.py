@@ -176,6 +176,7 @@ class AmbulatoryRecord(db.Model):
     diagnosis = db.Column(db.Text, nullable=False)  # "Діагноз"
     discharge_status = db.Column(db.String(200), nullable=True)  # "Статус виписки"
     comment = db.Column(db.Text, nullable=True)  # "Коментар"
+    is_urgent = db.Column(db.Boolean, default=False, nullable=False, server_default='0')  # "Ургентний стан"
 
     created_by = db.Column(db.Integer, db.ForeignKey('users.id'), nullable=True)
     created_at = db.Column(db.DateTime, default=lambda: datetime.now(timezone.utc))

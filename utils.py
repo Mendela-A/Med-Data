@@ -275,6 +275,7 @@ def validate_ambulatory_form(form_data: dict, require_status: bool = False) -> t
     diagnosis = form_data.get('diagnosis', '').strip()
     discharge_status = form_data.get('discharge_status', '').strip()
     comment = form_data.get('comment', '').strip()
+    is_urgent = form_data.get('is_urgent') in [True, 'true', '1', 'on']
 
     required = [date_str, journal_number, full_name, birth_date_str, doctor, diagnosis]
     if require_status:
@@ -302,6 +303,7 @@ def validate_ambulatory_form(form_data: dict, require_status: bool = False) -> t
         'diagnosis': diagnosis,
         'discharge_status': discharge_status or None,
         'comment': comment or None,
+        'is_urgent': is_urgent,
     }, None
 
 

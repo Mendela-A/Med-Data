@@ -152,6 +152,7 @@ def index():
     count_discharged = q.filter(AmbulatoryRecord.discharge_status == STATUS_DISCHARGED).count()
     count_processing = q.filter(AmbulatoryRecord.discharge_status == STATUS_PROCESSING).count()
     count_violations = q.filter(AmbulatoryRecord.discharge_status == STATUS_VIOLATIONS).count()
+    count_urgent = q.filter(AmbulatoryRecord.is_urgent == True).count()
 
     # Pagination
     page = request.args.get('page', 1, type=int)
@@ -193,6 +194,7 @@ def index():
                            count_discharged=count_discharged,
                            count_processing=count_processing,
                            count_violations=count_violations,
+                           count_urgent=count_urgent,
                            active_filters_count=active_filters_count)
 
 
@@ -456,6 +458,7 @@ def add_record():
             diagnosis=data['diagnosis'],
             discharge_status=STATUS_PROCESSING,
             comment=data['comment'],
+            is_urgent=data['is_urgent'],
             created_by=current_user.id,
             updated_by=current_user.id
         )
@@ -503,6 +506,7 @@ def api_add_record():
         diagnosis=data['diagnosis'],
         discharge_status=STATUS_PROCESSING,
         comment=data['comment'],
+        is_urgent=data['is_urgent'],
         created_by=current_user.id,
         updated_by=current_user.id
     )
@@ -547,6 +551,7 @@ def edit_record(record_id):
         r.diagnosis = data['diagnosis']
         r.discharge_status = data['discharge_status']
         r.comment = data['comment']
+        r.is_urgent = data['is_urgent']
         r.updated_by = current_user.id
         r.updated_at = datetime.now(timezone.utc)
 
@@ -599,6 +604,7 @@ def api_edit_record(record_id):
     r.diagnosis = data['diagnosis']
     r.discharge_status = data['discharge_status']
     r.comment = data['comment']
+    r.is_urgent = data['is_urgent']
     r.updated_by = current_user.id
     r.updated_at = datetime.now(timezone.utc)
 
