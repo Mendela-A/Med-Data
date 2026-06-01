@@ -58,6 +58,7 @@ import_records.py
 test_performance.py
 migrate_add_updater.py
 add_departments.py
+scratch/
 
 # Claude & CLI tools
 .claude/
