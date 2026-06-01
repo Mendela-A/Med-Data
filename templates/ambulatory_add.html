@@ -78,14 +78,16 @@
 
 {% block scripts %}
 <script>
-  // Auto-fill today's date for record date
+  // Auto-fill yesterday's date for record date
   document.addEventListener('DOMContentLoaded', function() {
     const dateInput = document.querySelector('input[name="date"]');
     if (dateInput && !dateInput.value) {
       const today = new Date();
-      const year = today.getFullYear();
-      const month = String(today.getMonth() + 1).padStart(2, '0');
-      const day = String(today.getDate()).padStart(2, '0');
+      const yesterday = new Date(today);
+      yesterday.setDate(yesterday.getDate() - 1);
+      const year = yesterday.getFullYear();
+      const month = String(yesterday.getMonth() + 1).padStart(2, '0');
+      const day = String(yesterday.getDate()).padStart(2, '0');
       dateInput.value = `${year}-${month}-${day}`;
     }
   });

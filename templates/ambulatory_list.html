@@ -52,6 +52,10 @@
       <i class="bi bi-exclamation-triangle-fill"></i>Ургентних станів: <strong>{{ count_urgent }}</strong>
       {% if count > 0 %}<span class="stat-pct">({{ "%.0f"|format(count_urgent / count * 100) }}%)</span>{% endif %}
     </span>
+    <span class="stat-pill stat-pill-dark{% if count_no_episode == 0 %} stat-pill-muted{% endif %}" data-bs-toggle="tooltip" data-bs-title="Записи зі статусом 'Епізод відсутній'">
+      <i class="bi bi-file-earmark-x"></i>Епізод відсутній: <strong>{{ count_no_episode }}</strong>
+      {% if count > 0 %}<span class="stat-pct">({{ "%.0f"|format(count_no_episode / count * 100) }}%)</span>{% endif %}
+    </span>
 
     {% if current_user.role in ['editor', 'admin', 'viewer'] %}
     <div class="btn-group ms-auto">
@@ -98,6 +102,7 @@
               <option value="Виписаний" {% if selected_status == 'Виписаний' %}selected{% endif %}>Виписаний</option>
               <option value="Опрацьовується" {% if selected_status == 'Опрацьовується' %}selected{% endif %}>Опрацьовується</option>
               <option value="Порушені вимоги" {% if selected_status == 'Порушені вимоги' %}selected{% endif %}>Порушені вимоги</option>
+              <option value="Епізод відсутній" {% if selected_status == 'Епізод відсутній' %}selected{% endif %}>Епізод відсутній</option>
             </select>
           </div>
 
@@ -192,6 +197,8 @@
                       <span class="badge bg-warning-subtle text-warning px-2 py-1"><i class="bi bi-clock me-1"></i>Опрацьовується</span>
                     {% elif r.discharge_status == 'Порушені вимоги' %}
                       <span class="badge bg-danger-subtle text-danger px-2 py-1"><i class="bi bi-exclamation-triangle me-1"></i>Порушені вимоги</span>
+                    {% elif r.discharge_status == 'Епізод відсутній' %}
+                      <span class="badge bg-secondary-subtle text-secondary px-2 py-1"><i class="bi bi-file-earmark-x me-1"></i>Епізод відсутній</span>
                     {% else %}
                       <span class="badge bg-warning-subtle text-warning px-2 py-1"><i class="bi bi-clock me-1"></i>{{ r.discharge_status or 'Опрацьовується' }}</span>
                     {% endif %}
@@ -409,6 +416,7 @@
                   <option value="Виписаний">Виписаний</option>
                   <option value="Опрацьовується">Опрацьовується</option>
                   <option value="Порушені вимоги">Порушені вимоги</option>
+                  <option value="Епізод відсутній">Епізод відсутній</option>
                 </select>
               </div>
               <div class="col-12">
@@ -733,13 +741,15 @@
 
     // Focus on open
     modal.addEventListener('shown.bs.modal', function() {
-      // Auto fill today
+      // Auto fill yesterday
       const dateInput = document.getElementById('modal_date');
       if (dateInput && !dateInput.value) {
         const today = new Date();
-        const year = today.getFullYear();
-        const month = String(today.getMonth() + 1).padStart(2, '0');
-        const day = String(today.getDate()).padStart(2, '0');
+        const yesterday = new Date(today);
+        yesterday.setDate(yesterday.getDate() - 1);
+        const year = yesterday.getFullYear();
+        const month = String(yesterday.getMonth() + 1).padStart(2, '0');
+        const day = String(yesterday.getDate()).padStart(2, '0');
         dateInput.value = `${year}-${month}-${day}`;
       }
       document.getElementById('modal_journal_number').focus();

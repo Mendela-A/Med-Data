@@ -16,7 +16,7 @@ from decorators import role_required
 from utils import (parse_date, clear_dropdown_cache, get_user_map, escape_like,
                    validate_ambulatory_form, get_distinct_ambulatory_statuses,
                    get_distinct_ambulatory_doctors)
-from constants import STATUS_PROCESSING, STATUS_DISCHARGED, STATUS_VIOLATIONS
+from constants import STATUS_PROCESSING, STATUS_DISCHARGED, STATUS_VIOLATIONS, STATUS_NO_EPISODE
 from . import ambulatory_bp
 
 
@@ -153,6 +153,7 @@ def index():
     count_processing = q.filter(AmbulatoryRecord.discharge_status == STATUS_PROCESSING).count()
     count_violations = q.filter(AmbulatoryRecord.discharge_status == STATUS_VIOLATIONS).count()
     count_urgent = q.filter(AmbulatoryRecord.is_urgent == True).count()
+    count_no_episode = q.filter(AmbulatoryRecord.discharge_status == STATUS_NO_EPISODE).count()
 
     # Pagination
     page = request.args.get('page', 1, type=int)
@@ -195,6 +196,7 @@ def index():
                            count_processing=count_processing,
                            count_violations=count_violations,
                            count_urgent=count_urgent,
+                           count_no_episode=count_no_episode,
                            active_filters_count=active_filters_count)
 
 
