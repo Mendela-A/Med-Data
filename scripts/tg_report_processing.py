@@ -34,7 +34,7 @@ MAX_LEN = 4096  # ліміт Telegram на одне повідомлення
 
 
 def fetch_records() -> list[dict]:
-    conn = sqlite3.connect(DB_PATH)
+    conn = sqlite3.connect(DB_PATH, timeout=30.0)
     conn.row_factory = sqlite3.Row
     cur = conn.execute(
         """

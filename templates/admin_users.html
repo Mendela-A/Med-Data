@@ -25,6 +25,7 @@
             <option value="editor">editor</option>
             <option value="admin">admin</option>
             <option value="viewer">viewer</option>
+            <option value="ambulatory">ambulatory</option>
           </select>
         </div>
         <div class="col-auto">
@@ -63,6 +64,8 @@
                     <span class="badge role-badge role-editor">editor</span>
                   {% elif u.role == 'viewer' %}
                     <span class="badge role-badge role-viewer">viewer</span>
+                  {% elif u.role == 'ambulatory' %}
+                    <span class="badge bg-secondary text-white">ambulatory</span>
                   {% else %}
                     <span class="badge role-badge role-operator">operator</span>
                   {% endif %}

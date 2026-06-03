@@ -59,6 +59,10 @@ def create_app(config_class=None):
     from app.blueprints.statisty import statisty_bp
     app.register_blueprint(statisty_bp)
 
+    # Ambulatory blueprint
+    from app.blueprints.ambulatory import ambulatory_bp
+    app.register_blueprint(ambulatory_bp)
+
     # Health check endpoint (no auth, no CSRF)
     @app.route('/health')
     def health():

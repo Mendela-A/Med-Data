@@ -5,12 +5,14 @@ ROLE_ADMIN = 'admin'
 ROLE_EDITOR = 'editor'
 ROLE_OPERATOR = 'operator'
 ROLE_VIEWER = 'viewer'
-VALID_ROLES = (ROLE_ADMIN, ROLE_EDITOR, ROLE_OPERATOR, ROLE_VIEWER)
+ROLE_AMBULATORY = 'ambulatory'
+VALID_ROLES = (ROLE_ADMIN, ROLE_EDITOR, ROLE_OPERATOR, ROLE_VIEWER, ROLE_AMBULATORY)
 
 # Record discharge statuses
 STATUS_PROCESSING = 'Опрацьовується'
 STATUS_DISCHARGED = 'Виписаний'
 STATUS_VIOLATIONS = 'Порушені вимоги'
+STATUS_NO_EPISODE = 'Епізод відсутній'
 
 # NSZU statuses
 NSZU_STATUS_IN_PROGRESS = 'В обробці'

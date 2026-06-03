@@ -12,6 +12,7 @@ services:
       #- ADMIN_USER=admin
       # ADMIN_PASSWORD=admin
       - SECRET_KEY=${SECRET_KEY}
+      - DATABASE_URL=sqlite:////app/data/app.db
 
     expose:
       - "8000"

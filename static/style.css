@@ -106,6 +106,22 @@ html[data-theme="dark"] {
   --shadow-lg: 0 20px 25px -5px rgba(0, 0, 0, 0.6), 0 10px 10px -5px rgba(0, 0, 0, 0.5);
 }
 
+/* ===== Custom Scrollbars ===== */
+::-webkit-scrollbar {
+  width: 6px;
+  height: 6px;
+}
+::-webkit-scrollbar-track {
+  background: transparent;
+}
+::-webkit-scrollbar-thumb {
+  background: rgba(15, 118, 110, 0.2);
+  border-radius: 10px;
+}
+::-webkit-scrollbar-thumb:hover {
+  background: rgba(15, 118, 110, 0.45);
+}
+
 /* ===== Base ===== */
 html {
   scroll-behavior: smooth;
@@ -140,6 +156,7 @@ body, .card, .top-navbar, .form-control, .form-select, td, th, input, .container
   padding: 0 1rem;
   z-index: 100;
   gap: 0.25rem;
+  box-shadow: 0 1px 4px rgba(0, 0, 0, 0.02);
 }
 
 .topnav-brand {
@@ -254,6 +271,32 @@ body, .card, .top-navbar, .form-control, .form-select, td, th, input, .container
   background-color: rgba(220, 38, 38, 0.06);
 }
 
+/* Responsive Top Navbar */
+@media (max-width: 1024px) {
+  .topnav-link span {
+    display: none;
+  }
+  .topnav-link {
+    padding: 0.35rem 0.5rem;
+  }
+  .topnav-divider {
+    margin: 0 0.15rem;
+  }
+}
+
+@media (max-width: 768px) {
+  .topnav-brand span {
+    display: none;
+  }
+  .topnav-user-name,
+  .topnav-user-role {
+    display: none;
+  }
+  .topnav-user {
+    padding: 0.3rem;
+  }
+}
+
 /* Main wrapper offset for top navbar */
 .has-topnav .main-wrapper {
   padding-top: 48px;
@@ -299,15 +342,19 @@ h1, h2, h3, h4, h5, h6,
 
 /* ===== Buttons ===== */
 .btn {
-  transition: all 0.15s ease;
+  transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
   font-weight: 500;
   border-radius: var(--radius-sm);
   font-size: 0.9rem;
   letter-spacing: 0.01em;
 }
 
+.btn:hover {
+  box-shadow: 0 4px 12px rgba(15, 118, 110, 0.15);
+}
+
 .btn:active {
-  transform: scale(0.97);
+  transform: translateY(0) scale(0.97);
 }
 
 .btn-primary {
@@ -356,7 +403,8 @@ h1, h2, h3, h4, h5, h6,
 }
 
 .card:hover {
-  box-shadow: var(--shadow-sm);
+  box-shadow: var(--shadow-md);
+  border-color: var(--color-primary-medium);
 }
 
 .card-title {
@@ -465,7 +513,7 @@ h1, h2, h3, h4, h5, h6,
 }
 
 .table tbody tr {
-  transition: background-color 0.1s ease;
+  transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
 }
 
 .table-hover tbody tr:hover {
@@ -905,9 +953,7 @@ td .badge {
   transition: transform 0.2s ease;
 }
 
-.stat-card-link:hover {
-  transform: translateY(-3px);
-}
+
 
 .stat-card {
   cursor: pointer;
@@ -942,7 +988,6 @@ td .badge {
 }
 
 .badge-clickable:hover {
-  transform: scale(1.08);
   box-shadow: 0 2px 8px rgba(0, 0, 0, 0.15);
   filter: brightness(1.05);
 }
@@ -1615,3 +1660,11 @@ html[data-theme="dark"] .text-muted {
 }
 
 
+
+/* Urgent record highlighting */
+.table tbody tr.table-urgent td {
+  background-color: #eafaf1 !important; /* extremely soft light green */
+}
+.table-hover tbody tr.table-urgent:hover td {
+  background-color: #d1f2db !important; /* slightly darker green on hover */
+}
