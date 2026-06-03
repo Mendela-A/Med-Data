@@ -1,4 +1,39 @@
-# TODO — Перспективний план розвитку та покращення інтерфейсу (UI/UX)
+# TODO
+
+## Інфраструктура / БД
+
+- [ ] **PostgreSQL контейнер** — додати `db` сервіс у `docker-compose.yml` (postgres:16-alpine); один контейнер, кілька баз
+- [ ] **Per-branch databases** — `app_main`, `app_statisty` тощо; перемикання через `.env`
+- [ ] **`scripts/use-branch.sh`** — перемикання бази при зміні гілки (оновлює `.env`, створює БД якщо нема)
+- [ ] **`scripts/refresh-from-main.sh`** — витягує SQLite з named volume main → конвертує в PostgreSQL через `migrate_sqlite_to_postgres.py`
+- [ ] **`scripts/dump-branch-db.sh`** — pg_dump поточної бази в `dumps/`
+- [ ] **Оновити `scripts/load-db.sh`** — підтримка `.sql` (PostgreSQL) + `.db` (SQLite→конвертація)
+- [ ] **`entrypoint.sh`** — прибрати SQLite-перевірки (`sqlite_master`, `-f app.db`), замінити на postgres-ready логіку
+- [ ] **`models.py`** — видалити `_set_sqlite_pragma()` та `init_db_events()` (SQLite WAL pragma)
+- [ ] **`requirements.txt`** — додати `psycopg2-binary>=2.9`
+- [ ] **`Dockerfile`** — замінити `sqlite3` на `postgresql-client`
+- [ ] **Міграція даних** — запустити `scripts/migrate_sqlite_to_postgres.py` (перевірити підтримку нових таблиць: ambulatory_records, daily_reports, print_settings)
+- [ ] **`.gitignore`** — додати `dumps/`
+
+## UI / UX
+
+- [ ] **Breadcrumbs** — наповнити `{% block breadcrumbs %}` на ключових сторінках (Форма 007 → День → Редагування)
+- [ ] **Empty states** — `.empty-state` компонент у таблиці без даних (Records, Ambulatory, НСЗУ)
+- [ ] **Mobile card-view** — Records і Ambulatory на малих екранах замість широкої таблиці
+
+## Функціональність
+
+- [ ] **Нові відділення в import-скриптах** — Кардіохірургічне, Хірургічне дит., Урологічне дит., Травматологічне дит. додані в БД вручну, але не в `scripts/*.py` — перевірити усі import-скрипти
+- [ ] **Тести для амбулаторки** — розширити `tests/test_ambulatory.py`
+
+## Технічний борг
+
+- [ ] **Дублікат CSS** — у `static/style.css` подвійна секція `.month-picker` (рядки ~1008 та ~1203) — прибрати першу
+- [ ] **`migrations/versions/e30793237851`** — перевірити `downgrade()` після ручного виправлення
+
+---
+
+# UI/UX — Перспективний план розвитку та покращення інтерфейсу
 
 Цей файл містить список узгоджених ідей та планів щодо вдосконалення інтерфейсу, зручності роботи персоналу та аналітичних можливостей системи.
 
