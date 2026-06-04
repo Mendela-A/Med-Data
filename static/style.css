@@ -1315,42 +1315,6 @@ input[list]:focus::-webkit-calendar-picker-indicator { opacity: 1; }
 #statusByDeptBody { transition: opacity 0.15s ease; }
 #statusByDeptBody.sorting { opacity: 0.6; }
 
-/* ===== Statistics cards ===== */
-.stat-card-link {
-  display: block;
-  transition: transform 0.2s ease;
-}
-
-.stat-card-link:hover {
-  transform: translateY(-3px);
-}
-
-.stat-card {
-  cursor: pointer;
-  transition: box-shadow 0.2s ease, border-color 0.2s ease;
-  border: 1px solid var(--color-border);
-}
-
-.stat-card-link:hover .stat-card {
-  box-shadow: var(--shadow-md);
-  border-color: var(--color-primary-medium);
-}
-
-.stat-card .card-body { padding: 1.25rem; }
-
-.stat-card .card-title {
-  font-size: 0.82rem;
-  font-weight: 600;
-  text-transform: uppercase;
-  letter-spacing: 0.02em;
-  margin-bottom: 0.5rem;
-  transition: color 0.15s ease;
-}
-
-.stat-card-link:hover .card-title {
-  color: var(--color-primary) !important;
-}
-
 /* ===== Clickable badges ===== */
 .badge-clickable {
   cursor: pointer;

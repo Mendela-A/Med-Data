@@ -8,11 +8,12 @@ from flask_login import login_required, current_user
 from datetime import datetime, date, timedelta
 from sqlalchemy import extract, case, func
 
-from app.extensions import db
-from models import User, Department, Audit, Record, log_action
+from app.extensions import db, cache
+from models import User, Department, Audit, Record, DailyReport, AmbulatoryRecord, log_action
 from decorators import role_required
 from utils import clear_dropdown_cache, escape_like
-from constants import VALID_ROLES, STATUS_DISCHARGED, STATUS_PROCESSING, STATUS_VIOLATIONS, TABS, DEFAULT_ROLE_TABS
+from constants import (VALID_ROLES, STATUS_DISCHARGED, STATUS_PROCESSING, STATUS_VIOLATIONS,
+                       STATUS_DECEASED, STATUS_NO_GROUP, STATUS_NO_EPISODE, TABS, DEFAULT_ROLE_TABS)
 from . import admin_bp
 
 
@@ -338,25 +339,35 @@ def admin_statistics():
     else:
         period_label = f"{from_date.strftime('%d.%m.%Y')} — {to_date.strftime('%d.%m.%Y')}"
 
-    # 1. Records per day by discharge date
+    # Cache key — 5-minute TTL, no manual invalidation needed
+    _cache_key = f'stats_{from_date}_{to_date}'
+    _cached = cache.get(_cache_key)
+    if _cached:
+        return render_template('admin_statistics.html',
+                               period_label=period_label,
+                               from_date=from_date, to_date=to_date,
+                               **_cached)
+
+    # 1. Records per day by discharge date (M3: removed func.date() wrapper)
     records_per_day = db.session.query(
-        func.date(Record.date_of_discharge).label('date'),
+        Record.date_of_discharge.label('date'),
         func.count(Record.id).label('count')
     ).filter(
-        Record.date_of_discharge != None,
+        Record.date_of_discharge.isnot(None),
         Record.date_of_discharge >= from_date,
         Record.date_of_discharge < query_end
     ).group_by(
-        func.date(Record.date_of_discharge)
-    ).order_by('date').all()
+        Record.date_of_discharge
+    ).order_by(Record.date_of_discharge).all()
 
-    # 2. Status distribution by department (OPTIMIZED: Single GROUP BY query)
+    # 2. Status distribution by department + ALOS (H2: added avg k_days)
     dept_stats = db.session.query(
         Record.discharge_department,
         func.sum(case((Record.date_of_death.isnot(None), 1), else_=0)).label('deceased'),
         func.sum(case(((Record.discharge_status == STATUS_DISCHARGED) & (Record.date_of_death.is_(None)), 1), else_=0)).label('discharged'),
         func.sum(case(((Record.discharge_status == STATUS_PROCESSING) & (Record.date_of_death.is_(None)), 1), else_=0)).label('processing'),
-        func.sum(case(((Record.discharge_status == STATUS_VIOLATIONS) & (Record.date_of_death.is_(None)), 1), else_=0)).label('violations')
+        func.sum(case(((Record.discharge_status == STATUS_VIOLATIONS) & (Record.date_of_death.is_(None)), 1), else_=0)).label('violations'),
+        func.avg(Record.k_days).label('avg_k_days')
     ).filter(
         Record.discharge_department.isnot(None),
         Record.date_of_discharge.isnot(None),
@@ -365,21 +376,38 @@ def admin_statistics():
     ).group_by(Record.discharge_department).all()
 
     status_by_dept = {}
-    for dept, deceased, discharged, processing, violations in dept_stats:
+    for row in dept_stats:
+        dept, deceased, discharged, processing, violations, avg_k = (
+            row.discharge_department, row.deceased, row.discharged,
+            row.processing, row.violations, row.avg_k_days)
         status_by_dept[dept] = {
-            'Помер': deceased or 0,
-            'Виписаний': discharged or 0,
-            'Опрацьовується': processing or 0,
-            'Порушені вимоги': violations or 0
+            STATUS_DECEASED:   deceased or 0,
+            STATUS_DISCHARGED: discharged or 0,
+            STATUS_PROCESSING: processing or 0,
+            STATUS_VIOLATIONS: violations or 0,
+            'avg_k_days': round(avg_k, 1) if avg_k is not None else None,
         }
 
     dept_list = sorted(status_by_dept.keys())
+
+    # H3: compute status_distribution from status_by_dept (removes redundant current_stats query)
+    status_distribution = {
+        STATUS_DECEASED:   sum(d[STATUS_DECEASED]   for d in status_by_dept.values()),
+        STATUS_DISCHARGED: sum(d[STATUS_DISCHARGED] for d in status_by_dept.values()),
+        STATUS_PROCESSING: sum(d[STATUS_PROCESSING] for d in status_by_dept.values()),
+        STATUS_VIOLATIONS: sum(d[STATUS_VIOLATIONS] for d in status_by_dept.values()),
+    }
+    total_records = sum(status_distribution.values())
+
+    # H2: global ALOS
+    all_k = [d['avg_k_days'] for d in status_by_dept.values() if d['avg_k_days'] is not None]
+    global_alos = round(sum(all_k) / len(all_k), 1) if all_k else None
 
     # АДСЖ group breakdown
     adsj_raw = db.session.query(
         func.coalesce(
             func.nullif(func.trim(Record.adsj), ''),
-            'Без групи'
+            STATUS_NO_GROUP
         ).label('group_name'),
         func.count(Record.id).label('count'),
         func.sum(Record.suma).label('total_suma')
@@ -390,38 +418,17 @@ def admin_statistics():
     ).group_by(
         func.coalesce(
             func.nullif(func.trim(Record.adsj), ''),
-            'Без групи'
+            STATUS_NO_GROUP
         )
     ).all()
 
     adsj_stats = sorted(
-        [r for r in adsj_raw if r.group_name != 'Без групи'],
+        [r for r in adsj_raw if r.group_name != STATUS_NO_GROUP],
         key=lambda r: r.group_name
-    ) + [r for r in adsj_raw if r.group_name == 'Без групи']
+    ) + [r for r in adsj_raw if r.group_name == STATUS_NO_GROUP]
 
     adsj_total_count = sum(r.count for r in adsj_stats)
     adsj_total_suma = sum(r.total_suma or 0 for r in adsj_stats)
-
-    # 3. Overall status distribution (OPTIMIZED: Single query)
-    current_stats = db.session.query(
-        func.sum(case((Record.date_of_death.isnot(None), 1), else_=0)).label('deceased'),
-        func.sum(case(((Record.discharge_status == STATUS_DISCHARGED) & (Record.date_of_death.is_(None)), 1), else_=0)).label('discharged'),
-        func.sum(case(((Record.discharge_status == STATUS_PROCESSING) & (Record.date_of_death.is_(None)), 1), else_=0)).label('processing'),
-        func.sum(case(((Record.discharge_status == STATUS_VIOLATIONS) & (Record.date_of_death.is_(None)), 1), else_=0)).label('violations')
-    ).filter(
-        Record.date_of_discharge.isnot(None),
-        Record.date_of_discharge >= from_date,
-        Record.date_of_discharge < query_end
-    ).first()
-
-    status_distribution = {
-        'Помер': current_stats.deceased or 0,
-        STATUS_DISCHARGED: current_stats.discharged or 0,
-        STATUS_PROCESSING: current_stats.processing or 0,
-        STATUS_VIOLATIONS: current_stats.violations or 0
-    }
-
-    total_records = sum(status_distribution.values())
 
     # --- Trends: compare with previous period of equal length ---
     range_days = (to_date - from_date).days + 1
@@ -440,34 +447,94 @@ def admin_statistics():
         Record.date_of_discharge < prev_query_end
     ).first()
 
-    prev_deceased = prev_stats.deceased or 0
+    prev_deceased   = prev_stats.deceased or 0
     prev_discharged = prev_stats.discharged or 0
     prev_processing = prev_stats.processing or 0
     prev_violations = prev_stats.violations or 0
     prev_total = prev_deceased + prev_discharged + prev_processing + prev_violations
 
     trends = {
-        'total': total_records - prev_total,
+        'total':      total_records - prev_total,
         'processing': status_distribution[STATUS_PROCESSING] - prev_processing,
         'discharged': status_distribution[STATUS_DISCHARGED] - prev_discharged,
-        'deceased': status_distribution['Помер'] - prev_deceased,
-        'violations': status_distribution[STATUS_VIOLATIONS] - prev_violations
+        'deceased':   status_distribution[STATUS_DECEASED]   - prev_deceased,
+        'violations': status_distribution[STATUS_VIOLATIONS] - prev_violations,
     }
 
-    return render_template(
-        'admin_statistics.html',
+    # H1: Bed occupancy from DailyReport
+    bed_rows = db.session.query(
+        Department.name,
+        func.avg(DailyReport.beds_total).label('avg_beds'),
+        func.avg(DailyReport.patients_end).label('avg_occupied'),
+        func.sum(DailyReport.admitted_total).label('total_admitted'),
+        func.sum(DailyReport.deaths).label('total_deaths'),
+    ).join(Department, DailyReport.department_id == Department.id
+    ).filter(
+        DailyReport.report_date >= from_date,
+        DailyReport.report_date < query_end,
+        DailyReport.beds_total.isnot(None),
+    ).group_by(DailyReport.department_id, Department.name).all()
+
+    bed_stats = sorted([{
+        'name':         r.name,
+        'avg_beds':     round(r.avg_beds or 0),
+        'avg_occupied': round(r.avg_occupied or 0),
+        'occupancy_pct': round((r.avg_occupied or 0) / max(r.avg_beds or 1, 1) * 100),
+        'admitted':     r.total_admitted or 0,
+        'deaths':       r.total_deaths or 0,
+    } for r in bed_rows], key=lambda x: x['name'])
+
+    global_bed = {
+        'avg_beds':      sum(d['avg_beds'] for d in bed_stats),
+        'avg_occupied':  sum(d['avg_occupied'] for d in bed_stats),
+        'occupancy_pct': round(
+            sum(d['avg_occupied'] for d in bed_stats) /
+            max(sum(d['avg_beds'] for d in bed_stats), 1) * 100
+        ) if bed_stats else 0,
+        'total_admitted': sum(d['admitted'] for d in bed_stats),
+        'total_deaths':   sum(d['deaths'] for d in bed_stats),
+    }
+
+    # H1: Ambulatory record stats
+    amb_r = db.session.query(
+        func.count(AmbulatoryRecord.id).label('total'),
+        func.sum(case((AmbulatoryRecord.is_urgent == True, 1), else_=0)).label('urgent'),
+        func.sum(case((AmbulatoryRecord.discharge_status == STATUS_DISCHARGED, 1), else_=0)).label('discharged'),
+        func.sum(case((AmbulatoryRecord.discharge_status == STATUS_NO_EPISODE, 1), else_=0)).label('no_episode'),
+    ).filter(
+        AmbulatoryRecord.date >= from_date,
+        AmbulatoryRecord.date < query_end,
+    ).first()
+    amb_stats = {
+        'total':      amb_r.total or 0,
+        'urgent':     amb_r.urgent or 0,
+        'discharged': amb_r.discharged or 0,
+        'no_episode': amb_r.no_episode or 0,
+    }
+
+    ctx = dict(
         records_per_day=records_per_day,
         status_by_dept=status_by_dept,
         dept_list=dept_list,
         status_distribution=status_distribution,
         total_records=total_records,
+        global_alos=global_alos,
         trends=trends,
-        period_label=period_label,
-        from_date=from_date,
-        to_date=to_date,
         adsj_stats=adsj_stats,
         adsj_total_count=adsj_total_count,
         adsj_total_suma=adsj_total_suma,
+        bed_stats=bed_stats,
+        global_bed=global_bed,
+        amb_stats=amb_stats,
+    )
+    cache.set(_cache_key, ctx, timeout=300)
+
+    return render_template(
+        'admin_statistics.html',
+        period_label=period_label,
+        from_date=from_date,
+        to_date=to_date,
+        **ctx,
     )
 
 

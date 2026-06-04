@@ -13,6 +13,8 @@ STATUS_PROCESSING = 'Опрацьовується'
 STATUS_DISCHARGED = 'Виписаний'
 STATUS_VIOLATIONS = 'Порушені вимоги'
 STATUS_NO_EPISODE = 'Епізод відсутній'
+STATUS_DECEASED   = 'Помер'
+STATUS_NO_GROUP   = 'Без групи'
 
 # NSZU statuses
 NSZU_STATUS_IN_PROGRESS = 'В обробці'

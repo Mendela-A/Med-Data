@@ -42,7 +42,7 @@
 </div>
 
 <!-- KPI Cards with Progress Bars and Trends -->
-<div class="row mb-4 g-3 row-cols-1 row-cols-sm-2 row-cols-md-5">
+<div class="row mb-4 g-3 row-cols-1 row-cols-sm-2 row-cols-md-6">
   <!-- Total -->
   <div class="col">
     <a href="{{ url_for('records.index', from_date=from_date.isoformat(), to_date=to_date.isoformat(), from_stats='1') }}"
@@ -244,7 +244,39 @@
       </div>
     </a>
   </div>
+
+  <!-- ALOS -->
+  <div class="col">
+    <div class="card stat-card h-100">
+      <div class="card-body">
+        <div class="d-flex justify-content-between align-items-start mb-2">
+          <div>
+            <h6 class="card-subtitle text-muted mb-1" style="font-size: 0.85rem;">
+              <i class="bi bi-clock-history me-1"></i>Сер. ліжко-днів (ALOS)
+            </h6>
+            <h3 class="mb-0 text-info">{{ global_alos if global_alos is not none else '—' }}</h3>
+          </div>
+          <span class="badge bg-info-subtle text-info">днів</span>
+        </div>
+        <div class="progress" style="height: 4px;">
+          <div class="progress-bar bg-info" role="progressbar" style="width: 100%"></div>
+        </div>
+        <small class="text-muted" style="font-size: 0.75rem;">середнє на пацієнта</small>
+      </div>
+    </div>
+  </div>
 </div>
+
+{% if amb_stats.total > 0 %}
+<div class="d-flex align-items-center gap-2 mb-3 flex-wrap p-2 rounded" style="background: var(--color-primary-light); border: 1px solid var(--color-primary-medium);">
+  <span class="fw-semibold text-primary me-1" style="font-size: .875rem;"><i class="bi bi-file-earmark-medical me-1"></i>Амбулаторна доп.:</span>
+  <span class="stat-pill stat-pill-info">Всього: <strong>{{ amb_stats.total }}</strong></span>
+  <span class="stat-pill stat-pill-danger{% if amb_stats.urgent == 0 %} stat-pill-muted{% endif %}"><i class="bi bi-exclamation-triangle-fill"></i>Ургентних: <strong>{{ amb_stats.urgent }}</strong></span>
+  <span class="stat-pill stat-pill-success{% if amb_stats.discharged == 0 %} stat-pill-muted{% endif %}">Виписаних: <strong>{{ amb_stats.discharged }}</strong></span>
+  <span class="stat-pill stat-pill-dark{% if amb_stats.no_episode == 0 %} stat-pill-muted{% endif %}"><i class="bi bi-file-earmark-x"></i>Без епізоду: <strong>{{ amb_stats.no_episode }}</strong></span>
+  <a href="{{ url_for('ambulatory.index', month_filter=from_date.strftime('%Y-%m')) }}" class="btn btn-outline-secondary btn-sm ms-auto">Деталі <i class="bi bi-arrow-right ms-1"></i></a>
+</div>
+{% endif %}
 
 <!-- KPI Card: Total ADSJ suma -->
 <div class="row mb-3 g-3">
@@ -372,6 +404,10 @@
                 data-bs-title="Сума всіх категорій по відділенню. Натисніть для сортування">
               Всього <i class="bi bi-chevron-expand sort-icon"></i>
             </th>
+            <th class="text-center" data-bs-toggle="tooltip" data-bs-placement="top"
+                data-bs-title="Середня кількість ліжко-днів (ALOS) — тривалість перебування пацієнта">
+              <i class="bi bi-clock-history"></i> ALOS
+            </th>
           </tr>
         </thead>
         <tbody id="statusByDeptBody">
@@ -436,6 +472,9 @@
             <td class="text-center">
               <strong>{{ status_by_dept[dept]['Опрацьовується'] + status_by_dept[dept]['Виписаний'] + status_by_dept[dept]['Помер'] + status_by_dept[dept]['Порушені вимоги'] }}</strong>
             </td>
+            <td class="text-center cell-num text-muted">
+              {{ status_by_dept[dept]['avg_k_days'] if status_by_dept[dept]['avg_k_days'] is not none else '—' }}
+            </td>
           </tr>
           {% endfor %}
         </tbody>
@@ -478,6 +517,9 @@
             </th>
             <th class="text-center">
               <strong>{{ total_records }}</strong>
+            </th>
+            <th class="text-center cell-num text-muted">
+              {{ global_alos if global_alos is not none else '—' }}
             </th>
           </tr>
         </tfoot>
@@ -541,6 +583,65 @@
     {% endif %}
   </div>
 </div>
+
+<!-- Section: Bed Occupancy from DailyReport -->
+{% if bed_stats %}
+<div class="card mb-4">
+  <div class="card-header d-flex align-items-center justify-content-between">
+    <span><i class="bi bi-hospital me-2"></i>Завантаженість ліжкового фонду (Форма 007)</span>
+    <div class="d-flex gap-2">
+      <span class="stat-pill stat-pill-info">Сер. ліжок: <strong>{{ global_bed.avg_beds }}</strong></span>
+      <span class="stat-pill stat-pill-{% if global_bed.occupancy_pct > 95 %}danger{% elif global_bed.occupancy_pct > 80 %}warning{% else %}success{% endif %}">
+        Зайнятість: <strong>{{ global_bed.occupancy_pct }}%</strong>
+      </span>
+      <span class="stat-pill stat-pill-total">Поступило: <strong>{{ global_bed.total_admitted }}</strong></span>
+    </div>
+  </div>
+  <div class="card-body p-0">
+    <div class="table-responsive">
+      <table class="table table-hover table-sm mb-0">
+        <thead>
+          <tr>
+            <th>Відділення</th>
+            <th class="text-center">Сер. ліжок</th>
+            <th class="text-center">Сер. зайнято</th>
+            <th style="min-width: 160px;">Зайнятість %</th>
+            <th class="text-center">Поступило</th>
+          </tr>
+        </thead>
+        <tbody>
+          {% for d in bed_stats %}
+          <tr>
+            <td class="fw-semibold">{{ d.name }}</td>
+            <td class="text-center cell-num">{{ d.avg_beds }}</td>
+            <td class="text-center cell-num">{{ d.avg_occupied }}</td>
+            <td>
+              <div class="d-flex align-items-center gap-2">
+                <div class="progress flex-grow-1" style="height: 6px;">
+                  <div class="progress-bar {% if d.occupancy_pct > 95 %}bg-danger{% elif d.occupancy_pct > 80 %}bg-warning{% else %}bg-success{% endif %}"
+                       role="progressbar" style="width: {{ [d.occupancy_pct, 100]|min }}%"></div>
+                </div>
+                <span class="cell-num" style="min-width: 3.5ch; font-size: .82rem;">{{ d.occupancy_pct }}%</span>
+              </div>
+            </td>
+            <td class="text-center cell-num">{{ d.admitted }}</td>
+          </tr>
+          {% endfor %}
+        </tbody>
+        <tfoot>
+          <tr>
+            <th>Разом</th>
+            <th class="text-center cell-num">{{ global_bed.avg_beds }}</th>
+            <th class="text-center cell-num">{{ global_bed.avg_occupied }}</th>
+            <th><strong>{{ global_bed.occupancy_pct }}%</strong></th>
+            <th class="text-center cell-num">{{ global_bed.total_admitted }}</th>
+          </tr>
+        </tfoot>
+      </table>
+    </div>
+  </div>
+</div>
+{% endif %}
 
 <!-- Section 1: Records by discharge date -->
 <div class="card mb-4">
@@ -637,11 +738,14 @@
           case 'discharged':
             value = parseInt(cells[2].querySelector('.badge').textContent.trim()) || 0;
             break;
-          case 'deceased':
+          case 'violations':
             value = parseInt(cells[3].querySelector('.badge').textContent.trim()) || 0;
             break;
+          case 'deceased':
+            value = parseInt(cells[4].querySelector('.badge').textContent.trim()) || 0;
+            break;
           case 'total':
-            value = parseInt(cells[4].textContent.trim()) || 0;
+            value = parseInt(cells[5].textContent.trim()) || 0;
             break;
           default:
             value = cells[0].textContent.trim();
