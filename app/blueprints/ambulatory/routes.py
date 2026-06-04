@@ -8,12 +8,12 @@ from flask_login import login_required, current_user
 from datetime import datetime, timezone, timedelta
 from io import BytesIO
 from sqlalchemy.orm import joinedload
-from sqlalchemy import func
+from sqlalchemy import func, case
 
 from app.extensions import db
 from models import AmbulatoryRecord, User, log_action
 from decorators import role_required
-from utils import (parse_date, clear_dropdown_cache, get_user_map, escape_like,
+from utils import (clear_dropdown_cache, get_user_map, escape_like,
                    validate_ambulatory_form, get_distinct_ambulatory_statuses,
                    get_distinct_ambulatory_doctors, parse_month_range)
 from constants import STATUS_PROCESSING, STATUS_DISCHARGED, STATUS_NO_EPISODE
@@ -90,12 +90,15 @@ def index():
             else:
                 q = q.order_by(col.desc())
 
-    # Stats calculations
-    count = q.count()
-    count_discharged = q.filter(AmbulatoryRecord.discharge_status == STATUS_DISCHARGED).count()
-    count_processing = q.filter(AmbulatoryRecord.discharge_status == STATUS_PROCESSING).count()
-    count_urgent = q.filter(AmbulatoryRecord.is_urgent == True).count()
-    count_no_episode = q.filter(AmbulatoryRecord.discharge_status == STATUS_NO_EPISODE).count()
+    # Compute all stats in ONE query before applying sort
+    stats_row = q.with_entities(
+        func.count(AmbulatoryRecord.id),
+        func.sum(case((AmbulatoryRecord.discharge_status == STATUS_DISCHARGED, 1), else_=0)),
+        func.sum(case((AmbulatoryRecord.discharge_status == STATUS_PROCESSING, 1), else_=0)),
+        func.sum(case((AmbulatoryRecord.is_urgent == True, 1), else_=0)),
+        func.sum(case((AmbulatoryRecord.discharge_status == STATUS_NO_EPISODE, 1), else_=0)),
+    ).one()
+    count, count_discharged, count_processing, count_urgent, count_no_episode = (v or 0 for v in stats_row)
 
     # Pagination
     page = request.args.get('page', 1, type=int)

@@ -12,8 +12,9 @@ from io import BytesIO
 from app.extensions import db
 from models import NSZUCorrection, User, log_action
 from decorators import role_required
-from utils import parse_date, parse_numeric, get_user_map, escape_like
-from constants import NSZU_STATUSES, UKRAINIAN_MONTHS
+from sqlalchemy.orm import joinedload
+from utils import parse_date, parse_numeric, get_user_map, escape_like, clear_dropdown_cache, get_distinct_nszu_doctors
+from constants import NSZU_STATUSES, NSZU_STATUS_IN_PROGRESS, UKRAINIAN_MONTHS
 from . import nszu_bp
 
 
@@ -21,7 +22,8 @@ from . import nszu_bp
 @role_required('editor', 'viewer')
 def nszu_list():
     """List all NSZU corrections with filters"""
-    q = NSZUCorrection.query
+    q = NSZUCorrection.query.options(
+        joinedload(NSZUCorrection.creator), joinedload(NSZUCorrection.updater))
 
     # Month filter - default to current month
     month_year_str = request.args.get('month_year', '').strip()
@@ -60,7 +62,7 @@ def nszu_list():
 
     # Get distinct values for filters
     statuses = NSZU_STATUSES
-    doctors = [d[0] for d in db.session.query(NSZUCorrection.doctor).distinct().filter(NSZUCorrection.doctor != None).order_by(NSZUCorrection.doctor).all()]
+    doctors = get_distinct_nszu_doctors()
 
     # Sorting
     sort_by = request.args.get('sort_by', 'date')
@@ -162,7 +164,7 @@ def nszu_add():
         date_str = request.form.get('date', '').strip()
         nszu_record_id = request.form.get('nszu_record_id', '').strip()
         doctor = request.form.get('doctor', '').strip()
-        status = request.form.get('status', 'В обробці').strip()
+        status = request.form.get('status', NSZU_STATUS_IN_PROGRESS).strip()
         detail = request.form.get('detail', '').strip()
         fakt_summ_str = request.form.get('fakt_summ', '').strip()
         comment = request.form.get('comment', '').strip()
@@ -208,6 +210,7 @@ def nszu_add():
         db.session.flush()  # assigns correction.id
         log_action(current_user.id, 'nszu.create', 'nszu_correction', correction.id, f'nszu_record_id={nszu_record_id}')
         db.session.commit()
+        clear_dropdown_cache()
 
         current_app.logger.info(f'NSZU correction created: {correction.id} by {current_user.username}')
         flash(f'Запис перевірки НСЗУ #{correction.id} успішно додано', 'success')
@@ -215,7 +218,7 @@ def nszu_add():
 
     # GET - render form
     # Get distinct doctors for autocomplete
-    doctors = [d[0] for d in db.session.query(NSZUCorrection.doctor).distinct().filter(NSZUCorrection.doctor != None).order_by(NSZUCorrection.doctor).all()]
+    doctors = get_distinct_nszu_doctors()
     statuses = NSZU_STATUSES
 
     return render_template('nszu_add.html', doctors=doctors, statuses=statuses)
@@ -230,7 +233,7 @@ def api_nszu_add():
     date_str = request.form.get('date', '').strip()
     nszu_record_id = request.form.get('nszu_record_id', '').strip()
     doctor = request.form.get('doctor', '').strip()
-    status = request.form.get('status', 'В обробці').strip()
+    status = request.form.get('status', NSZU_STATUS_IN_PROGRESS).strip()
     detail = request.form.get('detail', '').strip()
     fakt_summ_str = request.form.get('fakt_summ', '').strip()
     comment = request.form.get('comment', '').strip()
@@ -273,6 +276,7 @@ def api_nszu_add():
         db.session.flush()  # assigns correction.id
         log_action(current_user.id, 'nszu.create', 'nszu_correction', correction.id, f'nszu_record_id={nszu_record_id}')
         db.session.commit()
+        clear_dropdown_cache()
 
         current_app.logger.info(f'NSZU correction created: {correction.id} by {current_user.username}')
         return jsonify({
@@ -347,6 +351,7 @@ def api_nszu_edit(correction_id):
     try:
         log_action(current_user.id, 'nszu.update', 'nszu_correction', correction.id, f'nszu_record_id={nszu_record_id}')
         db.session.commit()
+        clear_dropdown_cache()
         current_app.logger.info(f'NSZU correction updated: {correction.id} by {current_user.username}')
         return jsonify({'success': True, 'message': f'Запис #{correction.id} успішно оновлено'})
     except Exception:
@@ -365,6 +370,7 @@ def nszu_delete(correction_id):
     db.session.delete(correction)
     log_action(current_user.id, 'nszu.delete', 'nszu_correction', correction_id, f'nszu_record_id={nszu_id}')
     db.session.commit()
+    clear_dropdown_cache()
 
     current_app.logger.info(f'NSZU correction deleted: {correction_id} by {current_user.username}')
     flash(f'Запис перевірки НСЗУ #{correction_id} видалено', 'danger')

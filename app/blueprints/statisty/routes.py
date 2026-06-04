@@ -170,39 +170,30 @@ def _aggregate_period(year, start_month, end_month, department_ids=None):
 
 
 def _get_form016_data(from_date, to_date, department_ids=None):
-    # Year of the report is determined by from_date
+    from constants import UKRAINIAN_MONTHS
     year = from_date.year
 
-    # Check the total count of daily reports in the calendar year to display dr_count correctly
-    # The date range for the calendar year is from Jan 1st to Dec 31st
-    year_start = date(year, 1, 1)
-    year_end = date(year, 12, 31)
-
-    dr_query = DailyReport.query.filter(
-        DailyReport.report_date >= year_start,
-        DailyReport.report_date <= year_end,
-    )
+    # Load departments + full-year reports in 2 queries (not ~36)
     if department_ids:
-        dr_query = dr_query.filter(DailyReport.department_id.in_(department_ids))
-    dr_count = dr_query.count()
+        depts = Department.query.filter(Department.id.in_(department_ids)).all()
+    else:
+        depts = Department.query.all()
 
-    selected_dept = None
-    if department_ids:
-        if len(department_ids) == 1:
-            selected_dept = db.session.get(Department, department_ids[0])
-        elif len(department_ids) > 1:
-            combined_name = _COMBINED_DEPT_NAMES.get(frozenset(department_ids))
-            if combined_name is None:
-                depts_in = Department.query.filter(Department.id.in_(department_ids)).all()
-                combined_name = " + ".join([d.name for d in depts_in])
-            selected_dept = Department(name=combined_name)
+    dept_ids = [d.id for d in depts]
+    if not dept_ids:
+        return [], {}, 'daily_report', 0
 
-    # Let's map months
-    MONTHS_UA_NOMINATIVE = {
-        1: 'Січень', 2: 'Лютий', 3: 'Березень', 4: 'Квітень',
-        5: 'Травень', 6: 'Червень', 7: 'Липень', 8: 'Серпень',
-        9: 'Вересень', 10: 'Жовтень', 11: 'Листопад', 12: 'Грудень'
-    }
+    all_reports = DailyReport.query.filter(
+        DailyReport.report_date >= date(year, 1, 1),
+        DailyReport.report_date <= date(year, 12, 31),
+        DailyReport.department_id.in_(dept_ids),
+    ).all()
+
+    dr_count = len(all_reports)
+
+    reports_by_date_dept = {}
+    for r in all_reports:
+        reports_by_date_dept.setdefault(r.report_date, {})[r.department_id] = r
 
     _ZERO = {k: 0 for k in [
         'beds_total', 'beds_average', 'patients_start', 'admitted_total',
@@ -211,14 +202,37 @@ def _get_form016_data(from_date, to_date, department_ids=None):
         'bed_days_total', 'bed_days_rural', 'bed_days_renovation', 'bed_days_mothers',
     ]}
 
+    def _period_agg(start_m, end_m):
+        """Aggregate a month range using pre-loaded report data (no DB queries)."""
+        start_dt = date(year, start_m, 1)
+        end_dt   = date(year, end_m, calendar.monthrange(year, end_m)[1])
+        days_list, curr = [], start_dt
+        while curr <= end_dt:
+            days_list.append(curr)
+            curr += timedelta(days=1)
+        daily_stats = []
+        for d in days_list:
+            day_reports = reports_by_date_dept.get(d, {})
+            day = {k: 0 for k in ('beds_total', 'patients_start', 'patients_end',
+                                   'admitted_total', 'admitted_rural', 'admitted_children',
+                                   'admitted_children_rural', 'transferred_in', 'transferred_out',
+                                   'discharged_total', 'discharged_to_other', 'deaths',
+                                   'bed_days_rural', 'bed_days_renovation', 'bed_days_mothers')}
+            for dept in depts:
+                s = _day_stats_for_dept(dept, day_reports.get(dept.id))
+                for k in day:
+                    day[k] += s[k]
+            daily_stats.append(day)
+        return _sum_daily_stats(daily_stats)
+
     def _month_row(m):
-        data = _aggregate_period(year, m, m, department_ids)
-        row = {'date_str': MONTHS_UA_NOMINATIVE[m], 'is_totals': False}
+        data = _period_agg(m, m)
+        row = {'date_str': UKRAINIAN_MONTHS[m], 'is_totals': False}
         row.update(data if data else _ZERO)
         return row
 
     def _subtotal_row(label, start_m, end_m):
-        data = _aggregate_period(year, start_m, end_m, department_ids)
+        data = _period_agg(start_m, end_m)
         row = {'date_str': label, 'is_totals': True}
         row.update(data if data else _ZERO)
         return row
@@ -226,48 +240,38 @@ def _get_form016_data(from_date, to_date, department_ids=None):
     table = []
     selected_month = to_date.month
 
-    # Q1: Jan–Mar
-    q1_months = range(1, min(selected_month, 3) + 1)
-    for m in q1_months:
+    for m in range(1, min(selected_month, 3) + 1):
         table.append(_month_row(m))
     if selected_month >= 3:
         table.append(_subtotal_row('За I квартал', 1, 3))
 
-    # Q2: Apr–Jun
     if selected_month >= 4:
-        q2_months = range(4, min(selected_month, 6) + 1)
-        for m in q2_months:
+        for m in range(4, min(selected_month, 6) + 1):
             table.append(_month_row(m))
         if selected_month >= 6:
             table.append(_subtotal_row('За II квартал', 4, 6))
             table.append(_subtotal_row('За півріччя', 1, 6))
 
-    # Q3: Jul–Sep
     if selected_month >= 7:
-        q3_months = range(7, min(selected_month, 9) + 1)
-        for m in q3_months:
+        for m in range(7, min(selected_month, 9) + 1):
             table.append(_month_row(m))
         if selected_month >= 9:
             table.append(_subtotal_row('За III квартал', 7, 9))
 
-    # Q4: Oct–Dec
     if selected_month >= 10:
-        q4_months = range(10, min(selected_month, 12) + 1)
-        for m in q4_months:
+        for m in range(10, min(selected_month, 12) + 1):
             table.append(_month_row(m))
         if selected_month >= 12:
             table.append(_subtotal_row('За IV квартал', 10, 12))
 
-    # Annual / period totals
     if selected_month == 12:
         totals_row = _subtotal_row('За рік', 1, 12)
     else:
-        totals_row = _subtotal_row(f"Всього за період (січень–{MONTHS_UA_NOMINATIVE[selected_month].lower()})", 1, selected_month)
+        totals_row = _subtotal_row(
+            f"Всього за період (січень–{UKRAINIAN_MONTHS[selected_month].lower()})", 1, selected_month)
     table.append(totals_row)
 
-    totals = totals_row
-
-    return table, totals, 'daily_report', dr_count
+    return table, totals_row, 'daily_report', dr_count
 
 
 def _get_form016_departments_data(from_date, to_date):

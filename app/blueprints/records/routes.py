@@ -8,13 +8,12 @@ from flask_login import login_required, current_user
 from datetime import datetime, timezone, timedelta
 from io import BytesIO
 from sqlalchemy.orm import joinedload
-from sqlalchemy import func
+from sqlalchemy import func, case
 
 from app.extensions import db
 from models import Record, User, Department, log_action
 from decorators import role_required
-from utils import (parse_date, parse_integer, parse_numeric, clear_dropdown_cache,
-                   get_user_map, escape_like, validate_record_form,
+from utils import (clear_dropdown_cache, get_user_map, escape_like, validate_record_form,
                    get_distinct_statuses, get_distinct_physicians, get_distinct_departments,
                    parse_month_range)
 from constants import STATUS_PROCESSING, STATUS_DISCHARGED, STATUS_VIOLATIONS
@@ -91,10 +90,19 @@ def index():
         'updated_at': Record.updated_at,
     }
 
+    # Compute all stats in ONE query before applying sort (avoids sort overhead on aggregates)
+    stats_row = q.with_entities(
+        func.count(Record.id),
+        func.sum(case((Record.date_of_death.isnot(None), 1), else_=0)),
+        func.sum(case(((Record.date_of_death.is_(None)) & (Record.discharge_status == STATUS_DISCHARGED), 1), else_=0)),
+        func.sum(case(((Record.date_of_death.is_(None)) & (Record.discharge_status == STATUS_PROCESSING), 1), else_=0)),
+        func.sum(case(((Record.date_of_death.is_(None)) & (Record.discharge_status == STATUS_VIOLATIONS), 1), else_=0)),
+    ).one()
+    count, count_deceased, count_discharged, count_processing, count_violations = (v or 0 for v in stats_row)
+
     if sort_by in valid_columns:
         col = valid_columns[sort_by]
         if sort_order == 'asc':
-            # For string columns, use case-insensitive sorting
             if sort_by in ('full_name', 'discharge_department', 'treating_physician', 'history', 'discharge_status'):
                 q = q.order_by(func.lower(col).asc())
             else:
@@ -104,19 +112,6 @@ def index():
                 q = q.order_by(func.lower(col).desc())
             else:
                 q = q.order_by(col.desc())
-
-    # Calculate statistics counts BEFORE pagination
-    # Total count
-    count = q.count()
-
-    # Count deceased (priority: any record with date_of_death)
-    count_deceased = q.filter(Record.date_of_death != None).count()
-
-    # Other counts: EXCLUDE records with date_of_death
-    q_alive = q.filter(Record.date_of_death == None)
-    count_discharged = q_alive.filter(Record.discharge_status == STATUS_DISCHARGED).count()
-    count_processing = q_alive.filter(Record.discharge_status == STATUS_PROCESSING).count()
-    count_violations = q_alive.filter(Record.discharge_status == STATUS_VIOLATIONS).count()
 
     # Pagination
     page = request.args.get('page', 1, type=int)

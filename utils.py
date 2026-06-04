@@ -369,3 +369,15 @@ def get_distinct_ambulatory_doctors():
                 .filter(AmbulatoryRecord.doctor != None)
                 .order_by(AmbulatoryRecord.doctor).all()]
     return _inner()
+
+
+def get_distinct_nszu_doctors():
+    """Get distinct doctors from NSZU corrections table (cached)."""
+    from app.extensions import cache
+    from models import NSZUCorrection, db
+    @cache.memoize(timeout=900)
+    def _inner():
+        return [d[0] for d in db.session.query(NSZUCorrection.doctor).distinct()
+                .filter(NSZUCorrection.doctor != None)
+                .order_by(NSZUCorrection.doctor).all()]
+    return _inner()
