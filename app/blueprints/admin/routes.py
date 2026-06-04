@@ -6,7 +6,7 @@ Admin routes
 from flask import render_template, redirect, url_for, flash, request, current_app
 from flask_login import login_required, current_user
 from datetime import datetime, date, timedelta
-from sqlalchemy import extract, case, func
+from sqlalchemy import case, func
 
 from app.extensions import db, cache
 from models import User, Department, Audit, Record, DailyReport, AmbulatoryRecord, log_action

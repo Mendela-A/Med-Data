@@ -20,6 +20,9 @@ migrate = Migrate()
 login_manager = LoginManager()
 cache = Cache()
 csrf = CSRFProtect()
+# In-memory storage: per-process limits. With multiple Gunicorn workers the effective
+# limit is limit × workers. Acceptable for low-traffic single-instance; use Redis storage
+# (storage_uri="redis://...") for accurate enforcement across workers.
 limiter = Limiter(key_func=get_remote_address, default_limits=[])
 
 

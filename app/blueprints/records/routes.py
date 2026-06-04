@@ -615,7 +615,7 @@ def api_add_record():
             'message': f'Запис "{r.full_name}" успішно додано'
         })
 
-    except Exception as e:
+    except Exception:
         db.session.rollback()
         current_app.logger.exception('Failed to create record via AJAX')
         return jsonify({'success': False, 'error': 'Помилка при збереженні запису'}), 500
@@ -663,7 +663,7 @@ def api_edit_record(record_id):
             'message': f'Запис "{r.full_name}" успішно оновлено'
         })
 
-    except Exception as e:
+    except Exception:
         db.session.rollback()
         current_app.logger.exception('Failed to update record via AJAX')
         return jsonify({'success': False, 'error': 'Помилка при оновленні запису'}), 500

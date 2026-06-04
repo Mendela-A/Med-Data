@@ -142,10 +142,7 @@ def get_distinct_departments():
 
 
 def clear_dropdown_cache():
-    """
-    Clear dropdown-related caches after adding/editing records.
-    Uses targeted deletion instead of clearing the entire cache.
-    """
+    """Clear the entire in-memory cache after adding/editing records."""
     try:
         from app.extensions import cache
         cache.clear()

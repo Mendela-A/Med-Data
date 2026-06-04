@@ -13,7 +13,8 @@ class Config:
     SQLALCHEMY_DATABASE_URI = os.environ.get('DATABASE_URL', f"sqlite:///{os.path.join(basedir, 'data', 'app.db')}")
     SQLALCHEMY_TRACK_MODIFICATIONS = False
 
-    # Session cookie security
+    # Session cookie security. Set FLASK_ENV=production in docker-compose/env; defaults
+    # to False in dev. Missing FLASK_ENV silently disables secure flag — set explicitly.
     SESSION_COOKIE_HTTPONLY = True
     SESSION_COOKIE_SAMESITE = 'Lax'
     SESSION_COOKIE_SECURE = os.environ.get('FLASK_ENV') == 'production'

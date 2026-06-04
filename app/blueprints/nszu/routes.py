@@ -281,7 +281,7 @@ def api_nszu_add():
             'correction_id': correction.id
         }), 201
 
-    except Exception as e:
+    except Exception:
         db.session.rollback()
         current_app.logger.exception('Error creating NSZU correction')
         return jsonify({'success': False, 'error': 'Помилка при збереженні запису'}), 500

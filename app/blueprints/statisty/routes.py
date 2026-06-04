@@ -1,14 +1,21 @@
 from flask import render_template, request, redirect, url_for, Response, flash, abort, send_file
-from flask_login import login_required, current_user
+from flask_login import current_user
 from datetime import date, timedelta, datetime
 import calendar
 from io import BytesIO
-from sqlalchemy import func, case
 
 from app.extensions import db
-from models import Record, Department, DailyReport, PrintSettings, log_action
+from models import Department, DailyReport, PrintSettings, log_action
 from decorators import role_required
 from . import statisty_bp
+
+# Combined department display names for merged dept groups (hardcoded IDs per hospital config)
+_COMBINED_DEPT_NAMES = {
+    frozenset({4, 20}):     "Хірургічне (доросле + дитяче)",
+    frozenset({6, 22}):     "Травматологічне (доросле + дитяче)",
+    frozenset({12, 21}):    "Урологічне (доросле + дитяче)",
+    frozenset({1, 23, 24}): "Пологовий будинок",
+}
 
 
 # ---------------------------------------------------------------------------
@@ -16,7 +23,7 @@ from . import statisty_bp
 # ---------------------------------------------------------------------------
 
 def _get_print_settings():
-    ps = PrintSettings.query.get(1)
+    ps = db.session.get(PrintSettings, 1)
     if ps is None:
         ps = PrintSettings(id=1)
         db.session.add(ps)
@@ -55,14 +62,13 @@ def _parse_date_range(default_to_year=False):
 
 
 def _period_label(from_date, to_date):
-    months_ua = {
-        1: 'Січень', 2: 'Лютий', 3: 'Березень', 4: 'Квітень',
-        5: 'Травень', 6: 'Червень', 7: 'Липень', 8: 'Серпень',
-        9: 'Вересень', 10: 'Жовтень', 11: 'Листопад', 12: 'Грудень'
-    }
+    from constants import UKRAINIAN_MONTHS
     last_day = calendar.monthrange(from_date.year, from_date.month)[1]
     if from_date.day == 1 and to_date == date(from_date.year, from_date.month, last_day):
-        return f"{months_ua[from_date.month]} {from_date.year}"
+        return f"{UKRAINIAN_MONTHS[from_date.month]} {from_date.year}"
+    if from_date == date(from_date.year, 1, 1) and to_date == date(from_date.year, 12, 31):
+        return f"{from_date.year} рік"
+    return f"{from_date.strftime('%d.%m.%Y')} – {to_date.strftime('%d.%m.%Y')}"
 
 
 def _aggregate_period(year, start_month, end_month, department_ids=None):
@@ -235,17 +241,10 @@ def _get_form016_data(from_date, to_date, department_ids=None):
     selected_dept = None
     if department_ids:
         if len(department_ids) == 1:
-            selected_dept = Department.query.get(department_ids[0])
+            selected_dept = db.session.get(Department, department_ids[0])
         elif len(department_ids) > 1:
-            if set(department_ids) == {4, 20}:
-                combined_name = "Хірургічне (доросле + дитяче)"
-            elif set(department_ids) == {6, 22}:
-                combined_name = "Травматологічне (доросле + дитяче)"
-            elif set(department_ids) == {12, 21}:
-                combined_name = "Урологічне (доросле + дитяче)"
-            elif set(department_ids) == {1, 23, 24}:
-                combined_name = "Пологовий будинок"
-            else:
+            combined_name = _COMBINED_DEPT_NAMES.get(frozenset(department_ids))
+            if combined_name is None:
                 depts_in = Department.query.filter(Department.id.in_(department_ids)).all()
                 combined_name = " + ".join([d.name for d in depts_in])
             selected_dept = Department(name=combined_name)
@@ -887,17 +886,10 @@ def _parse_department_ids(department_id_str):
     
     selected_dept = None
     if len(department_ids) == 1:
-        selected_dept = Department.query.get(department_ids[0])
+        selected_dept = db.session.get(Department, department_ids[0])
     elif len(department_ids) > 1:
-        if set(department_ids) == {4, 20}:
-            combined_name = "Хірургічне (доросле + дитяче)"
-        elif set(department_ids) == {6, 22}:
-            combined_name = "Травматологічне (доросле + дитяче)"
-        elif set(department_ids) == {12, 21}:
-            combined_name = "Урологічне (доросле + дитяче)"
-        elif set(department_ids) == {1, 23, 24}:
-            combined_name = "Пологовий будинок"
-        else:
+        combined_name = _COMBINED_DEPT_NAMES.get(frozenset(department_ids))
+        if combined_name is None:
             depts_in = Department.query.filter(Department.id.in_(department_ids)).all()
             combined_name = " + ".join([d.name for d in depts_in])
         selected_dept = Department(name=combined_name)
