@@ -754,6 +754,10 @@ def form007_edit(report_date_str):
     }
 
     if request.method == 'POST':
+        if current_user.role == 'viewer':
+            from flask import flash as _flash
+            _flash('Доступ заборонено', 'danger')
+            return redirect(url_for('statisty.form007'))
         for dept in depts:
             r = existing.get(dept.id)
             if r is None:
