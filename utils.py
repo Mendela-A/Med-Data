@@ -2,7 +2,7 @@
 Utility functions for the application.
 """
 from datetime import datetime, date
-from typing import Optional
+from typing import Optional, Tuple
 from urllib.parse import urlparse
 
 
@@ -52,8 +52,8 @@ def parse_month_range(args, now=None):
     from datetime import date, datetime, timezone, timedelta
 
     if now is None:
-        kyiv_tz = timezone(timedelta(hours=2))
-        now = datetime.now(kyiv_tz)
+        from constants import KYIV_TZ
+        now = datetime.now(KYIV_TZ)
 
     from_str  = args.get('from_date',    '').strip()
     to_str    = args.get('to_date',      '').strip()
@@ -381,3 +381,82 @@ def get_distinct_nszu_doctors():
                 .filter(NSZUCorrection.doctor != None)
                 .order_by(NSZUCorrection.doctor).all()]
     return _inner()
+
+
+def get_distinct_audit_actions():
+    """Get distinct audit action strings (cached 1 h — actions change infrequently)."""
+    from app.extensions import cache
+    from models import Audit, db
+    @cache.memoize(timeout=3600)
+    def _inner():
+        return [a[0] for a in db.session.query(Audit.action).distinct()
+                .order_by(Audit.action).all()]
+    return _inner()
+
+
+def clamp_per_page(value, default: int = 100, min_v: int = 10, max_v: int = 200) -> int:
+    """Parse and clamp a per_page query/form value to [min_v, max_v]."""
+    try:
+        v = int(value)
+    except (TypeError, ValueError):
+        v = default
+    return max(min_v, min(v, max_v))
+
+
+def autosize_columns(ws, max_width: int = 50) -> None:
+    """Auto-size all columns in an openpyxl worksheet, capped at max_width."""
+    from openpyxl.utils import get_column_letter
+    for i, col in enumerate(ws.columns, 1):
+        max_len = max(
+            (len(str(cell.value)) for cell in col if cell.value is not None),
+            default=0,
+        )
+        ws.column_dimensions[get_column_letter(i)].width = min(max_len + 2, max_width)
+
+
+def parse_export_date_range(form, redirect_url: str) -> Tuple[Optional[date], object]:
+    """Parse month/date-range from a POST form for export/print handlers.
+
+    Returns (from_d, to_d) on success.
+    Returns (None, redirect_response) on validation failure (flash already set).
+    """
+    from flask import flash, redirect
+    import calendar as _cal
+
+    export_mode = form.get('export_mode', 'month').strip()
+
+    if export_mode == 'range':
+        from_str = form.get('from_date', '').strip()
+        to_str   = form.get('to_date',   '').strip()
+        if not from_str or not to_str:
+            flash('Будь ласка, вкажіть обидві дати для експорту', 'warning')
+            return None, redirect(redirect_url)
+        try:
+            from_d = date.fromisoformat(from_str)
+            to_d   = date.fromisoformat(to_str)
+        except ValueError:
+            flash('Невірний формат дати', 'warning')
+            return None, redirect(redirect_url)
+        if from_d > to_d:
+            flash('Дата "з" не може бути пізніше дати "по"', 'warning')
+            return None, redirect(redirect_url)
+        return from_d, to_d
+
+    # month mode
+    month_str = form.get('month_filter', '').strip()
+    if not month_str:
+        flash('Будь ласка, вкажіть місяць для експорту', 'warning')
+        return None, redirect(redirect_url)
+    try:
+        parts = month_str.split('-')
+        if len(parts) != 2:
+            raise ValueError()
+        year, month = int(parts[0]), int(parts[1])
+        if not (1 <= month <= 12):
+            raise ValueError()
+        from_d = date(year, month, 1)
+        to_d   = date(year, month, _cal.monthrange(year, month)[1])
+        return from_d, to_d
+    except (ValueError, TypeError):
+        flash('Невірний формат місяця (очікується YYYY-MM)', 'warning')
+        return None, redirect(redirect_url)

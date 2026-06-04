@@ -14,7 +14,7 @@ from models import NSZUCorrection, User, log_action
 from decorators import role_required
 from sqlalchemy.orm import joinedload
 from utils import parse_date, parse_numeric, get_user_map, escape_like, clear_dropdown_cache, get_distinct_nszu_doctors
-from constants import NSZU_STATUSES, NSZU_STATUS_IN_PROGRESS, UKRAINIAN_MONTHS
+from constants import NSZU_STATUSES, NSZU_STATUS_IN_PROGRESS, UKRAINIAN_MONTHS, KYIV_TZ
 from . import nszu_bp
 
 
@@ -558,7 +558,7 @@ def print_nszu():
                                  doctor_filter=doctor_filter,
                                  nszu_id_filter=nszu_id_filter,
                                  generated_by=current_user.username,
-                                 generated_at=datetime.now(timezone(timedelta(hours=2))))
+                                 generated_at=datetime.now(KYIV_TZ))
 
     # Generate PDF with WeasyPrint
     try:

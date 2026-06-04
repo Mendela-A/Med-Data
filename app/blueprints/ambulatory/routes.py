@@ -15,8 +15,9 @@ from models import AmbulatoryRecord, User, log_action
 from decorators import role_required
 from utils import (clear_dropdown_cache, get_user_map, escape_like,
                    validate_ambulatory_form, get_distinct_ambulatory_statuses,
-                   get_distinct_ambulatory_doctors, parse_month_range)
-from constants import STATUS_PROCESSING, STATUS_DISCHARGED, STATUS_NO_EPISODE
+                   get_distinct_ambulatory_doctors, parse_month_range,
+                   parse_export_date_range, autosize_columns, clamp_per_page)
+from constants import STATUS_PROCESSING, STATUS_DISCHARGED, STATUS_NO_EPISODE, KYIV_TZ
 from . import ambulatory_bp
 
 
@@ -102,8 +103,7 @@ def index():
 
     # Pagination
     page = request.args.get('page', 1, type=int)
-    per_page = request.args.get('per_page', 100, type=int)
-    per_page = max(10, min(per_page, 200))
+    per_page = clamp_per_page(request.args.get('per_page', 100))
 
     pagination = q.paginate(page=page, per_page=per_page, error_out=False)
     records = pagination.items
@@ -150,55 +150,16 @@ def export():
     """Export ambulatory records to Excel based on date filters."""
     from openpyxl import Workbook
     from openpyxl.styles import Font, PatternFill, Alignment
-    from openpyxl.utils import get_column_letter
 
+    from_d, result = parse_export_date_range(request.form, url_for('ambulatory.index'))
+    if from_d is None:
+        return result
+    to_d = result
     export_mode = request.form.get('export_mode', 'month').strip()
-
-    if export_mode == 'range':
-        from_str = request.form.get('from_date', '').strip()
-        to_str = request.form.get('to_date', '').strip()
-        if not from_str or not to_str:
-            flash('Будь ласка, вкажіть обидві дати для експорту', 'warning')
-            return redirect(url_for('ambulatory.index'))
-        try:
-            from_d = datetime.strptime(from_str, '%Y-%m-%d').date()
-            to_d = datetime.strptime(to_str, '%Y-%m-%d').date()
-        except ValueError:
-            flash('Невірний формат дати', 'warning')
-            return redirect(url_for('ambulatory.index'))
-        if from_d > to_d:
-            flash('Дата "з" не може бути пізніше дати "по"', 'warning')
-            return redirect(url_for('ambulatory.index'))
-        conditions = [
-            AmbulatoryRecord.date >= from_d,
-            AmbulatoryRecord.date <= to_d,
-        ]
-    else:
-        month_input = request.form.get('month_filter', '').strip()
-        if not month_input:
-            flash('Будь ласка, вкажіть місяць для експорту', 'warning')
-            return redirect(url_for('ambulatory.index'))
-        try:
-            parts = month_input.split('-')
-            if len(parts) != 2:
-                raise ValueError()
-            year = int(parts[0])
-            month = int(parts[1])
-            if not (1 <= month <= 12):
-                raise ValueError()
-            from_d = datetime(year, month, 1).date()
-            if month == 12:
-                to_d = datetime(year + 1, 1, 1).date()
-            else:
-                to_d = datetime(year, month + 1, 1).date()
-            to_d = to_d - timedelta(days=1)
-            conditions = [
-                AmbulatoryRecord.date >= from_d,
-                AmbulatoryRecord.date <= to_d,
-            ]
-        except ValueError:
-            flash('Невірний формат місяця (очікується YYYY-MM)', 'warning')
-            return redirect(url_for('ambulatory.index'))
+    conditions = [
+        AmbulatoryRecord.date >= from_d,
+        AmbulatoryRecord.date <= to_d,
+    ]
 
     # Optional filters
     discharge_status = request.form.get('discharge_status', '').strip()
@@ -266,18 +227,7 @@ def export():
         ]
         ws.append(row)
 
-    # Auto-size columns
-    for i, col in enumerate(ws.columns, 1):
-        max_length = 0
-        column = get_column_letter(i)
-        for cell in col:
-            try:
-                if len(str(cell.value)) > max_length:
-                    max_length = len(str(cell.value))
-            except Exception:
-                pass
-        adjusted_width = min(max_length + 2, 50)
-        ws.column_dimensions[column].width = adjusted_width
+    autosize_columns(ws)
 
     # Save to BytesIO
     bio = BytesIO()
@@ -362,7 +312,7 @@ def print_records():
                                  doctor=doctor,
                                  user_map=user_map,
                                  generated_by=current_user.username,
-                                 generated_at=datetime.now(timezone(timedelta(hours=2))))
+                                 generated_at=datetime.now(KYIV_TZ))
 
     try:
         from weasyprint import HTML

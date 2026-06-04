@@ -1,4 +1,5 @@
 import os
+from sqlalchemy.pool import NullPool
 
 basedir = os.path.abspath(os.path.dirname(__file__))
 
@@ -12,6 +13,13 @@ class Config:
 
     SQLALCHEMY_DATABASE_URI = os.environ.get('DATABASE_URL', f"sqlite:///{os.path.join(basedir, 'data', 'app.db')}")
     SQLALCHEMY_TRACK_MODIFICATIONS = False
+    # SQLite doesn't benefit from connection pooling; NullPool creates a fresh
+    # connection per request and closes it immediately, avoiding file-lock contention.
+    SQLALCHEMY_ENGINE_OPTIONS = {'poolclass': NullPool}
+
+    # Static file caching (matches nginx `expires 1d`)
+    SEND_FILE_MAX_AGE_DEFAULT = 86400
+    PREFERRED_URL_SCHEME = 'https'
 
     # Session cookie security. Set FLASK_ENV=production in docker-compose/env; defaults
     # to False in dev. Missing FLASK_ENV silently disables secure flag — set explicitly.

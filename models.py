@@ -141,6 +141,12 @@ class Record(db.Model):
 
 class Audit(db.Model):
     __tablename__ = 'audit_logs'
+    __table_args__ = (
+        db.Index('idx_audit_actor_id',   'actor_id'),
+        db.Index('idx_audit_created_at', 'created_at'),
+        db.Index('idx_audit_action',     'action'),
+        db.Index('idx_audit_target_type','target_type'),
+    )
     id = db.Column(db.Integer, primary_key=True)
     action = db.Column(db.String(200), nullable=False)
     actor_id = db.Column(db.Integer, db.ForeignKey('users.id'), nullable=True)
@@ -204,7 +210,8 @@ class DailyReport(db.Model):
     __tablename__ = 'daily_reports'
     __table_args__ = (
         db.UniqueConstraint('report_date', 'department_id', name='uq_daily_report_date_dept'),
-        db.Index('idx_daily_report_date', 'report_date'),
+        db.Index('idx_daily_report_date',          'report_date'),
+        db.Index('idx_daily_report_department_id', 'department_id'),
     )
 
     id                    = db.Column(db.Integer, primary_key=True)

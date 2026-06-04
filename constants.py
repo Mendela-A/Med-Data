@@ -1,4 +1,9 @@
 """Application-wide constants."""
+from zoneinfo import ZoneInfo
+
+# DST-aware Kyiv timezone (UTC+2 winter / UTC+3 summer).
+# Use datetime.now(KYIV_TZ) instead of hardcoded timezone(timedelta(hours=2)).
+KYIV_TZ = ZoneInfo('Europe/Kyiv')
 
 # User roles
 ROLE_ADMIN = 'admin'

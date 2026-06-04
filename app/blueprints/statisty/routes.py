@@ -75,11 +75,15 @@ def _sum_daily_stats(daily_stats):
 
 
 def _get_print_settings():
-    ps = db.session.get(PrintSettings, 1)
+    from app.extensions import cache
+    ps = cache.get('_print_settings')
     if ps is None:
-        ps = PrintSettings(id=1)
-        db.session.add(ps)
-        db.session.commit()
+        ps = db.session.get(PrintSettings, 1)
+        if ps is None:
+            ps = PrintSettings(id=1)
+            db.session.add(ps)
+            db.session.commit()
+        cache.set('_print_settings', ps, timeout=3600)
     return ps
 
 
@@ -427,50 +431,49 @@ def form007_day(report_date_str):
     )
 
 
+def _get_dept_month_data(department_id):
+    """Load common data for the department monthly view and its print version."""
+    dept = db.get_or_404(Department, department_id)
+    from_date, _ = _parse_date_range()
+    first_day    = date(from_date.year, from_date.month, 1)
+    last_day_num = calendar.monthrange(from_date.year, from_date.month)[1]
+    last_day     = date(from_date.year, from_date.month, last_day_num)
+
+    all_days = [date(first_day.year, first_day.month, d) for d in range(1, last_day_num + 1)]
+    reports  = {
+        r.report_date: r
+        for r in DailyReport.query.filter(
+            DailyReport.department_id == department_id,
+            DailyReport.report_date  >= first_day,
+            DailyReport.report_date  <= last_day,
+        ).all()
+    }
+    rows = [(d, reports.get(d)) for d in all_days]
+
+    flow_keys = ['patients_start', 'admitted_total', 'admitted_rural', 'admitted_children',
+                 'admitted_children_rural', 'transferred_in', 'transferred_out',
+                 'discharged_total', 'discharged_to_other', 'deaths',
+                 'patients_end', 'patients_end_rural', 'mothers_with_children']
+    totals = {k: sum(getattr(r, k) or 0 for _, r in rows if r) for k in flow_keys}
+    last_r = next((reports[d] for d in reversed(all_days) if d in reports), None)
+    totals['beds_total']      = last_r.beds_total       if last_r else None
+    totals['beds_renovation'] = last_r.beds_renovation  if last_r else None
+    totals['free_male']       = None
+    totals['free_female']     = None
+
+    return dept, first_day, last_day, rows, totals
+
+
 # ---- Form 007 monthly view for a single department -------------------------
 
 @statisty_bp.route('/form007/dept/<int:department_id>')
 @role_required('admin', 'viewer')
 def form007_dept_month(department_id):
-    dept = db.get_or_404(Department, department_id)
-    from_date, _ = _parse_date_range()
-    first_day = date(from_date.year, from_date.month, 1)
-    last_day_num = calendar.monthrange(from_date.year, from_date.month)[1]
-    last_day = date(from_date.year, from_date.month, last_day_num)
-
-    all_days = [date(first_day.year, first_day.month, d) for d in range(1, last_day_num + 1)]
-
-    reports = {
-        r.report_date: r
-        for r in DailyReport.query.filter(
-            DailyReport.department_id == department_id,
-            DailyReport.report_date >= first_day,
-            DailyReport.report_date <= last_day,
-        ).all()
-    }
-
-    rows = [(d, reports.get(d)) for d in all_days]
-
-    flow_keys = ['patients_start', 'admitted_total', 'admitted_rural', 'admitted_children',
-                 'admitted_children_rural',
-                 'transferred_in', 'transferred_out', 'discharged_total',
-                 'discharged_to_other', 'deaths', 'patients_end', 'patients_end_rural',
-                 'mothers_with_children']
-    totals = {k: sum(getattr(r, k) or 0 for _, r in rows if r) for k in flow_keys}
-    last_r = next((reports[d] for d in reversed(all_days) if d in reports), None)
-    totals['beds_total']         = last_r.beds_total          if last_r  else None
-    totals['beds_renovation']    = last_r.beds_renovation     if last_r  else None
-    totals['free_male']          = None
-    totals['free_female']        = None
-
+    dept, first_day, last_day, rows, totals = _get_dept_month_data(department_id)
     depts = Department.query.order_by(Department.row_no.nullslast(), Department.name).all()
-
     return render_template(
         'statisty/form007_dept_month.html',
-        dept=dept,
-        depts=depts,
-        rows=rows,
-        totals=totals,
+        dept=dept, depts=depts, rows=rows, totals=totals,
         from_date=first_day,
         period_label=_period_label(first_day, last_day),
     )
@@ -481,34 +484,7 @@ def form007_dept_month(department_id):
 @statisty_bp.route('/form007/dept/<int:department_id>/print')
 @role_required('admin', 'viewer')
 def form007_dept_month_print(department_id):
-    dept = db.get_or_404(Department, department_id)
-    from_date, _ = _parse_date_range()
-    first_day = date(from_date.year, from_date.month, 1)
-    last_day_num = calendar.monthrange(from_date.year, from_date.month)[1]
-    last_day = date(from_date.year, from_date.month, last_day_num)
-
-    all_days = [date(first_day.year, first_day.month, d) for d in range(1, last_day_num + 1)]
-    reports = {
-        r.report_date: r
-        for r in DailyReport.query.filter(
-            DailyReport.department_id == department_id,
-            DailyReport.report_date >= first_day,
-            DailyReport.report_date <= last_day,
-        ).all()
-    }
-    rows = [(d, reports.get(d)) for d in all_days]
-
-    flow_keys = ['admitted_total', 'admitted_rural', 'admitted_children',
-                 'transferred_in', 'transferred_out', 'discharged_total',
-                 'discharged_to_other', 'deaths', 'patients_end', 'patients_end_rural',
-                 'mothers_with_children', 'admitted_children_rural']
-    totals = {k: sum(getattr(r, k) or 0 for _, r in rows if r) for k in flow_keys}
-    totals['patients_start'] = sum(getattr(r, 'patients_start') or 0 for _, r in rows if r)
-    last_r = next((reports[d] for d in reversed(all_days) if d in reports), None)
-    totals['beds_total']         = last_r.beds_total          if last_r  else None
-    totals['beds_renovation']    = last_r.beds_renovation     if last_r  else None
-    totals['free_male']          = None
-    totals['free_female']        = None
+    dept, first_day, last_day, rows, totals = _get_dept_month_data(department_id)
 
     html_string = render_template(
         'print_form007_dept_month.html',
@@ -1324,6 +1300,8 @@ def print_settings_edit():
             f"org_name={ps.org_name}, signer1={ps.signer1_name}, signer2={ps.signer2_name}"
         )
         db.session.commit()
+        from app.extensions import cache
+        cache.delete('_print_settings')
         flash('Налаштування друку збережено.', 'success')
         return redirect(url_for('statisty.print_settings_edit'))
     return render_template('statisty/print_settings.html', ps=ps)

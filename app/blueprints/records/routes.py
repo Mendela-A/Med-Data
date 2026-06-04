@@ -15,8 +15,8 @@ from models import Record, User, Department, log_action
 from decorators import role_required
 from utils import (clear_dropdown_cache, get_user_map, escape_like, validate_record_form,
                    get_distinct_statuses, get_distinct_physicians, get_distinct_departments,
-                   parse_month_range)
-from constants import STATUS_PROCESSING, STATUS_DISCHARGED, STATUS_VIOLATIONS
+                   parse_month_range, parse_export_date_range, autosize_columns, clamp_per_page)
+from constants import STATUS_PROCESSING, STATUS_DISCHARGED, STATUS_VIOLATIONS, KYIV_TZ
 from . import records_bp
 
 
@@ -115,8 +115,7 @@ def index():
 
     # Pagination
     page = request.args.get('page', 1, type=int)
-    per_page = request.args.get('per_page', 100, type=int)
-    per_page = max(10, min(per_page, 200))
+    per_page = clamp_per_page(request.args.get('per_page', 100))
 
     pagination = q.paginate(page=page, per_page=per_page, error_out=False)
     records = pagination.items
@@ -190,61 +189,17 @@ def export():
     """Export records to Excel based on form data (month or date range)"""
     from openpyxl import Workbook
     from openpyxl.styles import Font, PatternFill, Alignment
-    from openpyxl.utils import get_column_letter
 
+    from_d, result = parse_export_date_range(request.form, url_for('records.index'))
+    if from_d is None:
+        return result
+    to_d = result
     export_mode = request.form.get('export_mode', 'month').strip()
-
-    if export_mode == 'range':
-        # date range mode
-        from_str = request.form.get('from_date', '').strip()
-        to_str = request.form.get('to_date', '').strip()
-        if not from_str or not to_str:
-            flash('Будь ласка, вкажіть обидві дати для експорту', 'warning')
-            return redirect(url_for('records.index'))
-        try:
-            from_d = datetime.strptime(from_str, '%Y-%m-%d').date()
-            to_d = datetime.strptime(to_str, '%Y-%m-%d').date()
-        except ValueError:
-            flash('Невірний формат дати', 'warning')
-            return redirect(url_for('records.index'))
-        if from_d > to_d:
-            flash('Дата "з" не може бути пізніше дати "по"', 'warning')
-            return redirect(url_for('records.index'))
-        # query
-        conditions = [
-            Record.date_of_discharge != None,
-            Record.date_of_discharge >= from_d,
-            Record.date_of_discharge <= to_d,
-        ]
-    else:
-        # month mode (default)
-        month_input = request.form.get('month_filter', '').strip()
-        if not month_input:
-            flash('Будь ласка, вкажіть місяць для експорту', 'warning')
-            return redirect(url_for('records.index'))
-        try:
-            parts = month_input.split('-')
-            if len(parts) != 2:
-                raise ValueError()
-            year = int(parts[0])
-            month = int(parts[1])
-            if not (1 <= month <= 12):
-                raise ValueError()
-            from_d = datetime(year, month, 1).date()
-            if month == 12:
-                to_d = datetime(year + 1, 1, 1).date()
-            else:
-                to_d = datetime(year, month + 1, 1).date()
-            # adjust to_d so it's inclusive (last day of month)
-            to_d = to_d - timedelta(days=1)
-            conditions = [
-                Record.date_of_discharge != None,
-                Record.date_of_discharge >= from_d,
-                Record.date_of_discharge <= to_d,
-            ]
-        except ValueError:
-            flash('Невірний формат місяця (очікується YYYY-MM)', 'warning')
-            return redirect(url_for('records.index'))
+    conditions = [
+        Record.date_of_discharge != None,
+        Record.date_of_discharge >= from_d,
+        Record.date_of_discharge <= to_d,
+    ]
 
     # Optional filters
     discharge_status = request.form.get('discharge_status', '').strip()
@@ -331,18 +286,7 @@ def export():
             ]
         ws.append(row)
 
-    # Auto-size columns
-    for i, col in enumerate(ws.columns, 1):
-        max_length = 0
-        column = get_column_letter(i)
-        for cell in col:
-            try:
-                if len(str(cell.value)) > max_length:
-                    max_length = len(str(cell.value))
-            except Exception:
-                pass
-        adjusted_width = min(max_length + 2, 50)
-        ws.column_dimensions[column].width = adjusted_width
+    autosize_columns(ws)
 
     # Save to BytesIO
     bio = BytesIO()
@@ -432,7 +376,7 @@ def print_records():
                                  discharge_department=discharge_department,
                                  user_map=user_map,
                                  generated_by=current_user.username,
-                                 generated_at=datetime.now(timezone(timedelta(hours=2))))
+                                 generated_at=datetime.now(KYIV_TZ))
 
     # Generate PDF
     try:

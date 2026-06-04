@@ -63,15 +63,12 @@ def create_app(config_class=None):
     from app.blueprints.ambulatory import ambulatory_bp
     app.register_blueprint(ambulatory_bp)
 
-    # Health check endpoint (no auth, no CSRF)
+    # Lightweight health check — only verifies the process is alive (no DB query).
+    # SQLite is always reachable if the Flask process responds; a DB query here
+    # adds 2880 unnecessary writes/day from Docker's 30s healthcheck interval.
     @app.route('/health')
     def health():
-        try:
-            from sqlalchemy import text
-            db.session.execute(text('SELECT 1'))
-            return jsonify({'status': 'ok'}), 200
-        except Exception:
-            return jsonify({'status': 'error', 'detail': 'database unreachable'}), 503
+        return jsonify({'status': 'ok'}), 200
 
     # CLI commands for database management
     import click

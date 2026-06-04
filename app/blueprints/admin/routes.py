@@ -11,7 +11,7 @@ from sqlalchemy import case, func
 from app.extensions import db, cache
 from models import User, Department, Audit, Record, DailyReport, AmbulatoryRecord, log_action
 from decorators import role_required
-from utils import clear_dropdown_cache, escape_like
+from utils import clear_dropdown_cache, escape_like, get_distinct_audit_actions, clamp_per_page
 from constants import (VALID_ROLES, STATUS_DISCHARGED, STATUS_PROCESSING, STATUS_VIOLATIONS,
                        STATUS_DECEASED, STATUS_NO_GROUP, STATUS_NO_EPISODE, TABS, DEFAULT_ROLE_TABS)
 from . import admin_bp
@@ -595,14 +595,12 @@ def admin_audit():
 
     # Pagination
     page = request.args.get('page', 1, type=int)
-    per_page = request.args.get('per_page', 50, type=int)
-    per_page = max(10, min(per_page, 200))
+    per_page = clamp_per_page(request.args.get('per_page', 50), default=50)
 
     pagination = q.paginate(page=page, per_page=per_page, error_out=False)
     logs = pagination.items
 
-    # Distinct actions for filter dropdown
-    actions = [a[0] for a in db.session.query(Audit.action).distinct().order_by(Audit.action).all()]
+    actions = get_distinct_audit_actions()
 
     user_map = get_user_map()
     users = User.query.order_by(User.username).all()
