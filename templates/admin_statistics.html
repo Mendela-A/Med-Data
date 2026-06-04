@@ -278,61 +278,41 @@
 </div>
 {% endif %}
 
-<!-- KPI Card: Total ADSJ suma -->
-<div class="row mb-3 g-3">
-  <div class="col-md-4 col-sm-6">
-    <div class="card stat-card h-100">
-      <div class="card-body">
-        <div class="d-flex justify-content-between align-items-start mb-2">
-          <div>
-            <h6 class="card-subtitle text-muted mb-1" style="font-size: 0.85rem;">
-              <i class="bi bi-cash-stack me-1"></i>Загальна сума (АДСГ)
-            </h6>
-            <h3 class="mb-0 text-info">{{ adsj_total_suma|format_suma }}</h3>
-          </div>
-          <span class="badge bg-info-subtle text-info">грн</span>
-        </div>
-        <div class="progress" style="height: 4px;">
-          <div class="progress-bar bg-info" role="progressbar" style="width: 100%"></div>
-        </div>
-        <small class="text-muted" style="font-size: 0.75rem;">за обраний період</small>
-      </div>
-    </div>
-  </div>
-</div>
-
 <!-- Section: Visual Charts Dashboard -->
 <div class="row mb-4 g-3">
-  <!-- Chart 1: Discharge status distribution -->
-  <div class="col-md-4">
+  <!-- Chart 1: Discharge status distribution — compact doughnut -->
+  <div class="col-xl-3 col-md-6 col-12">
     <div class="card stat-card h-100">
       <div class="card-body">
-        <h6 class="card-title text-muted mb-3"><i class="bi bi-pie-chart me-1"></i>Розподіл статусів виписок</h6>
-        <div style="position: relative; height:250px;">
+        <h6 class="card-title text-muted mb-3"><i class="bi bi-pie-chart me-1"></i>Розподіл статусів</h6>
+        <div style="position: relative; height:220px;">
           <canvas id="statusChart"></canvas>
         </div>
       </div>
     </div>
   </div>
-  
-  <!-- Chart 2: Records per Department -->
-  <div class="col-md-4">
+
+  <!-- Chart 2: Records per Department — needs more width -->
+  <div class="col-xl-5 col-md-6 col-12">
     <div class="card stat-card h-100">
       <div class="card-body">
         <h6 class="card-title text-muted mb-3"><i class="bi bi-building me-1"></i>Виписки по відділеннях</h6>
-        <div style="position: relative; height:250px;">
+        <div style="position: relative; height:220px;">
           <canvas id="deptChart"></canvas>
         </div>
       </div>
     </div>
   </div>
 
-  <!-- Chart 3: Top ADSG groups income -->
-  <div class="col-md-4">
+  <!-- Chart 3: Top ADSJ + suma summary -->
+  <div class="col-xl-4 col-md-12 col-12">
     <div class="card stat-card h-100">
       <div class="card-body">
-        <h6 class="card-title text-muted mb-3"><i class="bi bi-cash-stack me-1"></i>Сума по групах АДСГ (Top-5)</h6>
-        <div style="position: relative; height:250px;">
+        <div class="d-flex justify-content-between align-items-start mb-2">
+          <h6 class="card-title text-muted mb-0"><i class="bi bi-cash-stack me-1"></i>Сума по АДСГ (Top-5)</h6>
+          <span class="badge bg-info-subtle text-info fw-semibold">{{ adsj_total_suma|format_suma }} грн</span>
+        </div>
+        <div style="position: relative; height:220px;">
           <canvas id="adsjChart"></canvas>
         </div>
       </div>
