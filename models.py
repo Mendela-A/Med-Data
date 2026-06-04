@@ -73,15 +73,33 @@ class User(UserMixin, db.Model):
     username = db.Column(db.String(80), unique=True, nullable=False, index=True)
     password_hash = db.Column(db.String(128), nullable=False)
     role = db.Column(db.String(20), nullable=False, default='operator')  # operator/editor/admin/viewer
+    extra_permissions = db.Column(db.JSON, nullable=True, default=None)  # additional tab keys beyond role
 
     records = db.relationship('Record', foreign_keys='Record.created_by', backref='creator', lazy=True)
 
     def set_password(self, password):
-        # bcrypt returns bytes, store as decoded UTF-8 string
         self.password_hash = bcrypt.generate_password_hash(password).decode('utf-8')
 
     def check_password(self, password):
         return bcrypt.check_password_hash(self.password_hash, password)
+
+    def has_tab_access(self, tab: str) -> bool:
+        """Returns True if this user can see the given navigation tab."""
+        if self.role == 'admin':
+            return True
+        from constants import DEFAULT_ROLE_TABS
+        base = DEFAULT_ROLE_TABS.get(self.role, [])
+        extra = self.extra_permissions or []
+        return tab in base or tab in extra
+
+    def accessible_tabs(self) -> list:
+        """Returns list of all tab keys this user can access."""
+        from constants import TABS, DEFAULT_ROLE_TABS
+        if self.role == 'admin':
+            return list(TABS.keys())
+        base = DEFAULT_ROLE_TABS.get(self.role, [])
+        extra = self.extra_permissions or []
+        return list(set(base + extra))
 
     def __repr__(self):
         return f"<User {self.username}>"

@@ -12,7 +12,7 @@ from app.extensions import db
 from models import User, Department, Audit, Record, log_action
 from decorators import role_required
 from utils import clear_dropdown_cache, escape_like
-from constants import VALID_ROLES, STATUS_DISCHARGED, STATUS_PROCESSING, STATUS_VIOLATIONS
+from constants import VALID_ROLES, STATUS_DISCHARGED, STATUS_PROCESSING, STATUS_VIOLATIONS, TABS, DEFAULT_ROLE_TABS
 from . import admin_bp
 
 
@@ -92,8 +92,15 @@ def admin_edit_user(user_id):
         if role in VALID_ROLES:
             u.role = role
 
+        # Update extra_permissions (tabs beyond role defaults)
+        base_tabs = DEFAULT_ROLE_TABS.get(role, [])
+        extra = [t for t in TABS if t not in base_tabs and request.form.get(f'tab_{t}')]
+        u.extra_permissions = extra if extra else None
+
         try:
             details = f'username={old_username}->{username}, role={role}'
+            if extra:
+                details += f', extra_tabs={extra}'
             if password:
                 details += ', password_changed=True'
             log_action(current_user.id, 'user.update', 'user', u.id, details)
@@ -107,7 +114,7 @@ def admin_edit_user(user_id):
         flash(f'Користувача {u.username} успішно оновлено', 'success')
         return redirect(url_for('admin.admin_users'))
 
-    return render_template('edit_user.html', user=u)
+    return render_template('edit_user.html', user=u, tabs=TABS, default_role_tabs=DEFAULT_ROLE_TABS)
 
 
 @admin_bp.route('/users/<int:user_id>/delete', methods=['POST'])

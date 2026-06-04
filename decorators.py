@@ -32,6 +32,13 @@ def role_required(*roles):
             if 'admin' not in allowed_roles and user_role == 'admin':
                 allowed_roles.append('admin')
             if user_role not in allowed_roles:
+                # Check extra_permissions: if any perm grants an effective role that's in allowed_roles
+                from constants import PERM_EFFECTIVE_ROLE
+                extra = getattr(current_user, 'extra_permissions', None) or []
+                for perm in extra:
+                    eff = PERM_EFFECTIVE_ROLE.get(perm)
+                    if eff and eff in allowed_roles:
+                        return f(*args, **kwargs)
                 flash('Доступ заборонено', 'danger')
                 if user_role == 'ambulatory':
                     return redirect(url_for('ambulatory.index'))

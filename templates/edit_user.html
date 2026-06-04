@@ -21,9 +21,9 @@
           <input class="form-control" name="password" type="password" autocomplete="new-password" placeholder="Залиште порожнім, якщо не змінюєте">
         </div>
 
-        <div class="mb-4">
+        <div class="mb-3" x-data="tabPermissions('{{ user.role }}')">
           <label class="form-label">Роль</label>
-          <select class="form-select" name="role" required>
+          <select class="form-select" name="role" required x-model="selectedRole" @change="onRoleChange()">
             <option value="operator" {% if user.role == 'operator' %}selected{% endif %}>operator</option>
             <option value="editor" {% if user.role == 'editor' %}selected{% endif %}>editor</option>
             <option value="admin" {% if user.role == 'admin' %}selected{% endif %}>admin</option>
@@ -32,10 +32,37 @@
           </select>
           <div class="form-text">
             <strong>operator</strong> — додавання записів |
-            <strong>ambulatory</strong> — доступ тільки до амбулаторної допомоги |
+            <strong>ambulatory</strong> — лише амбулаторна |
             <strong>editor</strong> — редагування та експорт |
             <strong>admin</strong> — повний доступ |
             <strong>viewer</strong> — перегляд та статистика
+          </div>
+
+          <div class="mt-3 p-3 border rounded" style="background: var(--color-primary-light);">
+            <div class="fw-600 mb-1" style="font-size: .9rem;"><i class="bi bi-layout-text-sidebar me-1"></i>Доступ до вкладок</div>
+            <p class="text-muted mb-2" style="font-size: .8rem;">
+              <i class="bi bi-info-circle me-1"></i>Сірі — входять у роль. Зелені — додатковий доступ понад роль.
+            </p>
+            <div class="row g-2">
+              {% for key, label in tabs.items() %}
+                {% set in_role = key in default_role_tabs.get(user.role, []) %}
+                {% set has_extra = user.extra_permissions and key in user.extra_permissions %}
+                <div class="col-12 col-sm-6">
+                  <div class="form-check" :class="isInRole('{{ key }}') ? 'text-muted' : ''">
+                    <input class="form-check-input" type="checkbox"
+                           name="tab_{{ key }}" id="tab_{{ key }}"
+                           :disabled="isInRole('{{ key }}')"
+                           :checked="isInRole('{{ key }}') || extraChecked.includes('{{ key }}')"
+                           @change="onTabChange('{{ key }}', $event.target.checked)">
+                    <label class="form-check-label" for="tab_{{ key }}" style="font-size: .875rem;">
+                      {{ label }}
+                      <span x-show="isInRole('{{ key }}')" class="badge ms-1" style="font-size:.65rem; background: var(--color-secondary); color:#fff;">роль</span>
+                      <span x-show="!isInRole('{{ key }}') && extraChecked.includes('{{ key }}')" class="badge ms-1" style="font-size:.65rem; background: var(--color-success); color:#fff;">+доступ</span>
+                    </label>
+                  </div>
+                </div>
+              {% endfor %}
+            </div>
           </div>
         </div>
 
@@ -46,4 +73,32 @@
       </form>
     </div>
   </div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+const ROLE_TABS = {{ default_role_tabs | tojson }};
+const EXTRA_PERMS = {{ (user.extra_permissions or []) | tojson }};
+
+function tabPermissions(initialRole) {
+  return {
+    selectedRole: initialRole,
+    extraChecked: [...EXTRA_PERMS],
+    isInRole(tab) {
+      const roleTabs = ROLE_TABS[this.selectedRole] || [];
+      return roleTabs.includes(tab);
+    },
+    onRoleChange() {
+      // extraChecked stays; isInRole() re-evaluates via x-bind
+    },
+    onTabChange(tab, checked) {
+      if (checked) {
+        if (!this.extraChecked.includes(tab)) this.extraChecked.push(tab);
+      } else {
+        this.extraChecked = this.extraChecked.filter(t => t !== tab);
+      }
+    }
+  };
+}
+</script>
 {% endblock %}

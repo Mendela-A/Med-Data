@@ -26,6 +26,36 @@ NSZU_STATUSES = [
     NSZU_STATUS_NOT_PAYABLE,
 ]
 
+# Tab access control
+TABS = {
+    'records':        'Записи',
+    'ambulatory':     'Амбулаторна доп.',
+    'nszu':           'НСЗУ',
+    'statistics':     'Статистика',
+    'statisty':       'Форми 007/016',
+    'print_settings': 'Налаштування друку',
+    'admin_panel':    'Адмін-панель',
+}
+
+DEFAULT_ROLE_TABS = {
+    'ambulatory': ['ambulatory'],
+    'operator':   ['records', 'ambulatory'],
+    'editor':     ['records', 'ambulatory', 'nszu'],
+    'viewer':     ['records', 'ambulatory', 'nszu', 'statistics', 'statisty'],
+    'admin':      list(TABS.keys()),
+}
+
+# Maps permission key → effective role for @role_required checks
+PERM_EFFECTIVE_ROLE = {
+    'nszu':           'viewer',
+    'statisty':       'viewer',
+    'statistics':     'viewer',
+    'records':        'operator',
+    'ambulatory':     'operator',
+    'print_settings': 'admin',
+    'admin_panel':    'admin',
+}
+
 # Ukrainian month names
 UKRAINIAN_MONTHS = {
     1: 'Січень', 2: 'Лютий', 3: 'Березень', 4: 'Квітень',

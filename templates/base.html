@@ -32,24 +32,28 @@
     </a>
 
     <div class="topnav-links">
-      {% if current_user.role != 'ambulatory' %}
+      {% if current_user.has_tab_access('records') %}
       <a href="{{ url_for('records.index') }}" class="topnav-link{% if request.endpoint and request.endpoint.startswith('records.') %} active{% endif %}" title="Записи">
         <i class="bi bi-journal-text"></i><span>Записи</span>
       </a>
       {% endif %}
+      {% if current_user.has_tab_access('ambulatory') %}
       <a href="{{ url_for('ambulatory.index') }}" class="topnav-link{% if request.endpoint and request.endpoint.startswith('ambulatory.') %} active{% endif %}" title="Амбулаторна доп.">
         <i class="bi bi-file-earmark-medical"></i><span>Амбулаторна доп.</span>
       </a>
-      {% if current_user.role in ['editor', 'admin', 'viewer'] %}
+      {% endif %}
+      {% if current_user.has_tab_access('nszu') %}
         <a href="{{ url_for('nszu.nszu_list') }}" class="topnav-link{% if request.endpoint and request.endpoint.startswith('nszu.') %} active{% endif %}" title="НСЗУ">
           <i class="bi bi-file-medical"></i><span>НСЗУ</span>
         </a>
       {% endif %}
 
-      {% if current_user.role in ['admin', 'viewer'] %}
+      {% if current_user.has_tab_access('statistics') %}
         <a href="{{ url_for('admin.admin_statistics') }}" class="topnav-link{% if request.endpoint == 'admin.admin_statistics' %} active{% endif %}" title="Статистика">
           <i class="bi bi-bar-chart-line"></i><span>Статистика</span>
         </a>
+      {% endif %}
+      {% if current_user.has_tab_access('statisty') %}
         <div class="dropdown">
           <a class="topnav-link dropdown-toggle{% if request.endpoint and request.endpoint.startswith('statisty.') %} active{% endif %}"
              href="#" role="button" data-bs-toggle="dropdown" aria-expanded="false">
@@ -74,7 +78,7 @@
                 <i class="bi bi-building me-2"></i>Форма 016 — зведена за місяць по відділеннях
               </a>
             </li>
-            {% if current_user.role == 'admin' %}
+            {% if current_user.has_tab_access('print_settings') %}
             <li><hr class="dropdown-divider"></li>
             <li>
               <a class="dropdown-item{% if request.endpoint == 'statisty.print_settings_edit' %} active{% endif %}"
@@ -86,7 +90,7 @@
           </ul>
         </div>
       {% endif %}
-      {% if current_user.role == 'admin' %}
+      {% if current_user.has_tab_access('admin_panel') %}
         <div class="topnav-divider"></div>
         <a href="{{ url_for('admin.admin_users') }}" class="topnav-link{% if request.endpoint and 'user' in request.endpoint %} active{% endif %}" title="Користувачі">
           <i class="bi bi-people"></i><span>Користувачі</span>
