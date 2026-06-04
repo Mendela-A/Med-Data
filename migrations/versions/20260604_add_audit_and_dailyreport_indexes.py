@@ -7,7 +7,7 @@ Create Date: 2026-06-04
 from alembic import op
 
 revision = '20260604_indexes'
-down_revision = 'f0e1d2c3b4a5'
+down_revision = '20260604_add_extra_permissions'
 branch_labels = None
 depends_on = None
 
