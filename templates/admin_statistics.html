@@ -646,8 +646,10 @@
     const prevMonthBtn = document.getElementById('prevMonthBtn');
     if (prevMonthBtn) {
       prevMonthBtn.addEventListener('click', function() {
-        const now = new Date();
-        const prev = new Date(now.getFullYear(), now.getMonth() - 1, 1);
+        const fromInput = document.getElementById('from_date').value;
+        // Use the currently selected from_date as base, not today
+        const base = fromInput ? new Date(fromInput + 'T00:00:00') : new Date();
+        const prev = new Date(base.getFullYear(), base.getMonth() - 1, 1);
         const lastDay = new Date(prev.getFullYear(), prev.getMonth() + 1, 0);
         const pad = n => String(n).padStart(2, '0');
         const fromStr = `${prev.getFullYear()}-${pad(prev.getMonth()+1)}-01`;
