@@ -534,56 +534,6 @@
   </div>
 </div>
 
-<!-- Section: АДСГ group breakdown -->
-<div class="card mb-4">
-  <div class="card-body">
-    <h2 class="h6 mb-3">
-      <i class="bi bi-tags me-2"></i>Розподіл по групах АДСГ
-    </h2>
-
-    {% if adsj_stats %}
-    <div class="table-responsive">
-      <table class="table table-hover table-sm" id="adsjTable">
-        <thead>
-          <tr>
-            <th class="sortable-header" data-column="group" data-type="text" title="Натисніть для сортування">
-              Група АДСГ <i class="bi bi-chevron-expand sort-icon"></i>
-            </th>
-            <th class="sortable-header text-center" data-column="count" data-type="number" title="Натисніть для сортування">
-              К-сть записів <i class="bi bi-chevron-expand sort-icon"></i>
-            </th>
-            <th class="sortable-header text-end" data-column="suma" data-type="number" title="Натисніть для сортування">
-              Сума <i class="bi bi-chevron-expand sort-icon"></i>
-            </th>
-          </tr>
-        </thead>
-        <tbody id="adsjTableBody">
-          {% for row in adsj_stats %}
-          <tr{% if row.group_name == 'Без групи' %} class="table-secondary fst-italic"{% endif %}>
-            <td>{{ row.group_name }}</td>
-            <td class="text-center">{{ row.count }}</td>
-            <td class="text-end">{{ (row.total_suma or 0)|format_suma }}</td>
-          </tr>
-          {% endfor %}
-        </tbody>
-        <tfoot>
-          <tr>
-            <th>Всього</th>
-            <th class="text-center">{{ adsj_total_count }}</th>
-            <th class="text-end">{{ adsj_total_suma|format_suma }}</th>
-          </tr>
-        </tfoot>
-      </table>
-    </div>
-    {% else %}
-    <div class="text-center py-4">
-      <i class="bi bi-tags text-muted" style="font-size: 2rem;"></i>
-      <p class="text-muted mt-2 mb-0">Немає даних за обраний період</p>
-    </div>
-    {% endif %}
-  </div>
-</div>
-
 <!-- Section: Bed Occupancy from DailyReport -->
 {% if bed_stats %}
 <div class="card mb-4">
@@ -642,6 +592,56 @@
   </div>
 </div>
 {% endif %}
+
+<!-- Section: АДСГ group breakdown -->
+<div class="card mb-4">
+  <div class="card-body">
+    <h2 class="h6 mb-3">
+      <i class="bi bi-tags me-2"></i>Розподіл по групах АДСГ
+    </h2>
+
+    {% if adsj_stats %}
+    <div class="table-responsive">
+      <table class="table table-hover table-sm" id="adsjTable">
+        <thead>
+          <tr>
+            <th class="sortable-header" data-column="group" data-type="text" title="Натисніть для сортування">
+              Група АДСГ <i class="bi bi-chevron-expand sort-icon"></i>
+            </th>
+            <th class="sortable-header text-center" data-column="count" data-type="number" title="Натисніть для сортування">
+              К-сть записів <i class="bi bi-chevron-expand sort-icon"></i>
+            </th>
+            <th class="sortable-header text-end" data-column="suma" data-type="number" title="Натисніть для сортування">
+              Сума <i class="bi bi-chevron-expand sort-icon"></i>
+            </th>
+          </tr>
+        </thead>
+        <tbody id="adsjTableBody">
+          {% for row in adsj_stats %}
+          <tr{% if row.group_name == 'Без групи' %} class="table-secondary fst-italic"{% endif %}>
+            <td>{{ row.group_name }}</td>
+            <td class="text-center">{{ row.count }}</td>
+            <td class="text-end">{{ (row.total_suma or 0)|format_suma }}</td>
+          </tr>
+          {% endfor %}
+        </tbody>
+        <tfoot>
+          <tr>
+            <th>Всього</th>
+            <th class="text-center">{{ adsj_total_count }}</th>
+            <th class="text-end">{{ adsj_total_suma|format_suma }}</th>
+          </tr>
+        </tfoot>
+      </table>
+    </div>
+    {% else %}
+    <div class="text-center py-4">
+      <i class="bi bi-tags text-muted" style="font-size: 2rem;"></i>
+      <p class="text-muted mt-2 mb-0">Немає даних за обраний період</p>
+    </div>
+    {% endif %}
+  </div>
+</div>
 
 <!-- Section 1: Records by discharge date -->
 <div class="card mb-4">
