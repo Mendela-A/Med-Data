@@ -15,7 +15,7 @@ from models import AmbulatoryRecord, User, log_action
 from decorators import role_required
 from utils import (parse_date, clear_dropdown_cache, get_user_map, escape_like,
                    validate_ambulatory_form, get_distinct_ambulatory_statuses,
-                   get_distinct_ambulatory_doctors)
+                   get_distinct_ambulatory_doctors, parse_month_range)
 from constants import STATUS_PROCESSING, STATUS_DISCHARGED, STATUS_NO_EPISODE
 from . import ambulatory_bp
 
@@ -23,71 +23,14 @@ from . import ambulatory_bp
 @ambulatory_bp.route('/')
 @login_required
 def index():
-    # Use Kyiv timezone (UTC+2, or UTC+3 during DST)
-    kyiv_tz = timezone(timedelta(hours=2))
-    now = datetime.now(kyiv_tz)
-
-    # Toggle to show all months
     show_all = request.args.get('all_months', '').lower() in ('1', 'true', 'yes')
+    from_d, to_d, selected_year, selected_month = parse_month_range(request.args)
 
-    # Parse HTML5 month filter
-    month_input = request.args.get('month_filter', '').strip()
-    from_date_input = request.args.get('from_date', '').strip()
-    to_date_input = request.args.get('to_date', '').strip()
-    selected_month = None
-    selected_year = None
-
-    try:
-        if from_date_input and to_date_input:
-            # Date range mode
-            from datetime import date as date_type
-            fd = date_type.fromisoformat(from_date_input)
-            td = date_type.fromisoformat(to_date_input)
-            if fd > td:
-                fd, td = td, fd
-            start = datetime(fd.year, fd.month, fd.day)
-            end = datetime(td.year, td.month, td.day) + timedelta(days=1)
-            selected_year = fd.year
-            selected_month = fd.month
-        elif month_input:
-            parts = month_input.split('-')
-            if len(parts) == 2:
-                selected_year = int(parts[0])
-                selected_month = int(parts[1])
-                if 1 <= selected_month <= 12:
-                    start = datetime(selected_year, selected_month, 1)
-                    if selected_month == 12:
-                        end = datetime(selected_year + 1, 1, 1)
-                    else:
-                        end = datetime(selected_year, selected_month + 1, 1)
-                else:
-                    raise ValueError()
-            else:
-                raise ValueError()
-        else:
-            # Default to current month
-            start = datetime(now.year, now.month, 1)
-            selected_year = now.year
-            selected_month = now.month
-            if now.month == 12:
-                end = datetime(now.year + 1, 1, 1)
-            else:
-                end = datetime(now.year, now.month + 1, 1)
-    except Exception:
-        start = datetime(now.year, now.month, 1)
-        selected_year = now.year
-        selected_month = now.month
-        if now.month == 12:
-            end = datetime(now.year + 1, 1, 1)
-        else:
-            end = datetime(now.year, now.month + 1, 1)
-
-    # Base query
     q = AmbulatoryRecord.query.options(joinedload(AmbulatoryRecord.creator), joinedload(AmbulatoryRecord.updater))
     if not show_all:
         q = q.filter(
-            AmbulatoryRecord.date >= start.date(),
-            AmbulatoryRecord.date < end.date(),
+            AmbulatoryRecord.date >= from_d,
+            AmbulatoryRecord.date <= to_d,
         )
 
     # Apply filters

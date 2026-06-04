@@ -42,6 +42,49 @@ def get_user_map():
         return {u.id: u.username for u in User.query.all()}
 
 
+def parse_month_range(args, now=None):
+    """Parse month/date-range query params → (from_date, to_date, selected_year, selected_month).
+
+    Reads 'from_date'+'to_date' (YYYY-MM-DD) or 'month_filter' (YYYY-MM) from *args*.
+    Both returned dates are inclusive date objects. Falls back to the current month.
+    """
+    import calendar as _cal
+    from datetime import date, datetime, timezone, timedelta
+
+    if now is None:
+        kyiv_tz = timezone(timedelta(hours=2))
+        now = datetime.now(kyiv_tz)
+
+    from_str  = args.get('from_date',    '').strip()
+    to_str    = args.get('to_date',      '').strip()
+    month_str = args.get('month_filter', '').strip()
+
+    try:
+        if from_str and to_str:
+            fd = date.fromisoformat(from_str)
+            td = date.fromisoformat(to_str)
+            if fd > td:
+                fd, td = td, fd
+            return fd, td, fd.year, fd.month
+        if month_str:
+            parts = month_str.split('-')
+            if len(parts) != 2:
+                raise ValueError()
+            year, month = int(parts[0]), int(parts[1])
+            if not (1 <= month <= 12):
+                raise ValueError()
+            start = date(year, month, 1)
+            end   = date(year, month, _cal.monthrange(year, month)[1])
+            return start, end, year, month
+    except (ValueError, TypeError):
+        pass
+
+    year, month = now.year, now.month
+    start = date(year, month, 1)
+    end   = date(year, month, _cal.monthrange(year, month)[1])
+    return start, end, year, month
+
+
 def validate_record_form(form_data: dict, require_status_and_dept: bool = False) -> tuple:
     """
     Validate record form data shared across add/edit routes.

@@ -15,7 +15,8 @@ from models import Record, User, Department, log_action
 from decorators import role_required
 from utils import (parse_date, parse_integer, parse_numeric, clear_dropdown_cache,
                    get_user_map, escape_like, validate_record_form,
-                   get_distinct_statuses, get_distinct_physicians, get_distinct_departments)
+                   get_distinct_statuses, get_distinct_physicians, get_distinct_departments,
+                   parse_month_range)
 from constants import STATUS_PROCESSING, STATUS_DISCHARGED, STATUS_VIOLATIONS
 from . import records_bp
 
@@ -32,77 +33,15 @@ def index():
     if current_user.role == 'viewer' and not request.args:
         return redirect(url_for('admin.admin_statistics'))
 
-    # Use Kyiv timezone (UTC+2, or UTC+3 during DST) for correct month detection
-    # Simple approach: use UTC+2 as base (covers most of the year)
-    kyiv_tz = timezone(timedelta(hours=2))
-    now = datetime.now(kyiv_tz)
-
-    # support a toggle to show all months
     show_all = request.args.get('all_months', '').lower() in ('1', 'true', 'yes')
+    from_d, to_d, selected_year, selected_month = parse_month_range(request.args)
 
-    # Allow explicit month/year selection via query params or HTML5 month input (YYYY-MM format)
-    # Also support from_date / to_date params (YYYY-MM-DD) from statistics page
-    month_input = request.args.get('month_filter', '').strip()
-    from_date_input = request.args.get('from_date', '').strip()
-    to_date_input = request.args.get('to_date', '').strip()
-    selected_month = None
-    selected_year = None
-
-    try:
-        if from_date_input and to_date_input:
-            # Date range mode from statistics page
-            from datetime import date as date_type
-            fd = date_type.fromisoformat(from_date_input)
-            td = date_type.fromisoformat(to_date_input)
-            if fd > td:
-                fd, td = td, fd
-            start = datetime(fd.year, fd.month, fd.day)
-            end = datetime(td.year, td.month, td.day) + timedelta(days=1)
-            selected_year = fd.year
-            selected_month = fd.month
-        elif month_input:
-            # Parse HTML5 month input format: YYYY-MM
-            parts = month_input.split('-')
-            if len(parts) == 2:
-                selected_year = int(parts[0])
-                selected_month = int(parts[1])
-                if 1 <= selected_month <= 12:
-                    start = datetime(selected_year, selected_month, 1)
-                    if selected_month == 12:
-                        end = datetime(selected_year + 1, 1, 1)
-                    else:
-                        end = datetime(selected_year, selected_month + 1, 1)
-                else:
-                    raise ValueError()
-            else:
-                raise ValueError()
-        else:
-            # Default to current month
-            start = datetime(now.year, now.month, 1)
-            selected_year = now.year
-            selected_month = now.month
-            if now.month == 12:
-                end = datetime(now.year + 1, 1, 1)
-            else:
-                end = datetime(now.year, now.month + 1, 1)
-    except Exception:
-        # fallback to current month
-        start = datetime(now.year, now.month, 1)
-        selected_year = now.year
-        selected_month = now.month
-        if now.month == 12:
-            end = datetime(now.year + 1, 1, 1)
-        else:
-            end = datetime(now.year, now.month + 1, 1)
-
-    # base query (by default for current month, unless show_all)
     q = Record.query.options(joinedload(Record.creator), joinedload(Record.updater))
     if not show_all:
-        # show records discharged in the current month by date_of_discharge
         q = q.filter(
             Record.date_of_discharge != None,
-            Record.date_of_discharge >= start.date(),
-            Record.date_of_discharge < end.date(),
+            Record.date_of_discharge >= from_d,
+            Record.date_of_discharge <= to_d,
         )
 
     # --- filtering from query params ---

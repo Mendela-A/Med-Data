@@ -22,6 +22,58 @@ _COMBINED_DEPT_NAMES = {
 # Helpers
 # ---------------------------------------------------------------------------
 
+def _day_stats_for_dept(dept, report):
+    """Return a stat-dict for one department on one day. report may be None."""
+    if report:
+        return {
+            'beds_total':            report.beds_total if report.beds_total is not None else (dept.bed_capacity or 0),
+            'patients_start':        report.patients_start        or 0,
+            'patients_end':          report.patients_end          or 0,
+            'admitted_total':        report.admitted_total        or 0,
+            'admitted_rural':        report.admitted_rural        or 0,
+            'admitted_children':     report.admitted_children     or 0,
+            'admitted_children_rural': report.admitted_children_rural or 0,
+            'transferred_in':        report.transferred_in        or 0,
+            'transferred_out':       report.transferred_out       or 0,
+            'discharged_total':      report.discharged_total      or 0,
+            'discharged_to_other':   report.discharged_to_other   or 0,
+            'deaths':                report.deaths                or 0,
+            'bed_days_rural':        report.patients_end_rural    or 0,
+            'bed_days_renovation':   report.beds_renovation       or 0,
+            'bed_days_mothers':      report.mothers_with_children or 0,
+        }
+    return {
+        'beds_total': dept.bed_capacity or 0,
+        'patients_start': 0, 'patients_end': 0,
+        'admitted_total': 0, 'admitted_rural': 0,
+        'admitted_children': 0, 'admitted_children_rural': 0,
+        'transferred_in': 0, 'transferred_out': 0,
+        'discharged_total': 0, 'discharged_to_other': 0,
+        'deaths': 0, 'bed_days_rural': 0,
+        'bed_days_renovation': 0, 'bed_days_mothers': 0,
+    }
+
+
+def _sum_daily_stats(daily_stats):
+    """Aggregate a list of per-day stat dicts into period totals. Returns None if empty."""
+    n = len(daily_stats)
+    if not n:
+        return None
+    sum_keys = [
+        'admitted_total', 'admitted_rural', 'admitted_children', 'admitted_children_rural',
+        'transferred_in', 'transferred_out', 'discharged_total', 'discharged_to_other',
+        'deaths', 'bed_days_rural', 'bed_days_renovation', 'bed_days_mothers',
+    ]
+    return {
+        'beds_total':      daily_stats[-1]['beds_total'],
+        'beds_average':    int(round(sum(s['beds_total'] for s in daily_stats) / n)),
+        'patients_start':  daily_stats[0]['patients_start'],
+        'patients_end':    daily_stats[-1]['patients_end'],
+        'bed_days_total':  sum(s['patients_end'] for s in daily_stats),
+        **{k: sum(s[k] for s in daily_stats) for k in sum_keys},
+    }
+
+
 def _get_print_settings():
     ps = db.session.get(PrintSettings, 1)
     if ps is None:
@@ -72,12 +124,9 @@ def _period_label(from_date, to_date):
 
 
 def _aggregate_period(year, start_month, end_month, department_ids=None):
-    # Start and end dates for the period
     start_date = date(year, start_month, 1)
-    last_day = calendar.monthrange(year, end_month)[1]
-    end_date = date(year, end_month, last_day)
+    end_date   = date(year, end_month, calendar.monthrange(year, end_month)[1])
 
-    # Get departments
     if department_ids:
         depts = Department.query.filter(Department.id.in_(department_ids)).all()
     else:
@@ -87,138 +136,37 @@ def _aggregate_period(year, start_month, end_month, department_ids=None):
     if not dept_ids:
         return None
 
-    # Query all reports in this range for these departments
     reports = DailyReport.query.filter(
         DailyReport.report_date >= start_date,
         DailyReport.report_date <= end_date,
-        DailyReport.department_id.in_(dept_ids)
+        DailyReport.department_id.in_(dept_ids),
     ).all()
 
-    # Total number of days in the period
     days_list = []
     curr = start_date
     while curr <= end_date:
         days_list.append(curr)
         curr += timedelta(days=1)
 
-    # Group reports by date and department_id
     reports_by_date_dept = {}
     for r in reports:
         reports_by_date_dept.setdefault(r.report_date, {})[r.department_id] = r
 
-    # Compute daily statistics
     daily_stats = []
     for d in days_list:
         day_reports = reports_by_date_dept.get(d, {})
-        day_beds_total = 0
-        day_patients_start = 0
-        day_patients_end = 0
-        day_admitted_total = 0
-        day_admitted_rural = 0
-        day_admitted_children = 0
-        day_admitted_children_rural = 0
-        day_transferred_in = 0
-        day_transferred_out = 0
-        day_discharged_total = 0
-        day_discharged_to_other = 0
-        day_deaths = 0
-        day_bed_days_rural = 0
-        day_bed_days_renovation = 0
-        day_bed_days_mothers = 0
-
+        day = {k: 0 for k in ('beds_total', 'patients_start', 'patients_end',
+                               'admitted_total', 'admitted_rural', 'admitted_children',
+                               'admitted_children_rural', 'transferred_in', 'transferred_out',
+                               'discharged_total', 'discharged_to_other', 'deaths',
+                               'bed_days_rural', 'bed_days_renovation', 'bed_days_mothers')}
         for dept in depts:
-            r = day_reports.get(dept.id)
-            if r:
-                day_beds_total += r.beds_total if r.beds_total is not None else (dept.bed_capacity or 0)
-                day_patients_start += r.patients_start or 0
-                day_patients_end += r.patients_end or 0
-                day_admitted_total += r.admitted_total or 0
-                day_admitted_rural += r.admitted_rural or 0
-                day_admitted_children += r.admitted_children or 0
-                day_admitted_children_rural += r.admitted_children_rural or 0
-                day_transferred_in += r.transferred_in or 0
-                day_transferred_out += r.transferred_out or 0
-                day_discharged_total += r.discharged_total or 0
-                day_discharged_to_other += r.discharged_to_other or 0
-                day_deaths += r.deaths or 0
-                day_bed_days_rural += r.patients_end_rural or 0
-                day_bed_days_renovation += r.beds_renovation or 0
-                day_bed_days_mothers += r.mothers_with_children or 0
-            else:
-                day_beds_total += dept.bed_capacity or 0
+            s = _day_stats_for_dept(dept, day_reports.get(dept.id))
+            for k in day:
+                day[k] += s[k]
+        daily_stats.append(day)
 
-        daily_stats.append({
-            'beds_total': day_beds_total,
-            'patients_start': day_patients_start,
-            'patients_end': day_patients_end,
-            'admitted_total': day_admitted_total,
-            'admitted_rural': day_admitted_rural,
-            'admitted_children': day_admitted_children,
-            'admitted_children_rural': day_admitted_children_rural,
-            'transferred_in': day_transferred_in,
-            'transferred_out': day_transferred_out,
-            'discharged_total': day_discharged_total,
-            'discharged_to_other': day_discharged_to_other,
-            'deaths': day_deaths,
-            'bed_days_rural': day_bed_days_rural,
-            'bed_days_renovation': day_bed_days_renovation,
-            'bed_days_mothers': day_bed_days_mothers,
-        })
-
-    # Now aggregate the period stats
-    total_days = len(daily_stats)
-    if total_days == 0:
-        return None
-
-    # Sum of all movement and bed days
-    admitted_total = sum(s['admitted_total'] for s in daily_stats)
-    admitted_rural = sum(s['admitted_rural'] for s in daily_stats)
-    admitted_children = sum(s['admitted_children'] for s in daily_stats)
-    admitted_children_rural = sum(s['admitted_children_rural'] for s in daily_stats)
-    transferred_in = sum(s['transferred_in'] for s in daily_stats)
-    transferred_out = sum(s['transferred_out'] for s in daily_stats)
-    discharged_total = sum(s['discharged_total'] for s in daily_stats)
-    discharged_to_other = sum(s['discharged_to_other'] for s in daily_stats)
-    deaths = sum(s['deaths'] for s in daily_stats)
-    bed_days_rural = sum(s['bed_days_rural'] for s in daily_stats)
-    bed_days_renovation = sum(s['bed_days_renovation'] for s in daily_stats)
-    bed_days_mothers = sum(s['bed_days_mothers'] for s in daily_stats)
-
-    # Bed days total is the sum of daily patients_end
-    bed_days_total = sum(s['patients_end'] for s in daily_stats)
-
-    # beds_total on the last day of the period
-    beds_total = daily_stats[-1]['beds_total']
-
-    # patients_end on the last day of the period
-    patients_end = daily_stats[-1]['patients_end']
-
-    # patients_start on the first day of the period
-    patients_start = daily_stats[0]['patients_start']
-
-    # beds_average is the average of daily beds_total
-    beds_average = sum(s['beds_total'] for s in daily_stats) / total_days
-    beds_average = int(round(beds_average))
-
-    return {
-        'beds_total': beds_total,
-        'beds_average': beds_average,
-        'patients_start': patients_start,
-        'admitted_total': admitted_total,
-        'admitted_rural': admitted_rural,
-        'admitted_children': admitted_children,
-        'admitted_children_rural': admitted_children_rural,
-        'transferred_in': transferred_in,
-        'transferred_out': transferred_out,
-        'discharged_total': discharged_total,
-        'discharged_to_other': discharged_to_other,
-        'deaths': deaths,
-        'patients_end': patients_end,
-        'bed_days_total': bed_days_total,
-        'bed_days_rural': bed_days_rural,
-        'bed_days_renovation': bed_days_renovation,
-        'bed_days_mothers': bed_days_mothers,
-    }
+    return _sum_daily_stats(daily_stats)
 
 
 def _get_form016_data(from_date, to_date, department_ids=None):
@@ -323,212 +271,61 @@ def _get_form016_data(from_date, to_date, department_ids=None):
 
 
 def _get_form016_departments_data(from_date, to_date):
-    # Get all active departments sorted by row_no and name
     depts = Department.query.order_by(Department.row_no.nullslast(), Department.name).all()
 
-    # Query all reports in the range
     reports = DailyReport.query.filter(
         DailyReport.report_date >= from_date,
-        DailyReport.report_date <= to_date
+        DailyReport.report_date <= to_date,
     ).all()
 
-    # Group reports by department_id and report_date
     reports_by_dept_date = {}
     for r in reports:
         reports_by_dept_date.setdefault(r.department_id, {})[r.report_date] = r
 
-    # Count of daily reports in the period
     dr_count = len(reports)
 
-    # Date list in the period
     days_list = []
     curr = from_date
     while curr <= to_date:
         days_list.append(curr)
         curr += timedelta(days=1)
-    
-    total_days = len(days_list)
-    
+
     _ZERO = {k: 0 for k in [
         'beds_total', 'beds_average', 'patients_start', 'admitted_total',
-        'admitted_rural', 'admitted_children', 'transferred_in', 'transferred_out',
-        'discharged_total', 'discharged_to_other', 'deaths', 'patients_end',
-        'bed_days_total', 'bed_days_rural', 'bed_days_renovation', 'bed_days_mothers',
+        'admitted_rural', 'admitted_children', 'admitted_children_rural',
+        'transferred_in', 'transferred_out', 'discharged_total', 'discharged_to_other',
+        'deaths', 'patients_end', 'bed_days_total',
+        'bed_days_rural', 'bed_days_renovation', 'bed_days_mothers',
     ]}
 
     table = []
-    
-    # Track grand totals for all columns
-    grand_beds_total = 0
-    grand_beds_average_sum = 0
-    grand_patients_start = 0
-    grand_admitted_total = 0
-    grand_admitted_rural = 0
-    grand_admitted_children = 0
-    grand_admitted_children_rural = 0
-    grand_transferred_in = 0
-    grand_transferred_out = 0
-    grand_discharged_total = 0
-    grand_discharged_to_other = 0
-    grand_deaths = 0
-    grand_patients_end = 0
-    grand_bed_days_total = 0
-    grand_bed_days_rural = 0
-    grand_bed_days_renovation = 0
-    grand_bed_days_mothers = 0
+    grand = {k: 0 for k in _ZERO}
 
     for dept in depts:
         dept_reports = reports_by_dept_date.get(dept.id, {})
-        
-        # Calculate daily stats for this department
-        daily_stats = []
-        for d in days_list:
-            r = dept_reports.get(d)
-            if r:
-                beds_total = r.beds_total if r.beds_total is not None else (dept.bed_capacity or 0)
-                patients_start = r.patients_start or 0
-                patients_end = r.patients_end or 0
-                admitted_total = r.admitted_total or 0
-                admitted_rural = r.admitted_rural or 0
-                admitted_children = r.admitted_children or 0
-                admitted_children_rural = r.admitted_children_rural or 0
-                transferred_in = r.transferred_in or 0
-                transferred_out = r.transferred_out or 0
-                discharged_total = r.discharged_total or 0
-                discharged_to_other = r.discharged_to_other or 0
-                deaths = r.deaths or 0
-                bed_days_rural = r.patients_end_rural or 0
-                bed_days_renovation = r.beds_renovation or 0
-                bed_days_mothers = r.mothers_with_children or 0
-            else:
-                beds_total = dept.bed_capacity or 0
-                patients_start = 0
-                patients_end = 0
-                admitted_total = 0
-                admitted_rural = 0
-                admitted_children = 0
-                admitted_children_rural = 0
-                transferred_in = 0
-                transferred_out = 0
-                discharged_total = 0
-                discharged_to_other = 0
-                deaths = 0
-                bed_days_rural = 0
-                bed_days_renovation = 0
-                bed_days_mothers = 0
+        daily_stats = [_day_stats_for_dept(dept, dept_reports.get(d)) for d in days_list]
+        agg = _sum_daily_stats(daily_stats)
 
-            daily_stats.append({
-                'beds_total': beds_total,
-                'patients_start': patients_start,
-                'patients_end': patients_end,
-                'admitted_total': admitted_total,
-                'admitted_rural': admitted_rural,
-                'admitted_children': admitted_children,
-                'admitted_children_rural': admitted_children_rural,
-                'transferred_in': transferred_in,
-                'transferred_out': transferred_out,
-                'discharged_total': discharged_total,
-                'discharged_to_other': discharged_to_other,
-                'deaths': deaths,
-                'bed_days_rural': bed_days_rural,
-                'bed_days_renovation': bed_days_renovation,
-                'bed_days_mothers': bed_days_mothers,
-            })
-
-        if total_days > 0:
-            dept_admitted_total = sum(s['admitted_total'] for s in daily_stats)
-            dept_admitted_rural = sum(s['admitted_rural'] for s in daily_stats)
-            dept_admitted_children = sum(s['admitted_children'] for s in daily_stats)
-            dept_admitted_children_rural = sum(s['admitted_children_rural'] for s in daily_stats)
-            dept_transferred_in = sum(s['transferred_in'] for s in daily_stats)
-            dept_transferred_out = sum(s['transferred_out'] for s in daily_stats)
-            dept_discharged_total = sum(s['discharged_total'] for s in daily_stats)
-            dept_discharged_to_other = sum(s['discharged_to_other'] for s in daily_stats)
-            dept_deaths = sum(s['deaths'] for s in daily_stats)
-            dept_bed_days_rural = sum(s['bed_days_rural'] for s in daily_stats)
-            dept_bed_days_renovation = sum(s['bed_days_renovation'] for s in daily_stats)
-            dept_bed_days_mothers = sum(s['bed_days_mothers'] for s in daily_stats)
-
-            dept_bed_days_total = sum(s['patients_end'] for s in daily_stats)
-            dept_beds_total = daily_stats[-1]['beds_total']
-            dept_patients_end = daily_stats[-1]['patients_end']
-            dept_patients_start = daily_stats[0]['patients_start']
-
-            dept_beds_average = sum(s['beds_total'] for s in daily_stats) / total_days
-            dept_beds_average = int(round(dept_beds_average))
-
-            row = {
-                'dept_name': dept.name,
-                'row_no': dept.row_no,
-                'is_totals': False,
-                'beds_total': dept_beds_total,
-                'beds_average': dept_beds_average,
-                'patients_start': dept_patients_start,
-                'admitted_total': dept_admitted_total,
-                'admitted_rural': dept_admitted_rural,
-                'admitted_children': dept_admitted_children,
-                'admitted_children_rural': dept_admitted_children_rural,
-                'transferred_in': dept_transferred_in,
-                'transferred_out': dept_transferred_out,
-                'discharged_total': dept_discharged_total,
-                'discharged_to_other': dept_discharged_to_other,
-                'deaths': dept_deaths,
-                'patients_end': dept_patients_end,
-                'bed_days_total': dept_bed_days_total,
-                'bed_days_rural': dept_bed_days_rural,
-                'bed_days_renovation': dept_bed_days_renovation,
-                'bed_days_mothers': dept_bed_days_mothers,
-            }
-            table.append(row)
-
-            # Add to grand totals
-            grand_beds_total += dept_beds_total
-            grand_beds_average_sum += dept_beds_average
-            grand_patients_start += dept_patients_start
-            grand_admitted_total += dept_admitted_total
-            grand_admitted_rural += dept_admitted_rural
-            grand_admitted_children += dept_admitted_children
-            grand_admitted_children_rural += dept_admitted_children_rural
-            grand_transferred_in += dept_transferred_in
-            grand_transferred_out += dept_transferred_out
-            grand_discharged_total += dept_discharged_total
-            grand_discharged_to_other += dept_discharged_to_other
-            grand_deaths += dept_deaths
-            grand_patients_end += dept_patients_end
-            grand_bed_days_total += dept_bed_days_total
-            grand_bed_days_rural += dept_bed_days_rural
-            grand_bed_days_renovation += dept_bed_days_renovation
-            grand_bed_days_mothers += dept_bed_days_mothers
-        else:
+        if agg is None:
             row = {'dept_name': dept.name, 'row_no': dept.row_no, 'is_totals': False}
             row.update(_ZERO)
-            table.append(row)
+        else:
+            row = {'dept_name': dept.name, 'row_no': dept.row_no, 'is_totals': False, **agg}
+            for k in ('beds_total', 'beds_average', 'patients_start', 'admitted_total',
+                      'admitted_rural', 'admitted_children', 'admitted_children_rural',
+                      'transferred_in', 'transferred_out', 'discharged_total',
+                      'discharged_to_other', 'deaths', 'patients_end',
+                      'bed_days_total', 'bed_days_rural', 'bed_days_renovation', 'bed_days_mothers'):
+                grand[k] += agg.get(k, 0)
+        table.append(row)
 
     totals = {
-        'dept_name': 'Разом',
-        'row_no': '',
-        'is_totals': True,
-        'beds_total': grand_beds_total,
-        'beds_average': grand_beds_average_sum,
-        'patients_start': '',  # Empty/excluded for totals row
-        'admitted_total': grand_admitted_total,
-        'admitted_rural': grand_admitted_rural,
-        'admitted_children': grand_admitted_children,
-        'admitted_children_rural': grand_admitted_children_rural,
-        'transferred_in': grand_transferred_in,
-        'transferred_out': grand_transferred_out,
-        'discharged_total': grand_discharged_total,
-        'discharged_to_other': grand_discharged_to_other,
-        'deaths': grand_deaths,
-        'patients_end': grand_patients_end,
-        'bed_days_total': grand_bed_days_total,
-        'bed_days_rural': grand_bed_days_rural,
-        'bed_days_renovation': grand_bed_days_renovation,
-        'bed_days_mothers': grand_bed_days_mothers,
+        'dept_name': 'Разом', 'row_no': '', 'is_totals': True,
+        'patients_start': '',  # excluded from totals row per form spec
+        **grand,
     }
-    
     table.append(totals)
-    
+
     return table, totals, 'daily_report', dr_count
 
 
@@ -631,7 +428,7 @@ def form007_day(report_date_str):
 @statisty_bp.route('/form007/dept/<int:department_id>')
 @role_required('admin', 'viewer')
 def form007_dept_month(department_id):
-    dept = Department.query.get_or_404(department_id)
+    dept = db.get_or_404(Department, department_id)
     from_date, _ = _parse_date_range()
     first_day = date(from_date.year, from_date.month, 1)
     last_day_num = calendar.monthrange(from_date.year, from_date.month)[1]
@@ -680,7 +477,7 @@ def form007_dept_month(department_id):
 @statisty_bp.route('/form007/dept/<int:department_id>/print')
 @role_required('admin', 'viewer')
 def form007_dept_month_print(department_id):
-    dept = Department.query.get_or_404(department_id)
+    dept = db.get_or_404(Department, department_id)
     from_date, _ = _parse_date_range()
     first_day = date(from_date.year, from_date.month, 1)
     last_day_num = calendar.monthrange(from_date.year, from_date.month)[1]
@@ -739,7 +536,7 @@ def form007_dept_month_print(department_id):
 # ---- Form 007 edit (single day, all departments) ---------------------------
 
 @statisty_bp.route('/form007/<report_date_str>/edit', methods=['GET', 'POST'])
-@role_required('admin', 'viewer')
+@role_required('admin')
 def form007_edit(report_date_str):
     try:
         report_date = date.fromisoformat(report_date_str)
@@ -753,10 +550,6 @@ def form007_edit(report_date_str):
     }
 
     if request.method == 'POST':
-        if current_user.role == 'viewer':
-            from flask import flash as _flash
-            _flash('Доступ заборонено', 'danger')
-            return redirect(url_for('statisty.form007'))
         for dept in depts:
             r = existing.get(dept.id)
             if r is None:
