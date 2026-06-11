@@ -77,7 +77,10 @@ def create_app(config_class=None):
     @app.cli.command('init-db')
     def init_db():
         """Create database tables."""
+        from models import seed_ambulatory_statuses
         db.create_all()
+        if seed_ambulatory_statuses():
+            click.echo('Seeded default ambulatory statuses.')
         click.echo('Initialized the database.')
 
     @app.cli.command('create-admin')
@@ -176,10 +179,12 @@ def create_app(config_class=None):
     @click.option('--password', required=True, help='Admin password (min 8 chars)')
     def init_db_with_admin(username, password):
         """Create database tables and an admin user if not present."""
+        from models import seed_ambulatory_statuses
         if len(password) < 8:
             click.echo('Error: Password must be at least 8 characters.')
             return
         db.create_all()
+        seed_ambulatory_statuses()
         if not User.query.filter_by(username=username).first():
             u = User(username=username, role='admin')
             u.set_password(password)

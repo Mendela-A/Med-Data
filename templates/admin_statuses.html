@@ -1,0 +1,170 @@
+{% extends "base.html" %}
+{% block title %}Статуси амбулаторії{% endblock %}
+{% block breadcrumbs %}
+  <li class="breadcrumb-item"><a href="{{ url_for('admin.admin_users') }}">Адмін</a></li>
+  <li class="breadcrumb-item active" aria-current="page">Статуси амбулаторії</li>
+{% endblock %}
+
+{% set color_labels = {
+  'primary': 'Синій', 'success': 'Зелений', 'info': 'Блакитний',
+  'warning': 'Жовтий', 'danger': 'Червоний', 'secondary': 'Сірий', 'dark': 'Темний'
+} %}
+
+{% block content %}
+  <h1 class="h4 mb-4"><i class="bi bi-tags me-2"></i>Статуси амбулаторії</h1>
+
+  <div class="alert alert-light border small mb-4">
+    <i class="bi bi-info-circle me-1"></i>
+    Статуси використовуються у фільтрах, редагуванні записів та підрахунку зверху сторінки «Амбулаторна доп.».
+    Перейменування автоматично оновлює всі наявні записи. Статус, який використовується,
+    не можна видалити — лише деактивувати (він зникне з вибору, але збережеться у старих записах).
+    «<i class="bi bi-graph-up"></i> Підрахунок» — чи показувати лічильник цього статусу зверху сторінки.
+  </div>
+
+  <div class="card mb-4">
+    <div class="card-body">
+      <h2 class="h6 mb-3"><i class="bi bi-plus-circle me-2"></i>Додати статус</h2>
+      <form method="post" action="{{ url_for('admin.admin_create_status') }}" class="row gx-3 gy-2 align-items-end">
+        <div class="col-sm-4">
+          <label class="form-label">Назва</label>
+          <input class="form-control" name="name" maxlength="200" required>
+        </div>
+        <div class="col-sm-2">
+          <label class="form-label">Колір</label>
+          <select class="form-select" name="color">
+            {% for c in colors %}
+              <option value="{{ c }}">{{ color_labels.get(c, c) }}</option>
+            {% endfor %}
+          </select>
+        </div>
+        <div class="col-sm-2">
+          <label class="form-label">Іконка <a href="https://icons.getbootstrap.com/" target="_blank" rel="noopener" class="text-muted" data-bs-toggle="tooltip" data-bs-title="Каталог іконок Bootstrap"><i class="bi bi-question-circle small"></i></a></label>
+          <input class="form-control" name="icon" value="bi-circle" maxlength="50">
+        </div>
+        <div class="col-auto">
+          <div class="form-check mb-2">
+            <input class="form-check-input" type="checkbox" name="show_in_stats" id="new_show_in_stats" checked>
+            <label class="form-check-label" for="new_show_in_stats">Підрахунок зверху</label>
+          </div>
+        </div>
+        <div class="col-auto">
+          <button class="btn btn-primary" type="submit"><i class="bi bi-plus-lg me-1"></i>Додати</button>
+        </div>
+      </form>
+    </div>
+  </div>
+
+  <div class="card">
+    <div class="card-body p-0">
+      <div class="table-responsive">
+        <table class="table table-hover align-middle mb-0">
+          <thead>
+            <tr>
+              <th>Вигляд</th>
+              <th>Назва</th>
+              <th>Колір</th>
+              <th>Іконка</th>
+              <th style="width: 90px;">Порядок</th>
+              <th class="text-center" data-bs-toggle="tooltip" data-bs-title="Показувати лічильник зверху сторінки"><i class="bi bi-graph-up"></i></th>
+              <th class="text-center" data-bs-toggle="tooltip" data-bs-title="Статус для нових записів">Дефолт</th>
+              <th>Записів</th>
+              <th>Дії</th>
+            </tr>
+          </thead>
+          <tbody>
+            {% for s in statuses %}
+              <tr class="{% if not s.is_active %}table-light text-muted{% endif %}">
+                <td>
+                  <span class="badge bg-{{ s.color }}-subtle text-{{ s.color }} px-2 py-1">
+                    <i class="bi {{ s.icon }} me-1"></i>{{ s.name }}
+                  </span>
+                  {% if not s.is_active %}<span class="badge bg-light text-muted border ms-1">неактивний</span>{% endif %}
+                </td>
+                <td>
+                  <input class="form-control form-control-sm" form="status-form-{{ s.id }}" name="name" value="{{ s.name }}" maxlength="200" required style="min-width: 160px;">
+                </td>
+                <td>
+                  <select class="form-select form-select-sm" form="status-form-{{ s.id }}" name="color" style="width: 120px;">
+                    {% for c in colors %}
+                      <option value="{{ c }}" {% if c == s.color %}selected{% endif %}>{{ color_labels.get(c, c) }}</option>
+                    {% endfor %}
+                  </select>
+                </td>
+                <td>
+                  <input class="form-control form-control-sm" form="status-form-{{ s.id }}" name="icon" value="{{ s.icon }}" maxlength="50" style="width: 150px;">
+                </td>
+                <td>
+                  <input class="form-control form-control-sm" form="status-form-{{ s.id }}" name="sort_order" type="number" value="{{ s.sort_order }}" style="width: 80px;">
+                </td>
+                <td class="text-center">
+                  <input class="form-check-input" form="status-form-{{ s.id }}" type="checkbox" name="show_in_stats" {% if s.show_in_stats %}checked{% endif %}>
+                </td>
+                <td class="text-center">
+                  {% if s.is_default %}
+                    <i class="bi bi-star-fill text-warning" data-bs-toggle="tooltip" data-bs-title="Статус за замовчуванням"></i>
+                  {% elif s.is_active %}
+                    <form method="post" action="{{ url_for('admin.admin_set_default_status', status_id=s.id) }}" class="d-inline">
+                      <button class="btn btn-sm btn-link p-0 text-muted" type="submit" data-bs-toggle="tooltip" data-bs-title="Зробити статусом за замовчуванням">
+                        <i class="bi bi-star"></i>
+                      </button>
+                    </form>
+                  {% endif %}
+                </td>
+                <td>
+                  {% set used = usage.get(s.name, 0) %}
+                  {% if used %}<span class="badge bg-light text-dark border">{{ used }}</span>{% else %}<span class="text-muted">0</span>{% endif %}
+                </td>
+                <td>
+                  <div class="d-flex gap-1 flex-nowrap">
+                    <form id="status-form-{{ s.id }}" method="post" action="{{ url_for('admin.admin_update_status', status_id=s.id) }}" class="d-inline">
+                      <button class="btn btn-sm btn-outline-primary" type="submit" data-bs-toggle="tooltip" data-bs-title="Зберегти зміни">
+                        <i class="bi bi-check-lg"></i>
+                      </button>
+                    </form>
+                    <form method="post" action="{{ url_for('admin.admin_toggle_status', status_id=s.id) }}" class="d-inline">
+                      <button class="btn btn-sm btn-outline-secondary" type="submit" data-bs-toggle="tooltip" data-bs-title="{{ 'Активувати' if not s.is_active else 'Деактивувати (сховати з вибору)' }}">
+                        <i class="bi {{ 'bi-eye' if not s.is_active else 'bi-eye-slash' }}"></i>
+                      </button>
+                    </form>
+                    {% if not usage.get(s.name, 0) and not s.is_default %}
+                      <form method="post" action="{{ url_for('admin.admin_delete_status', status_id=s.id) }}" class="d-inline delete-form" data-confirm="Видалити статус «{{ s.name }}»?">
+                        <button class="btn btn-sm btn-outline-danger" type="submit" data-bs-toggle="tooltip" data-bs-title="Видалити">
+                          <i class="bi bi-trash"></i>
+                        </button>
+                      </form>
+                    {% endif %}
+                  </div>
+                </td>
+              </tr>
+            {% else %}
+              <tr>
+                <td colspan="9" class="text-center py-4">
+                  <i class="bi bi-tags text-muted" style="font-size: 2rem;"></i>
+                  <p class="text-muted mt-2 mb-0">Статусів поки немає</p>
+                </td>
+              </tr>
+            {% endfor %}
+          </tbody>
+        </table>
+      </div>
+    </div>
+  </div>
+
+  {% if orphans %}
+    <div class="alert alert-warning mt-3">
+      <i class="bi bi-exclamation-triangle me-2"></i>
+      <strong>Записи зі статусами поза довідником:</strong>
+      у базі є записи зі статусами, яких немає в цьому списку —
+      {% for name, cnt in orphans.items() %}
+        «{{ name }}» ({{ cnt }}){{ ', ' if not loop.last }}
+      {% endfor %}.
+      Додайте статус із такою самою назвою, щоб вони знову відображались коректно.
+    </div>
+  {% endif %}
+
+  <script>
+    document.addEventListener('DOMContentLoaded', function () {
+      document.querySelectorAll('[data-bs-toggle="tooltip"]').forEach(el => new bootstrap.Tooltip(el));
+    });
+  </script>
+{% endblock %}

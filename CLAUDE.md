@@ -45,6 +45,7 @@ flask backup-db                     # hot SQLite backup to data/backup_YYYYMMDD.
 - SQLite in production: WAL mode + 4 threads, safe for single-instance low-concurrency workload
 - Roles: `operator` / `editor` / `admin` / `viewer`
 - `records.full_name` has no UNIQUE — one patient can have multiple discharge records (intentional)
+- `status_options` — admin-editable status dictionary (scope='ambulatory' for now; designed to extend to records/nszu later). Ambulatory records keep status as plain text (no FK, same precedent as discharge_department); renaming a status bulk-UPDATEs ambulatory_records in the same transaction. Seed exists in BOTH migration 20260611_add_status_options AND `models.seed_ambulatory_statuses()` (called from init-db — fresh DBs stamp head without running migrations, see entrypoint.sh)
 
 ## Known DB issues (not yet fixed)
 - `records.treating_physician` / `nszu_corrections.doctor` — free text, no physicians table

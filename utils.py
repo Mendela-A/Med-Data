@@ -294,6 +294,14 @@ def validate_ambulatory_form(form_data: dict, require_status: bool = False) -> t
     if birth_date_val > date_val:
         return None, 'Дата народження не може бути пізніше дати запису'
 
+    if discharge_status:
+        # Приймаємо і неактивні статуси: редагування старого запису з
+        # деактивованим статусом не повинно блокуватись. Порожній довідник
+        # (init-db без seed) — перевірку пропускаємо.
+        known = {s['name'] for s in get_ambulatory_statuses(include_inactive=True)}
+        if known and discharge_status not in known:
+            return None, f'Невідомий статус виписки: «{discharge_status}»'
+
     return {
         'date': date_val,
         'journal_number': journal_number,
@@ -307,16 +315,36 @@ def validate_ambulatory_form(form_data: dict, require_status: bool = False) -> t
     }, None
 
 
-def get_distinct_ambulatory_statuses():
-    """Get distinct discharge statuses from database for ambulatory records (cached)."""
+def get_ambulatory_statuses(include_inactive=False):
+    """Довідник статусів амбулаторії (таблиця status_options) як список dict-ів,
+    впорядкований за sort_order. Кешується; інвалідація — clear_dropdown_cache()."""
     from app.extensions import cache
-    from models import AmbulatoryRecord, db
+    from models import StatusOption
+
     @cache.memoize(timeout=900)
-    def _inner():
-        return [s[0] for s in db.session.query(AmbulatoryRecord.discharge_status).distinct()
-                .filter(AmbulatoryRecord.discharge_status != None)
-                .order_by(AmbulatoryRecord.discharge_status).all()]
-    return _inner()
+    def _inner(include_inactive):
+        q = StatusOption.query.filter_by(scope='ambulatory')
+        if not include_inactive:
+            q = q.filter_by(is_active=True)
+        rows = q.order_by(StatusOption.sort_order, StatusOption.name).all()
+        return [{
+            'id': s.id, 'name': s.name, 'color': s.color, 'icon': s.icon,
+            'sort_order': s.sort_order, 'is_default': s.is_default,
+            'is_active': s.is_active, 'show_in_stats': s.show_in_stats,
+        } for s in rows]
+    return _inner(include_inactive)
+
+
+def get_default_ambulatory_status():
+    """Назва статусу за замовчуванням для нових амбулаторних записів."""
+    statuses = get_ambulatory_statuses()
+    for s in statuses:
+        if s['is_default']:
+            return s['name']
+    if statuses:
+        return statuses[0]['name']
+    from constants import STATUS_PROCESSING
+    return STATUS_PROCESSING
 
 
 def get_distinct_ambulatory_doctors():

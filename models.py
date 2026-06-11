@@ -125,6 +125,55 @@ class Department(db.Model):
         return f"<Department {self.id} {self.name}>"
 
 
+class StatusOption(db.Model):
+    """Довідник статусів, керований адміном. `scope` відокремлює розділи
+    (поки використовується лише 'ambulatory'); записи зберігають назву статусу
+    текстом (без FK) — за прецедентом discharge_department."""
+    __tablename__ = 'status_options'
+    __table_args__ = (
+        db.UniqueConstraint('scope', 'name', name='uq_status_options_scope_name'),
+        db.Index('idx_status_options_scope', 'scope'),
+    )
+
+    id = db.Column(db.Integer, primary_key=True)
+    scope = db.Column(db.String(20), nullable=False, default='ambulatory', server_default='ambulatory')
+    name = db.Column(db.String(200), nullable=False)
+    color = db.Column(db.String(20), nullable=False, default='secondary', server_default='secondary')  # bootstrap variant
+    icon = db.Column(db.String(50), nullable=False, default='bi-circle', server_default='bi-circle')
+    sort_order = db.Column(db.Integer, nullable=False, default=0, server_default='0')
+    is_default = db.Column(db.Boolean, nullable=False, default=False, server_default='0')
+    is_active = db.Column(db.Boolean, nullable=False, default=True, server_default='1')
+    show_in_stats = db.Column(db.Boolean, nullable=False, default=True, server_default='1')
+    created_at = db.Column(db.DateTime, default=lambda: datetime.now(timezone.utc))
+
+    def __repr__(self):
+        return f"<StatusOption {self.id} [{self.scope}] {self.name}>"
+
+
+# Seed-набір має збігатися з data-seed у міграції 20260611_add_status_options
+DEFAULT_AMBULATORY_STATUSES = [
+    # (name, color, icon, sort_order, is_default, show_in_stats)
+    ('Виписаний', 'success', 'bi-check-circle', 10, False, True),
+    ('Опрацьовується', 'warning', 'bi-clock', 20, True, False),
+    ('Порушені вимоги', 'danger', 'bi-exclamation-triangle', 30, False, False),
+    ('Епізод відсутній', 'dark', 'bi-file-earmark-x', 40, False, True),
+]
+
+
+def seed_ambulatory_statuses():
+    """Заповнити довідник статусів амбулаторії, якщо він порожній.
+    Викликається з init-db (свіжа БД, де міграція з seed не виконується)."""
+    if StatusOption.query.filter_by(scope='ambulatory').first():
+        return False
+    for name, color, icon, sort_order, is_default, show_in_stats in DEFAULT_AMBULATORY_STATUSES:
+        db.session.add(StatusOption(
+            scope='ambulatory', name=name, color=color, icon=icon,
+            sort_order=sort_order, is_default=is_default, show_in_stats=show_in_stats,
+        ))
+    db.session.commit()
+    return True
+
+
 class NSZUCorrection(db.Model):
     __tablename__ = 'nszu_corrections'
     __table_args__ = (

@@ -9,7 +9,7 @@ from datetime import datetime, date, timedelta
 from sqlalchemy import extract, case, func
 
 from app.extensions import db
-from models import User, Department, Audit, Record, log_action
+from models import User, Department, Audit, Record, AmbulatoryRecord, StatusOption, log_action
 from decorators import role_required
 from utils import clear_dropdown_cache, escape_like
 from constants import VALID_ROLES, STATUS_DISCHARGED, STATUS_PROCESSING, STATUS_VIOLATIONS
@@ -182,6 +182,171 @@ def admin_delete_department(dept_id):
     current_app.logger.info(f'Department deleted: {saved_name} by {current_user.username}')
     flash(f'Відділення "{saved_name}" видалено', 'danger')
     return redirect(url_for('admin.admin_departments'))
+
+
+# Ambulatory Status Dictionary Routes
+STATUS_COLORS = ('primary', 'success', 'info', 'warning', 'danger', 'secondary', 'dark')
+
+
+def _status_usage_counts():
+    """Кількість амбулаторних записів на кожен статус (одним GROUP BY)."""
+    rows = db.session.query(
+        AmbulatoryRecord.discharge_status, func.count(AmbulatoryRecord.id)
+    ).group_by(AmbulatoryRecord.discharge_status).all()
+    return {name: cnt for name, cnt in rows if name}
+
+
+@admin_bp.route('/statuses')
+@role_required('admin')
+def admin_statuses():
+    statuses = (StatusOption.query.filter_by(scope='ambulatory')
+                .order_by(StatusOption.sort_order, StatusOption.name).all())
+    usage = _status_usage_counts()
+    known = {s.name for s in statuses}
+    orphans = {name: cnt for name, cnt in usage.items() if name not in known}
+    return render_template('admin_statuses.html',
+                           statuses=statuses, usage=usage, orphans=orphans,
+                           colors=STATUS_COLORS)
+
+
+@admin_bp.route('/statuses/create', methods=['POST'])
+@role_required('admin')
+def admin_create_status():
+    name = request.form.get('name', '').strip()
+    color = request.form.get('color', '').strip()
+    icon = request.form.get('icon', '').strip() or 'bi-circle'
+    show_in_stats = request.form.get('show_in_stats') == 'on'
+
+    if not name:
+        flash('Назва статусу обов\'язкова', 'warning')
+        return redirect(url_for('admin.admin_statuses'))
+    if color not in STATUS_COLORS:
+        color = 'secondary'
+    if StatusOption.query.filter_by(scope='ambulatory', name=name).first():
+        flash('Статус з такою назвою вже існує', 'warning')
+        return redirect(url_for('admin.admin_statuses'))
+
+    max_order = db.session.query(func.max(StatusOption.sort_order)).filter_by(scope='ambulatory').scalar() or 0
+    s = StatusOption(scope='ambulatory', name=name, color=color, icon=icon,
+                     sort_order=max_order + 10, show_in_stats=show_in_stats)
+    db.session.add(s)
+    db.session.flush()
+    log_action(current_user.id, 'status.create', 'status_option', s.id, f'name={name}')
+    db.session.commit()
+    clear_dropdown_cache()
+    current_app.logger.info(f'StatusOption created: {name} by {current_user.username}')
+    flash(f'Статус «{name}» успішно створено', 'success')
+    return redirect(url_for('admin.admin_statuses'))
+
+
+@admin_bp.route('/statuses/<int:status_id>/update', methods=['POST'])
+@role_required('admin')
+def admin_update_status(status_id):
+    s = db.get_or_404(StatusOption, status_id)
+    new_name = request.form.get('name', '').strip()
+    color = request.form.get('color', '').strip()
+    icon = request.form.get('icon', '').strip() or s.icon
+    sort_order = request.form.get('sort_order', type=int)
+    show_in_stats = request.form.get('show_in_stats') == 'on'
+
+    if not new_name:
+        flash('Назва статусу обов\'язкова', 'warning')
+        return redirect(url_for('admin.admin_statuses'))
+
+    old_name = s.name
+    renamed = new_name != old_name
+    if renamed and StatusOption.query.filter_by(scope=s.scope, name=new_name).first():
+        flash('Статус з такою назвою вже існує', 'warning')
+        return redirect(url_for('admin.admin_statuses'))
+
+    s.name = new_name
+    if color in STATUS_COLORS:
+        s.color = color
+    s.icon = icon
+    if sort_order is not None:
+        s.sort_order = sort_order
+    s.show_in_stats = show_in_stats
+
+    try:
+        renamed_count = 0
+        if renamed:
+            # Записи зберігають статус текстом — перейменування мусить
+            # оновити їх в тій самій транзакції, інакше фільтри/піли
+            # «загублять» старі записи.
+            renamed_count = (AmbulatoryRecord.query
+                             .filter(AmbulatoryRecord.discharge_status == old_name)
+                             .update({'discharge_status': new_name},
+                                     synchronize_session=False))
+        details = f'name={old_name}->{new_name}, color={s.color}, records_renamed={renamed_count}'
+        log_action(current_user.id, 'status.update', 'status_option', s.id, details)
+        db.session.commit()
+    except Exception:
+        db.session.rollback()
+        current_app.logger.exception('Failed to update status option')
+        flash('Помилка при збереженні статусу', 'danger')
+        return redirect(url_for('admin.admin_statuses'))
+
+    clear_dropdown_cache()
+    current_app.logger.info(f'StatusOption updated: {old_name}->{new_name} by {current_user.username}')
+    if renamed and renamed_count:
+        flash(f'Статус «{old_name}» перейменовано на «{new_name}», оновлено записів: {renamed_count}', 'success')
+    else:
+        flash(f'Статус «{new_name}» оновлено', 'success')
+    return redirect(url_for('admin.admin_statuses'))
+
+
+@admin_bp.route('/statuses/<int:status_id>/set-default', methods=['POST'])
+@role_required('admin')
+def admin_set_default_status(status_id):
+    s = db.get_or_404(StatusOption, status_id)
+    if not s.is_active:
+        flash('Неактивний статус не може бути статусом за замовчуванням', 'warning')
+        return redirect(url_for('admin.admin_statuses'))
+    StatusOption.query.filter_by(scope=s.scope).update({'is_default': False}, synchronize_session=False)
+    s.is_default = True
+    log_action(current_user.id, 'status.set_default', 'status_option', s.id, f'name={s.name}')
+    db.session.commit()
+    clear_dropdown_cache()
+    flash(f'Статус «{s.name}» встановлено за замовчуванням для нових записів', 'success')
+    return redirect(url_for('admin.admin_statuses'))
+
+
+@admin_bp.route('/statuses/<int:status_id>/toggle', methods=['POST'])
+@role_required('admin')
+def admin_toggle_status(status_id):
+    s = db.get_or_404(StatusOption, status_id)
+    if s.is_active and s.is_default:
+        flash('Статус за замовчуванням не можна деактивувати — спочатку призначте інший', 'warning')
+        return redirect(url_for('admin.admin_statuses'))
+    s.is_active = not s.is_active
+    action = 'status.activate' if s.is_active else 'status.deactivate'
+    log_action(current_user.id, action, 'status_option', s.id, f'name={s.name}')
+    db.session.commit()
+    clear_dropdown_cache()
+    state = 'активовано' if s.is_active else 'деактивовано'
+    flash(f'Статус «{s.name}» {state}', 'success')
+    return redirect(url_for('admin.admin_statuses'))
+
+
+@admin_bp.route('/statuses/<int:status_id>/delete', methods=['POST'])
+@role_required('admin')
+def admin_delete_status(status_id):
+    s = db.get_or_404(StatusOption, status_id)
+    in_use = AmbulatoryRecord.query.filter(AmbulatoryRecord.discharge_status == s.name).count()
+    if in_use:
+        flash(f'Неможливо видалити статус «{s.name}» — використовується в {in_use} записах. Деактивуйте його натомість.', 'danger')
+        return redirect(url_for('admin.admin_statuses'))
+    if s.is_default:
+        flash('Статус за замовчуванням не можна видалити — спочатку призначте інший', 'warning')
+        return redirect(url_for('admin.admin_statuses'))
+    saved_id, saved_name = s.id, s.name
+    db.session.delete(s)
+    log_action(current_user.id, 'status.delete', 'status_option', saved_id, f'name={saved_name}')
+    db.session.commit()
+    clear_dropdown_cache()
+    current_app.logger.info(f'StatusOption deleted: {saved_name} by {current_user.username}')
+    flash(f'Статус «{saved_name}» видалено', 'danger')
+    return redirect(url_for('admin.admin_statuses'))
 
 
 # Statistics Route

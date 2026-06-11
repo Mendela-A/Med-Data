@@ -566,6 +566,18 @@ td .badge {
   color: #fff;
 }
 
+.stat-pill-primary {
+  background-color: var(--color-primary);
+  border-color: var(--color-primary);
+  color: #fff;
+}
+
+.stat-pill-secondary {
+  background-color: #64748b;
+  border-color: #64748b;
+  color: #fff;
+}
+
 /* Muted state for zero values */
 .stat-pill-muted {
   background-color: #cbd5e1 !important;

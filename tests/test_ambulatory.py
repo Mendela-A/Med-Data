@@ -1,6 +1,6 @@
 import pytest
 from app import create_app
-from models import db, User, AmbulatoryRecord
+from models import db, User, AmbulatoryRecord, StatusOption, seed_ambulatory_statuses
 from datetime import date
 
 @pytest.fixture
@@ -11,6 +11,7 @@ def app():
     app.config['SQLALCHEMY_DATABASE_URI'] = 'sqlite:///:memory:'
     with app.app_context():
         db.create_all()
+        seed_ambulatory_statuses()
         yield app
         db.session.remove()
         db.drop_all()
