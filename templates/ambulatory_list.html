@@ -28,10 +28,15 @@
         {% if count > 0 %}<span class="stat-pct">({{ "%.0f"|format(c / count * 100) }}%)</span>{% endif %}
       </span>
     {% endfor %}
-    <span class="stat-pill stat-pill-danger{% if count_urgent == 0 %} stat-pill-muted{% endif %}" data-bs-toggle="tooltip" data-bs-title="Записи з ургентним станом">
+    <span class="stat-pill stat-pill-danger{% if count_urgent == 0 %} stat-pill-muted{% endif %}" data-bs-toggle="tooltip" data-bs-title="Записи з позначкою ургентного стану — незалежно від статусу, тому перетинаються зі статусними лічильниками">
       <i class="bi bi-exclamation-triangle-fill"></i>Ургентних станів: <strong>{{ count_urgent }}</strong>
       {% if count > 0 %}<span class="stat-pct">({{ "%.0f"|format(count_urgent / count * 100) }}%)</span>{% endif %}
     </span>
+    <button type="button" class="btn btn-sm btn-link text-muted p-0" data-bs-toggle="popover" data-bs-placement="bottom" data-bs-html="true"
+            data-bs-title="<i class='bi bi-info-circle me-1'></i>Як рахується статистика?"
+            data-bs-content="<ul class='mb-0 ps-3'><li><strong>Статусні лічильники</strong> — кожен запис рахується рівно в одному (сума = Всього)</li><li><strong>Ургентних станів</strong> — окрема позначка, не статус: такі записи входять і у статусні лічильники</li><li>Відсотки округлені до цілого, тому їх сума може давати 99–101%</li></ul>">
+      <i class="bi bi-question-circle"></i>
+    </button>
     {% if other_count %}
       <span class="stat-pill stat-pill-secondary" data-bs-toggle="tooltip" data-bs-title="Записи зі статусами, яких немає в довіднику (Адмін → Статуси)">
         <i class="bi bi-question-circle"></i>Інше: <strong>{{ other_count }}</strong>
@@ -507,10 +512,13 @@
 <script>
   // Tooltips, Instant Search and Keyboard Shortcuts
   document.addEventListener('DOMContentLoaded', function() {
-    // 1. Tooltips initialization
+    // 1. Tooltips and popovers initialization
     const tooltipTriggerList = [].slice.call(document.querySelectorAll('[data-bs-toggle="tooltip"]'));
     tooltipTriggerList.map(function(el) {
       return new bootstrap.Tooltip(el, { trigger: 'hover' });
+    });
+    document.querySelectorAll('[data-bs-toggle="popover"]').forEach(function(el) {
+      new bootstrap.Popover(el);
     });
 
     // 2. Real-time client-side search (Instant Filter)
