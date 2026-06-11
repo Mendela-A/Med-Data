@@ -12,7 +12,7 @@ from app.extensions import db
 from models import User, Department, Audit, Record, AmbulatoryRecord, NSZUCorrection, StatusOption, log_action
 from decorators import role_required
 from utils import clear_dropdown_cache, escape_like
-from constants import VALID_ROLES, STATUS_DISCHARGED, STATUS_PROCESSING, STATUS_VIOLATIONS
+from constants import VALID_ROLES, STATUS_DISCHARGED, STATUS_PROCESSING, STATUS_VIOLATIONS, UKRAINIAN_MONTHS
 from . import admin_bp
 
 
@@ -435,14 +435,14 @@ def admin_statistics():
     # Exclusive upper bound for queries (to_date is inclusive, so +1 day)
     query_end = to_date + timedelta(days=1)
 
-    # Period label for display
+    # Period label for display (українські назви місяців, не залежимо від локалі)
     if from_date.day == 1 and to_date == (date(from_date.year, from_date.month + 1, 1) - timedelta(days=1) if from_date.month < 12 else date(from_date.year + 1, 1, 1) - timedelta(days=1)):
-        period_label = datetime(from_date.year, from_date.month, 1).strftime('%B %Y')
+        period_label = f"{UKRAINIAN_MONTHS[from_date.month]} {from_date.year}"
     else:
         period_label = f"{from_date.strftime('%d.%m.%Y')} — {to_date.strftime('%d.%m.%Y')}"
 
     # 1. Records per day by discharge date
-    records_per_day = db.session.query(
+    per_day_rows = db.session.query(
         func.date(Record.date_of_discharge).label('date'),
         func.count(Record.id).label('count')
     ).filter(
@@ -452,6 +452,13 @@ def admin_statistics():
     ).group_by(
         func.date(Record.date_of_discharge)
     ).order_by('date').all()
+
+    # дд.мм.рррр + масштаб для міні-гістограми
+    max_per_day = max((r.count for r in per_day_rows), default=0)
+    records_per_day = []
+    for r in per_day_rows:
+        d = r.date if not isinstance(r.date, str) else datetime.strptime(r.date, '%Y-%m-%d').date()
+        records_per_day.append({'date': d.strftime('%d.%m.%Y'), 'count': r.count})
 
     # 2. Status distribution by department (OPTIMIZED: Single GROUP BY query)
     dept_stats = db.session.query(
@@ -560,6 +567,7 @@ def admin_statistics():
     return render_template(
         'admin_statistics.html',
         records_per_day=records_per_day,
+        max_per_day=max_per_day,
         status_by_dept=status_by_dept,
         dept_list=dept_list,
         status_distribution=status_distribution,

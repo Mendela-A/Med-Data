@@ -174,7 +174,7 @@
               <h6 class="card-subtitle text-muted mb-1" style="font-size: 0.85rem;">
                 <i class="bi bi-exclamation-triangle me-1"></i>Порушені вимоги
               </h6>
-              <h3 class="mb-0 text-secondary">{{ status_distribution['Порушені вимоги'] }}</h3>
+              <h3 class="mb-0 text-danger">{{ status_distribution['Порушені вимоги'] }}</h3>
             </div>
             <div class="text-end">
               {% if trends.violations > 0 %}
@@ -193,7 +193,7 @@
             </div>
           </div>
           <div class="progress" style="height: 4px;">
-            <div class="progress-bar bg-secondary" role="progressbar"
+            <div class="progress-bar bg-danger" role="progressbar"
                  style="width: {{ (status_distribution['Порушені вимоги'] / total_records * 100) if total_records > 0 else 0 }}%"></div>
           </div>
           <small class="text-muted" style="font-size: 0.75rem;">
@@ -215,7 +215,7 @@
               <h6 class="card-subtitle text-muted mb-1" style="font-size: 0.85rem;">
                 <i class="bi bi-heartbreak me-1"></i>Померло
               </h6>
-              <h3 class="mb-0 text-danger">{{ status_distribution['Помер'] }}</h3>
+              <h3 class="mb-0 text-body-emphasis">{{ status_distribution['Помер'] }}</h3>
             </div>
             <div class="text-end">
               {% if trends.deceased > 0 %}
@@ -234,7 +234,7 @@
             </div>
           </div>
           <div class="progress" style="height: 4px;">
-            <div class="progress-bar bg-danger" role="progressbar"
+            <div class="progress-bar bg-dark" role="progressbar"
                  style="width: {{ (status_distribution['Помер'] / total_records * 100) if total_records > 0 else 0 }}%"></div>
           </div>
           <small class="text-muted" style="font-size: 0.75rem;">
@@ -375,9 +375,9 @@
               <a href="{{ url_for('records.index', from_date=from_date.isoformat(), to_date=to_date.isoformat(), discharge_department=dept, discharge_status='Порушені вимоги', from_stats='1') }}"
                  class="text-decoration-none">
                 <div class="d-flex align-items-center">
-                  <span class="badge bg-secondary me-2">{{ status_by_dept[dept]['Порушені вимоги'] }}</span>
+                  <span class="badge bg-danger me-2">{{ status_by_dept[dept]['Порушені вимоги'] }}</span>
                   <div class="progress flex-grow-1" style="height: 8px; min-width: 60px;">
-                    <div class="progress-bar bg-secondary" style="width: {{ viol_pct }}%"></div>
+                    <div class="progress-bar bg-danger" style="width: {{ viol_pct }}%"></div>
                   </div>
                 </div>
               </a>
@@ -387,9 +387,9 @@
               <a href="{{ url_for('records.index', from_date=from_date.isoformat(), to_date=to_date.isoformat(), discharge_department=dept, has_death_date='1', from_stats='1') }}"
                  class="text-decoration-none">
                 <div class="d-flex align-items-center">
-                  <span class="badge bg-danger me-2">{{ status_by_dept[dept]['Помер'] }}</span>
+                  <span class="badge bg-dark me-2">{{ status_by_dept[dept]['Помер'] }}</span>
                   <div class="progress flex-grow-1" style="height: 8px; min-width: 60px;">
-                    <div class="progress-bar bg-danger" style="width: {{ dec_pct }}%"></div>
+                    <div class="progress-bar bg-dark" style="width: {{ dec_pct }}%"></div>
                   </div>
                 </div>
               </a>
@@ -427,14 +427,14 @@
               <a href="{{ url_for('records.index', from_date=from_date.isoformat(), to_date=to_date.isoformat(), discharge_status='Порушені вимоги', from_stats='1') }}"
                  class="text-decoration-none"
                  title="Переглянути всі записи з порушеними вимогами">
-                <span class="badge bg-secondary badge-clickable">{{ status_distribution['Порушені вимоги'] }}</span>
+                <span class="badge bg-danger badge-clickable">{{ status_distribution['Порушені вимоги'] }}</span>
               </a>
             </th>
             <th class="text-center">
               <a href="{{ url_for('records.index', from_date=from_date.isoformat(), to_date=to_date.isoformat(), has_death_date='1', from_stats='1') }}"
                  class="text-decoration-none"
                  title="Переглянути всі записи померлих">
-                <span class="badge bg-danger badge-clickable">{{ status_distribution['Помер'] }}</span>
+                <span class="badge bg-dark badge-clickable">{{ status_distribution['Помер'] }}</span>
               </a>
             </th>
             <th class="text-center">
@@ -515,15 +515,21 @@
       <table class="table table-hover table-sm">
         <thead>
           <tr>
-            <th>Дата</th>
-            <th class="text-end">Кількість записів</th>
+            <th style="width: 110px;">Дата</th>
+            <th class="text-end" style="width: 70px;">К-сть</th>
+            <th></th>
           </tr>
         </thead>
         <tbody>
           {% for record in records_per_day %}
           <tr>
-            <td>{{ record.date }}</td>
+            <td class="text-nowrap">{{ record.date }}</td>
             <td class="text-end"><strong>{{ record.count }}</strong></td>
+            <td class="align-middle">
+              <div class="progress" style="height: 10px; min-width: 120px;">
+                <div class="progress-bar bg-primary" style="width: {{ (record.count / max_per_day * 100) if max_per_day > 0 else 0 }}%"></div>
+              </div>
+            </td>
           </tr>
           {% endfor %}
         </tbody>
@@ -531,6 +537,7 @@
           <tr>
             <th>Всього</th>
             <th class="text-end"><strong>{{ records_per_day | sum(attribute='count') }}</strong></th>
+            <th></th>
           </tr>
         </tfoot>
       </table>
