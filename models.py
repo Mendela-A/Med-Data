@@ -144,34 +144,67 @@ class StatusOption(db.Model):
     is_default = db.Column(db.Boolean, nullable=False, default=False, server_default='0')
     is_active = db.Column(db.Boolean, nullable=False, default=True, server_default='1')
     show_in_stats = db.Column(db.Boolean, nullable=False, default=True, server_default='1')
+    # Системний статус: на ньому тримається статистика/телеграм-бот —
+    # не можна перейменувати, видалити чи деактивувати
+    is_system = db.Column(db.Boolean, nullable=False, default=False, server_default='0')
     created_at = db.Column(db.DateTime, default=lambda: datetime.now(timezone.utc))
 
     def __repr__(self):
         return f"<StatusOption {self.id} [{self.scope}] {self.name}>"
 
 
-# Seed-набір має збігатися з data-seed у міграції 20260611_add_status_options
-DEFAULT_AMBULATORY_STATUSES = [
-    # (name, color, icon, sort_order, is_default, show_in_stats)
-    ('Виписаний', 'success', 'bi-check-circle', 10, False, True),
-    ('Опрацьовується', 'warning', 'bi-clock', 20, True, False),
-    ('Порушені вимоги', 'danger', 'bi-exclamation-triangle', 30, False, False),
-    ('Епізод відсутній', 'dark', 'bi-file-earmark-x', 40, False, True),
-]
+# Seed-набори мають збігатися з data-seed у міграціях
+# 20260611_add_status_options і 20260611_status_scopes
+DEFAULT_STATUS_OPTIONS = {
+    'ambulatory': [
+        # (name, color, icon, sort_order, is_default, show_in_stats, is_system, is_active)
+        ('Виписаний', 'success', 'bi-check-circle', 10, False, True, False, True),
+        ('Опрацьовується', 'warning', 'bi-clock', 20, True, False, False, True),
+        ('Порушені вимоги', 'danger', 'bi-exclamation-triangle', 30, False, False, False, True),
+        ('Епізод відсутній', 'dark', 'bi-file-earmark-x', 40, False, True, False, True),
+    ],
+    # records: усі три системні — на них тримаються статистика і tg-бот
+    'records': [
+        ('Виписаний', 'success', 'bi-check-circle', 10, False, True, True, True),
+        ('Опрацьовується', 'warning', 'bi-clock', 20, True, True, True, True),
+        ('Порушені вимоги', 'danger', 'bi-exclamation-triangle', 30, False, True, True, True),
+        # легасі: смерть тепер ведеться через date_of_death; статус лишається
+        # в довіднику неактивним, щоб старі записи рендерились і валідувались
+        ('Помер', 'danger', 'bi-heartbreak', 40, False, False, False, False),
+    ],
+    # nszu: 'В обробці' — системний (дефолт моделі NSZUCorrection);
+    # кольори відтворюють історичні бейджі nszu_list
+    'nszu': [
+        ('В обробці', 'secondary', 'bi-clock', 10, True, True, True, True),
+        ('Опрацьовано', 'warning', 'bi-hourglass-split', 20, False, True, False, True),
+        ('Оплачено', 'success', 'bi-check-circle', 30, False, True, False, True),
+        ('Не підлягає оплаті', 'danger', 'bi-x-circle', 40, False, True, False, True),
+    ],
+}
 
 
-def seed_ambulatory_statuses():
-    """Заповнити довідник статусів амбулаторії, якщо він порожній.
-    Викликається з init-db (свіжа БД, де міграція з seed не виконується)."""
-    if StatusOption.query.filter_by(scope='ambulatory').first():
-        return False
-    for name, color, icon, sort_order, is_default, show_in_stats in DEFAULT_AMBULATORY_STATUSES:
-        db.session.add(StatusOption(
-            scope='ambulatory', name=name, color=color, icon=icon,
-            sort_order=sort_order, is_default=is_default, show_in_stats=show_in_stats,
-        ))
-    db.session.commit()
-    return True
+def seed_status_options():
+    """Заповнити довідник статусів для кожного порожнього scope.
+    Викликається з init-db (свіжа БД, де міграції з seed не виконуються)."""
+    seeded = False
+    for scope, rows in DEFAULT_STATUS_OPTIONS.items():
+        if StatusOption.query.filter_by(scope=scope).first():
+            continue
+        for name, color, icon, sort_order, is_default, show_in_stats, is_system, is_active in rows:
+            db.session.add(StatusOption(
+                scope=scope, name=name, color=color, icon=icon,
+                sort_order=sort_order, is_default=is_default,
+                show_in_stats=show_in_stats, is_system=is_system,
+                is_active=is_active,
+            ))
+        seeded = True
+    if seeded:
+        db.session.commit()
+    return seeded
+
+
+# Зворотна сумісність зі старою назвою (тести, init-db)
+seed_ambulatory_statuses = seed_status_options
 
 
 class NSZUCorrection(db.Model):

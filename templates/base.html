@@ -5,6 +5,16 @@
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <meta name="csrf-token" content="{{ csrf_token() }}">
   <title>{% block title %}Flask App{% endblock %}</title>
+  <script>
+    // Тема застосовується до завантаження CSS, щоб уникнути «блимання»
+    (function () {
+      try {
+        if (localStorage.getItem('theme') === 'dark') {
+          document.documentElement.setAttribute('data-bs-theme', 'dark');
+        }
+      } catch (e) {}
+    })();
+  </script>
   <link href="{{ url_for('static', filename='vendor/inter.css') }}" rel="stylesheet">
   <link href="{{ url_for('static', filename='vendor/bootstrap.min.css') }}" rel="stylesheet">
   <link href="{{ url_for('static', filename='vendor/bootstrap-icons.css') }}" rel="stylesheet">
@@ -65,6 +75,12 @@
           <span class="topnav-user-role">{{ current_user.role }}</span>
         </button>
         <ul class="dropdown-menu dropdown-menu-end shadow-sm">
+          <li>
+            <button class="dropdown-item" type="button" id="themeToggle">
+              <i class="bi bi-moon-stars me-2" id="themeToggleIcon"></i><span id="themeToggleLabel">Темна тема</span>
+            </button>
+          </li>
+          <li><hr class="dropdown-divider"></li>
           <li>
             <button class="dropdown-item" type="button"
                     data-bs-toggle="modal" data-bs-target="#changePasswordModal">
@@ -233,7 +249,49 @@
         }
       });
 
-      // Top navbar — no additional JS needed
+      // Скрол до рядка з #record-N у hash (після редагування) з підсвіткою
+      if (window.location.hash && /^#record-\d+$/.test(window.location.hash)) {
+        var targetRow = document.querySelector(window.location.hash);
+        if (targetRow) {
+          setTimeout(function() {
+            targetRow.scrollIntoView({ behavior: 'smooth', block: 'center' });
+            targetRow.classList.add('table-row-highlight');
+            setTimeout(function() {
+              targetRow.classList.remove('table-row-highlight');
+            }, 2000);
+          }, 100);
+        }
+      }
+
+      // Автозастосування фільтрів: селекти у формах з класом filter-autosubmit
+      document.querySelectorAll('form.filter-autosubmit select').forEach(function(sel) {
+        sel.addEventListener('change', function() {
+          sel.form.submit();
+        });
+      });
+
+      // Перемикач теми (стан зберігається в localStorage)
+      var themeToggle = document.getElementById('themeToggle');
+      if (themeToggle) {
+        var themeLabel = document.getElementById('themeToggleLabel');
+        var themeIcon = document.getElementById('themeToggleIcon');
+        function syncThemeToggle() {
+          var dark = document.documentElement.getAttribute('data-bs-theme') === 'dark';
+          themeLabel.textContent = dark ? 'Світла тема' : 'Темна тема';
+          themeIcon.className = (dark ? 'bi bi-sun' : 'bi bi-moon-stars') + ' me-2';
+        }
+        syncThemeToggle();
+        themeToggle.addEventListener('click', function() {
+          var dark = document.documentElement.getAttribute('data-bs-theme') === 'dark';
+          if (dark) {
+            document.documentElement.removeAttribute('data-bs-theme');
+          } else {
+            document.documentElement.setAttribute('data-bs-theme', 'dark');
+          }
+          try { localStorage.setItem('theme', dark ? 'light' : 'dark'); } catch (e) {}
+          syncThemeToggle();
+        });
+      }
     });
 
     // Helper to add CSRF token to dynamically created forms
@@ -243,6 +301,32 @@
       input.name = 'csrf_token';
       input.value = getCSRFToken();
       form.appendChild(input);
+    }
+
+    // Спільна обгортка fetch для JSON API: розрізняє мережеві збої,
+    // завершену сесію (редірект на логін) і серверні помилки,
+    // щоб користувач бачив реальну причину, а не «помилку з'єднання»
+    async function fetchJSON(url, options) {
+      let response;
+      try {
+        response = await fetch(url, options);
+      } catch (e) {
+        throw new Error("Немає з'єднання з сервером. Перевірте мережу і спробуйте ще раз.");
+      }
+      const contentType = response.headers.get('content-type') || '';
+      if (response.redirected || contentType.includes('text/html')) {
+        throw new Error('Сесію завершено. Оновіть сторінку (F5) і увійдіть знову.');
+      }
+      let data;
+      try {
+        data = await response.json();
+      } catch (e) {
+        throw new Error(`Несподівана відповідь сервера (HTTP ${response.status}). Спробуйте ще раз.`);
+      }
+      if (!response.ok) {
+        throw new Error(data.error || `Помилка сервера (HTTP ${response.status})`);
+      }
+      return data;
     }
   </script>
   <script src="{{ url_for('static', filename='month-picker.js') }}"></script>

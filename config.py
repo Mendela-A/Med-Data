@@ -18,3 +18,7 @@ class Config:
     SESSION_COOKIE_SAMESITE = 'Lax'
     SESSION_COOKIE_SECURE = os.environ.get('FLASK_ENV') == 'production'
     PERMANENT_SESSION_LIFETIME = 28800  # 8 hours
+
+    # CSRF-токен живе стільки ж, скільки сесія (дефолтні 3600 с ламали
+    # масове введення: після години роботи в модалці кожен POST падав з 400)
+    WTF_CSRF_TIME_LIMIT = None

@@ -12,9 +12,17 @@ from io import BytesIO
 from app.extensions import db
 from models import NSZUCorrection, User, log_action
 from decorators import role_required
-from utils import parse_date, parse_numeric, get_user_map, escape_like
+from utils import (parse_date, parse_numeric, get_user_map, escape_like,
+                   get_status_options, get_default_status)
 from constants import NSZU_STATUSES, UKRAINIAN_MONTHS
 from . import nszu_bp
+
+
+def _valid_nszu_statuses():
+    """Допустимі статуси з довідника (включно з неактивними для старих
+    записів); порожній довідник — fallback на історичні константи."""
+    names = {s['name'] for s in get_status_options('nszu', include_inactive=True)}
+    return names or set(NSZU_STATUSES)
 
 
 @nszu_bp.route('')
@@ -59,7 +67,9 @@ def nszu_list():
     q = q.filter(*conditions)
 
     # Get distinct values for filters
-    statuses = NSZU_STATUSES
+    status_defs = get_status_options('nszu')
+    status_meta = {s['name']: s for s in get_status_options('nszu', include_inactive=True)}
+    statuses = [s['name'] for s in status_defs]
     doctors = [d[0] for d in db.session.query(NSZUCorrection.doctor).distinct().filter(NSZUCorrection.doctor != None).order_by(NSZUCorrection.doctor).all()]
 
     # Sorting
@@ -137,6 +147,9 @@ def nszu_list():
                          corrections=corrections,
                          pagination=pagination,
                          statuses=statuses,
+                         status_defs=status_defs,
+                         status_meta=status_meta,
+                         default_status=get_default_status('nszu'),
                          doctors=doctors,
                          selected_status=selected_status,
                          selected_doctor=selected_doctor,
@@ -162,7 +175,7 @@ def nszu_add():
         date_str = request.form.get('date', '').strip()
         nszu_record_id = request.form.get('nszu_record_id', '').strip()
         doctor = request.form.get('doctor', '').strip()
-        status = request.form.get('status', 'В обробці').strip()
+        status = request.form.get('status', '').strip() or get_default_status('nszu')
         detail = request.form.get('detail', '').strip()
         fakt_summ_str = request.form.get('fakt_summ', '').strip()
         comment = request.form.get('comment', '').strip()
@@ -172,7 +185,7 @@ def nszu_add():
             flash('Будь ласка, заповніть усі обов\'язкові поля (дата, НСЗУ ID, лікар)', 'warning')
             return redirect(url_for('nszu.nszu_add'))
 
-        if status not in NSZU_STATUSES:
+        if status not in _valid_nszu_statuses():
             flash('Невірний статус', 'warning')
             return redirect(url_for('nszu.nszu_add'))
 
@@ -216,9 +229,10 @@ def nszu_add():
     # GET - render form
     # Get distinct doctors for autocomplete
     doctors = [d[0] for d in db.session.query(NSZUCorrection.doctor).distinct().filter(NSZUCorrection.doctor != None).order_by(NSZUCorrection.doctor).all()]
-    statuses = NSZU_STATUSES
+    statuses = [s['name'] for s in get_status_options('nszu')]
 
-    return render_template('nszu_add.html', doctors=doctors, statuses=statuses)
+    return render_template('nszu_add.html', doctors=doctors, statuses=statuses,
+                           default_status=get_default_status('nszu'))
 
 
 @nszu_bp.route('/api/add', methods=['POST'])
@@ -230,7 +244,7 @@ def api_nszu_add():
     date_str = request.form.get('date', '').strip()
     nszu_record_id = request.form.get('nszu_record_id', '').strip()
     doctor = request.form.get('doctor', '').strip()
-    status = request.form.get('status', 'В обробці').strip()
+    status = request.form.get('status', '').strip() or get_default_status('nszu')
     detail = request.form.get('detail', '').strip()
     fakt_summ_str = request.form.get('fakt_summ', '').strip()
     comment = request.form.get('comment', '').strip()
@@ -239,7 +253,7 @@ def api_nszu_add():
     if not all([date_str, nszu_record_id, doctor]):
         return jsonify({'success': False, 'error': 'Будь ласка, заповніть усі обов\'язкові поля (дата, НСЗУ ID, лікар)'}), 400
 
-    if status not in NSZU_STATUSES:
+    if status not in _valid_nszu_statuses():
         return jsonify({'success': False, 'error': 'Невірний статус'}), 400
 
     # Parse date
@@ -321,7 +335,7 @@ def api_nszu_edit(correction_id):
     if not all([date_str, nszu_record_id, doctor, status]):
         return jsonify({'success': False, 'error': 'Заповніть усі обов\'язкові поля'}), 400
 
-    if status not in NSZU_STATUSES:
+    if status not in _valid_nszu_statuses():
         return jsonify({'success': False, 'error': 'Невірний статус'}), 400
 
     date_obj = parse_date(date_str)

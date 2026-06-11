@@ -110,7 +110,7 @@ def test_rename_status_updates_existing_records(app, client):
 
         db.session.refresh(r)
         assert r.discharge_status == 'В роботі'
-        assert StatusOption.query.filter_by(name='Опрацьовується').first() is None
+        assert StatusOption.query.filter_by(scope='ambulatory', name='Опрацьовується').first() is None
 
 
 def test_delete_status_blocked_when_in_use(app, client):
@@ -133,7 +133,7 @@ def test_delete_unused_status(app, client):
         login(client, 'adm')
         rv = client.post(f'/admin/statuses/{s.id}/delete', follow_redirects=True)
         assert 'видалено' in rv.get_data(as_text=True)
-        assert StatusOption.query.filter_by(name='Порушені вимоги').first() is None
+        assert StatusOption.query.filter_by(scope='ambulatory', name='Порушені вимоги').first() is None
 
 
 def test_default_status_cannot_be_deactivated(app, client):
@@ -223,6 +223,65 @@ def test_edit_accepts_inactive_status(app, client):
         assert 'успішно оновлено' in rv.get_data(as_text=True)
         db.session.refresh(r)
         assert r.diagnosis == 'Уточнений діагноз'
+
+
+def test_records_scope_seeded_with_system_statuses(app):
+    with app.app_context():
+        names = {s.name for s in StatusOption.query.filter_by(scope='records').all()}
+        assert names == {'Виписаний', 'Опрацьовується', 'Порушені вимоги', 'Помер'}
+        system = {s.name for s in StatusOption.query.filter_by(scope='records', is_system=True).all()}
+        assert system == {'Виписаний', 'Опрацьовується', 'Порушені вимоги'}
+        # легасі-статус «Помер» — неактивний
+        pomer = StatusOption.query.filter_by(scope='records', name='Помер').first()
+        assert pomer.is_active is False
+
+
+def test_system_status_cannot_be_renamed_or_deleted(app, client):
+    with app.app_context():
+        ensure_user('adm', role='admin')
+        s = StatusOption.query.filter_by(scope='records', name='Опрацьовується').first()
+
+        login(client, 'adm')
+        rv = client.post(f'/admin/statuses/{s.id}/update', data={
+            'name': 'В роботі', 'color': s.color, 'icon': s.icon, 'sort_order': s.sort_order,
+        }, follow_redirects=True)
+        assert 'системний' in rv.get_data(as_text=True)
+        db.session.refresh(s)
+        assert s.name == 'Опрацьовується'
+
+        rv2 = client.post(f'/admin/statuses/{s.id}/delete', follow_redirects=True)
+        assert 'системний' in rv2.get_data(as_text=True)
+        assert StatusOption.query.filter_by(scope='records', name='Опрацьовується').first() is not None
+
+        rv3 = client.post(f'/admin/statuses/{s.id}/toggle', follow_redirects=True)
+        assert 'системний' in rv3.get_data(as_text=True)
+        db.session.refresh(s)
+        assert s.is_active is True
+
+
+def test_system_status_color_can_be_changed(app, client):
+    with app.app_context():
+        ensure_user('adm', role='admin')
+        s = StatusOption.query.filter_by(scope='records', name='Виписаний').first()
+
+        login(client, 'adm')
+        rv = client.post(f'/admin/statuses/{s.id}/update', data={
+            'name': s.name, 'color': 'info', 'icon': 'bi-star', 'sort_order': s.sort_order,
+            'show_in_stats': 'on',
+        }, follow_redirects=True)
+        assert 'оновлено' in rv.get_data(as_text=True)
+        db.session.refresh(s)
+        assert s.color == 'info'
+        assert s.icon == 'bi-star'
+
+
+def test_nszu_scope_seeded(app):
+    with app.app_context():
+        names = {s.name for s in StatusOption.query.filter_by(scope='nszu').all()}
+        assert names == {'В обробці', 'Опрацьовано', 'Оплачено', 'Не підлягає оплаті'}
+        default = StatusOption.query.filter_by(scope='nszu', is_default=True).one()
+        assert default.name == 'В обробці'
+        assert default.is_system is True
 
 
 def test_orphan_statuses_shown_on_admin_page(app, client):

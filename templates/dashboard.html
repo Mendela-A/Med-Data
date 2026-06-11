@@ -38,6 +38,13 @@
       Порушення: <strong>{{ count_violations }}</strong>
       {% if count > 0 %}<span class="stat-pct">({{ "%.0f"|format(count_violations / count * 100) }}%)</span>{% endif %}
     </span>
+    {% for s in status_defs if s.show_in_stats and not s.is_system %}
+      {% set c = extra_status_counts.get(s.name, 0) %}
+      <span class="stat-pill stat-pill-{{ s.color }}{% if c == 0 %} stat-pill-muted{% endif %}" data-bs-toggle="tooltip" data-bs-title="Записи зі статусом '{{ s.name }}' без дати смерті">
+        <i class="bi {{ s.icon }}"></i>{{ s.name }}: <strong>{{ c }}</strong>
+        {% if count > 0 %}<span class="stat-pct">({{ "%.0f"|format(c / count * 100) }}%)</span>{% endif %}
+      </span>
+    {% endfor %}
     <span class="stat-pill stat-pill-dark{% if count_deceased == 0 %} stat-pill-muted{% endif %}" data-bs-toggle="tooltip" data-bs-title="Всі записи з датою смерті (незалежно від статусу)">
       Померло: <strong>{{ count_deceased }}</strong>
       {% if count > 0 %}<span class="stat-pct">({{ "%.0f"|format(count_deceased / count * 100) }}%)</span>{% endif %}
@@ -71,8 +78,13 @@
 
   <div class="card mb-3">
     <div class="card-body py-3">
-      <h5 class="card-title mb-3">Фільтри</h5>
-      <form method="get">
+      <h5 class="card-title mb-3">
+        Фільтри
+        {% if active_filters_count %}
+          <span class="badge bg-primary ms-1" data-bs-toggle="tooltip" data-bs-title="Кількість активних фільтрів — список відфільтровано">{{ active_filters_count }}</span>
+        {% endif %}
+      </h5>
+      <form method="get" class="filter-autosubmit">
         <div class="row g-3 mb-3">
           <div class="col-sm-6 col-md-4 col-xl-2">
             <label class="form-label small mb-1"><i class="bi bi-calendar-month me-1"></i>Місяць</label>
@@ -90,9 +102,13 @@
             <label class="form-label small mb-1"><i class="bi bi-flag me-1"></i>Статус виписки</label>
             <select class="form-select form-select-sm" name="discharge_status">
               <option value="">Всі</option>
-              <option value="Виписаний" {% if selected_status == 'Виписаний' %}selected{% endif %}>Виписаний</option>
-              <option value="Опрацьовується" {% if selected_status == 'Опрацьовується' %}selected{% endif %}>Опрацьовується</option>
-              <option value="Порушені вимоги" {% if selected_status == 'Порушені вимоги' %}selected{% endif %}>Порушені вимоги</option>
+              {% set active_names = status_defs | map(attribute='name') | list %}
+              {% for s in status_defs %}
+                <option value="{{ s.name }}" {% if selected_status == s.name %}selected{% endif %}>{{ s.name }}</option>
+              {% endfor %}
+              {% if selected_status and selected_status not in active_names %}
+                <option value="{{ selected_status }}" selected>{{ selected_status }}</option>
+              {% endif %}
             </select>
           </div>
 
@@ -199,16 +215,16 @@
               {% endif %}
             </td>
             <td>
-              {% if r.discharge_status == 'Виписаний' %}
-                <span class="badge badge-table bg-success">{{ r.discharge_status }}</span>
-              {% elif r.discharge_status == 'Помер' %}
-                <span class="badge badge-table bg-danger">{{ r.discharge_status }}</span>
-              {% elif r.discharge_status == 'Опрацьовується' %}
-                <span class="badge badge-table bg-warning text-dark">{{ r.discharge_status }}</span>
-              {% elif r.discharge_status == 'Порушені вимоги' %}
-                <span class="badge badge-table bg-danger">{{ r.discharge_status }}</span>
-              {% elif r.discharge_status %}
-                <span class="badge badge-table bg-secondary">{{ r.discharge_status }}</span>
+              {% if r.discharge_status %}
+                {% set meta = status_meta.get(r.discharge_status) %}
+                {% if meta %}
+                  <span class="badge badge-table bg-{{ meta.color }}{% if meta.color == 'warning' %} text-dark{% endif %}">{{ r.discharge_status }}</span>
+                {% elif r.discharge_status == 'Помер' %}
+                  {# історичний статус зі старих даних, не в довіднику #}
+                  <span class="badge badge-table bg-danger">{{ r.discharge_status }}</span>
+                {% else %}
+                  <span class="badge badge-table bg-secondary">{{ r.discharge_status }}</span>
+                {% endif %}
               {% else %}
                 —
               {% endif %}
@@ -353,20 +369,7 @@
       const popoverTriggerList = document.querySelectorAll('[data-bs-toggle="popover"]');
       const popoverList = [...popoverTriggerList].map(popoverTriggerEl => new bootstrap.Popover(popoverTriggerEl));
 
-      // Scroll to edited record with smooth animation and highlight
-      if (window.location.hash) {
-        const targetElement = document.querySelector(window.location.hash);
-        if (targetElement) {
-          setTimeout(function() {
-            targetElement.scrollIntoView({ behavior: 'smooth', block: 'center' });
-            // Add highlight effect
-            targetElement.classList.add('table-row-highlight');
-            setTimeout(function() {
-              targetElement.classList.remove('table-row-highlight');
-            }, 2000);
-          }, 100);
-        }
-      }
+      // Scroll-to-row з підсвіткою — спільний обробник у base.html
     });
   </script>
 
@@ -546,9 +549,9 @@
                 <label for="edit_discharge_status" class="form-label">Статус виписки <span class="text-danger">*</span></label>
                 <select class="form-select" id="edit_discharge_status" name="discharge_status" required>
                   <option value="">Оберіть статус</option>
-                  <option value="Виписаний">Виписаний</option>
-                  <option value="Опрацьовується">Опрацьовується</option>
-                  <option value="Порушені вимоги">Порушені вимоги</option>
+                  {% for s in status_defs %}
+                    <option value="{{ s.name }}">{{ s.name }}</option>
+                  {% endfor %}
                 </select>
               </div>
 
@@ -617,9 +620,9 @@
                 <label class="form-label">Статус виписки (опціонально)</label>
                 <select class="form-select" name="discharge_status" id="export_discharge_status">
                   <option value="">Всі</option>
-                  <option value="Виписаний">Виписаний</option>
-                  <option value="Опрацьовується">Опрацьовується</option>
-                  <option value="Порушені вимоги">Порушені вимоги</option>
+                  {% for s in status_defs %}
+                    <option value="{{ s.name }}">{{ s.name }}</option>
+                  {% endfor %}
                 </select>
               </div>
 
@@ -828,19 +831,13 @@
       saveBtn.innerHTML = '<span class="spinner-border spinner-border-sm me-2"></span>Збереження...';
       saveBtn.disabled = true;
 
-      fetch('{{ url_for("records.api_add_record") }}', {
+      fetchJSON('{{ url_for("records.api_add_record") }}', {
         method: 'POST',
         body: formData,
         headers: {
           'X-Requested-With': 'XMLHttpRequest',
           'X-CSRFToken': getCSRFToken()
         }
-      })
-      .then(response => {
-        if (!response.ok) {
-          throw Object.assign(new Error(`Помилка сервера (HTTP ${response.status})`), { isHttp: true });
-        }
-        return response.json();
       })
       .then(data => {
         saveBtn.innerHTML = originalText;
@@ -864,7 +861,7 @@
       .catch(error => {
         saveBtn.innerHTML = originalText;
         saveBtn.disabled = false;
-        showError(error.isHttp ? error.message : 'Помилка з\'єднання з сервером');
+        showError(error.message);
         console.error('Error:', error);
       });
     }
@@ -939,7 +936,13 @@
       document.getElementById('edit_treating_physician').value = treatingPhysician;
       document.getElementById('edit_history').value = history;
       document.getElementById('edit_k_days').value = kDays;
-      document.getElementById('edit_discharge_status').value = dischargeStatus;
+      // Деактивований статус запису може бути відсутнім у селекті —
+      // додаємо опцію, щоб не «загубити» значення при редагуванні
+      const statusSelect = document.getElementById('edit_discharge_status');
+      if (dischargeStatus && !Array.from(statusSelect.options).some(o => o.value === dischargeStatus)) {
+        statusSelect.add(new Option(dischargeStatus + ' (неактивний)', dischargeStatus));
+      }
+      statusSelect.value = dischargeStatus;
       document.getElementById('edit_date_of_death').value = dateOfDeath;
       document.getElementById('edit_comment').value = comment;
       document.getElementById('edit_adsj').value = adsj;
@@ -994,7 +997,7 @@
       saveBtn.innerHTML = '<span class="spinner-border spinner-border-sm me-2"></span>Збереження...';
       saveBtn.disabled = true;
 
-      fetch(`/api/records/${recordId}/edit`, {
+      fetchJSON(`/api/records/${recordId}/edit`, {
         method: 'POST',
         body: formData,
         headers: {
@@ -1002,18 +1005,15 @@
           'X-CSRFToken': getCSRFToken()
         }
       })
-      .then(response => {
-        if (!response.ok) {
-          throw Object.assign(new Error(`Помилка сервера (HTTP ${response.status})`), { isHttp: true });
-        }
-        return response.json();
-      })
       .then(data => {
         saveBtn.innerHTML = originalText;
         saveBtn.disabled = false;
 
         if (data.success) {
           bootstrap.Modal.getInstance(modal).hide();
+          // Повертаємось до відредагованого рядка: hash підхоплює
+          // обробник скролу з підсвіткою після перезавантаження
+          location.hash = '#record-' + recordId;
           location.reload();
         } else {
           showError(data.error || 'Помилка при оновленні запису');
@@ -1022,7 +1022,7 @@
       .catch(error => {
         saveBtn.innerHTML = originalText;
         saveBtn.disabled = false;
-        showError(error.isHttp ? error.message : 'Помилка з\'єднання з сервером');
+        showError(error.message);
         console.error('Error:', error);
       });
     }

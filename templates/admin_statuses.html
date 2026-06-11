@@ -11,20 +11,32 @@
 } %}
 
 {% block content %}
-  <h1 class="h4 mb-4"><i class="bi bi-tags me-2"></i>Статуси амбулаторії</h1>
+  <h1 class="h4 mb-3"><i class="bi bi-tags me-2"></i>Статуси</h1>
+
+  <ul class="nav nav-tabs mb-3">
+    {% for sc, label in scopes.items() %}
+      <li class="nav-item">
+        <a class="nav-link{% if sc == scope %} active{% endif %}" href="{{ url_for('admin.admin_statuses', scope=sc) }}">{{ label }}</a>
+      </li>
+    {% endfor %}
+  </ul>
 
   <div class="alert alert-light border small mb-4">
     <i class="bi bi-info-circle me-1"></i>
-    Статуси використовуються у фільтрах, редагуванні записів та підрахунку зверху сторінки «Амбулаторна доп.».
+    Статуси використовуються у фільтрах, редагуванні записів та підрахунку зверху відповідної сторінки.
     Перейменування автоматично оновлює всі наявні записи. Статус, який використовується,
     не можна видалити — лише деактивувати (він зникне з вибору, але збережеться у старих записах).
+    Статуси з позначкою <span class="badge bg-light text-dark border"><i class="bi bi-lock me-1"></i>системний</span>
+    не можна перейменувати, деактивувати чи видалити — на них тримаються статистика і телеграм-звіти
+    (колір, іконку та підрахунок змінювати можна).
     «<i class="bi bi-graph-up"></i> Підрахунок» — чи показувати лічильник цього статусу зверху сторінки.
   </div>
 
   <div class="card mb-4">
     <div class="card-body">
-      <h2 class="h6 mb-3"><i class="bi bi-plus-circle me-2"></i>Додати статус</h2>
+      <h2 class="h6 mb-3"><i class="bi bi-plus-circle me-2"></i>Додати статус — {{ scopes[scope] }}</h2>
       <form method="post" action="{{ url_for('admin.admin_create_status') }}" class="row gx-3 gy-2 align-items-end">
+        <input type="hidden" name="scope" value="{{ scope }}">
         <div class="col-sm-4">
           <label class="form-label">Назва</label>
           <input class="form-control" name="name" maxlength="200" required>
@@ -78,10 +90,12 @@
                   <span class="badge bg-{{ s.color }}-subtle text-{{ s.color }} px-2 py-1">
                     <i class="bi {{ s.icon }} me-1"></i>{{ s.name }}
                   </span>
+                  {% if s.is_system %}<span class="badge bg-light text-dark border ms-1"><i class="bi bi-lock me-1"></i>системний</span>{% endif %}
                   {% if not s.is_active %}<span class="badge bg-light text-muted border ms-1">неактивний</span>{% endif %}
                 </td>
                 <td>
-                  <input class="form-control form-control-sm" form="status-form-{{ s.id }}" name="name" value="{{ s.name }}" maxlength="200" required style="min-width: 160px;">
+                  <input class="form-control form-control-sm" form="status-form-{{ s.id }}" name="name" value="{{ s.name }}" maxlength="200" required style="min-width: 160px;"
+                         {% if s.is_system %}readonly title="Системний статус не можна перейменувати"{% endif %}>
                 </td>
                 <td>
                   <select class="form-select form-select-sm" form="status-form-{{ s.id }}" name="color" style="width: 120px;">
@@ -121,12 +135,14 @@
                         <i class="bi bi-check-lg"></i>
                       </button>
                     </form>
+                    {% if not s.is_system %}
                     <form method="post" action="{{ url_for('admin.admin_toggle_status', status_id=s.id) }}" class="d-inline">
                       <button class="btn btn-sm btn-outline-secondary" type="submit" data-bs-toggle="tooltip" data-bs-title="{{ 'Активувати' if not s.is_active else 'Деактивувати (сховати з вибору)' }}">
                         <i class="bi {{ 'bi-eye' if not s.is_active else 'bi-eye-slash' }}"></i>
                       </button>
                     </form>
-                    {% if not usage.get(s.name, 0) and not s.is_default %}
+                    {% endif %}
+                    {% if not s.is_system and not usage.get(s.name, 0) and not s.is_default %}
                       <form method="post" action="{{ url_for('admin.admin_delete_status', status_id=s.id) }}" class="d-inline delete-form" data-confirm="Видалити статус «{{ s.name }}»?">
                         <button class="btn btn-sm btn-outline-danger" type="submit" data-bs-toggle="tooltip" data-bs-title="Видалити">
                           <i class="bi bi-trash"></i>

@@ -15,8 +15,9 @@ from models import Record, User, Department, log_action
 from decorators import role_required
 from utils import (parse_date, parse_integer, parse_numeric, clear_dropdown_cache,
                    get_user_map, escape_like, validate_record_form,
-                   get_distinct_statuses, get_distinct_physicians, get_distinct_departments)
-from constants import STATUS_PROCESSING, STATUS_DISCHARGED, STATUS_VIOLATIONS
+                   get_distinct_statuses, get_distinct_physicians, get_distinct_departments,
+                   get_status_options, get_default_status)
+from constants import STATUS_DISCHARGED, STATUS_PROCESSING, STATUS_VIOLATIONS
 from . import records_bp
 
 
@@ -97,13 +98,15 @@ def index():
 
     # base query (by default for current month, unless show_all)
     q = Record.query.options(joinedload(Record.creator), joinedload(Record.updater))
+    date_conditions = []
     if not show_all:
         # show records discharged in the current month by date_of_discharge
-        q = q.filter(
+        date_conditions = [
             Record.date_of_discharge != None,
             Record.date_of_discharge >= start.date(),
             Record.date_of_discharge < end.date(),
-        )
+        ]
+        q = q.filter(*date_conditions)
 
     # --- filtering from query params ---
     selected_status = request.args.get('discharge_status', '').strip()
@@ -179,6 +182,21 @@ def index():
     count_processing = q_alive.filter(Record.discharge_status == STATUS_PROCESSING).count()
     count_violations = q_alive.filter(Record.discharge_status == STATUS_VIOLATIONS).count()
 
+    # Довідник статусів: селекти/бейджі + динамічні піли для несистемних
+    # статусів (рахуються за тим самим правилом — без дати смерті)
+    status_defs = get_status_options('records')
+    status_meta = {s['name']: s for s in get_status_options('records', include_inactive=True)}
+    extra_status_counts = {}
+    if any(s['show_in_stats'] and not s['is_system'] for s in status_defs):
+        counts_q = db.session.query(Record.discharge_status, func.count(Record.id)) \
+            .filter(Record.date_of_death == None)
+        if date_conditions:
+            counts_q = counts_q.filter(*date_conditions)
+        if conditions:
+            counts_q = counts_q.filter(*conditions)
+        extra_status_counts = {name: cnt for name, cnt in
+                               counts_q.group_by(Record.discharge_status).all() if name}
+
     # Pagination
     page = request.args.get('page', 1, type=int)
     per_page = request.args.get('per_page', 100, type=int)
@@ -197,6 +215,10 @@ def index():
                           records=records,
                           pagination=pagination,
                           statuses=statuses,
+                          status_defs=status_defs,
+                          status_meta=status_meta,
+                          extra_status_counts=extra_status_counts,
+                          default_status=get_default_status('records'),
                           physicians=physicians,
                           departments=departments,
                           selected_status=selected_status,
@@ -512,7 +534,7 @@ def add_record():
             treating_physician=data['treating_physician'],
             history=data['history'],
             k_days=data['k_days'],
-            discharge_status=STATUS_PROCESSING,
+            discharge_status=get_default_status('records'),
             date_of_death=data['date_of_death'],
             comment=data['comment'],
             created_by=current_user.id,
@@ -560,7 +582,7 @@ def api_add_record():
         treating_physician=data['treating_physician'],
         history=data['history'],
         k_days=data['k_days'],
-        discharge_status=STATUS_PROCESSING,
+        discharge_status=get_default_status('records'),
         date_of_death=data['date_of_death'],
         comment=data['comment'],
         created_by=current_user.id,
@@ -691,7 +713,7 @@ def edit_record(record_id):
     departments = Department.query.order_by(Department.name).all()
     # Get distinct physicians for autocomplete (cached)
     physicians = get_distinct_physicians()
-    return render_template('edit_record.html', r=r, selected_status=request.args.get('discharge_status', ''), selected_physician=request.args.get('treating_physician', ''), history_q=request.args.get('history', ''), departments=departments, physicians=physicians)
+    return render_template('edit_record.html', r=r, status_defs=get_status_options('records'), selected_status=request.args.get('discharge_status', ''), selected_physician=request.args.get('treating_physician', ''), history_q=request.args.get('history', ''), departments=departments, physicians=physicians)
 
 
 @records_bp.route('/records/<int:record_id>/delete', methods=['POST'])
