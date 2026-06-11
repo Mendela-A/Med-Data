@@ -1,30 +1,7 @@
 {% extends "base.html" %}
+{% from "_macros.html" import url_with, sort_th with context %}
 {% block title %}Мої записи — поточний місяць{% endblock %}
 {% block container_class %}container-fluid px-4{% endblock %}
-
-{# Macro for sortable column headers #}
-{% macro sort_th(column, label) %}
-  {% if sort_by == column %}
-    {% if sort_order == 'asc' %}
-      {% set new_order = 'desc' %}
-      {% set icon = 'bi-arrow-up' %}
-    {% else %}
-      {% set new_order = 'asc' %}
-      {% set icon = 'bi-arrow-down' %}
-    {% endif %}
-  {% else %}
-    {% set new_order = 'asc' %}
-    {% set icon = '' %}
-  {% endif %}
-  <th>
-    <a href="{{ url_for('records.index', month_filter=month_filter_value, all_months='1' if show_all else '', discharge_status=selected_status, treating_physician=selected_physician, discharge_department=selected_department, history=history_q, full_name=full_name_q, has_death_date='1' if has_death_date else '', per_page=pagination.per_page, sort_by=column, sort_order=new_order) }}" class="text-decoration-none text-dark d-flex align-items-center gap-1" style="cursor: pointer;">
-      <span>{{ label }}</span>
-      {% if icon %}
-        <i class="{{ icon }}" style="font-size: 0.8em;"></i>
-      {% endif %}
-    </a>
-  </th>
-{% endmacro %}
 
 {% block content %}
   <!-- Toast container for print notifications -->
@@ -180,18 +157,18 @@
   {% if records %}
     <div class="card">
       <div class="card-body p-0">
-        <div class="table-responsive">
+        <div class="table-responsive records-scroll">
           <table class="table table-hover mb-0 records-table">
             <thead>
               <tr>
-                {{ sort_th('date_of_discharge', 'Дата виписки') }}
-                {{ sort_th('full_name', 'ПІБ') }}
-                {{ sort_th('discharge_department', 'Відділення') }}
-                {{ sort_th('treating_physician', 'Лікар') }}
-                {{ sort_th('history', 'Історія') }}
-                {{ sort_th('k_days', 'Днів') }}
-                {{ sort_th('discharge_status', 'Статус') }}
-                {{ sort_th('date_of_death', 'Дата смерті') }}
+                {{ sort_th('records.index', 'date_of_discharge', 'Дата виписки') }}
+                {{ sort_th('records.index', 'full_name', 'ПІБ') }}
+                {{ sort_th('records.index', 'discharge_department', 'Відділення') }}
+                {{ sort_th('records.index', 'treating_physician', 'Лікар') }}
+                {{ sort_th('records.index', 'history', 'Історія') }}
+                {{ sort_th('records.index', 'k_days', 'Днів') }}
+                {{ sort_th('records.index', 'discharge_status', 'Статус') }}
+                {{ sort_th('records.index', 'date_of_death', 'Дата смерті') }}
                 <th>Коментар</th>
                 {% if current_user.role in ['editor', 'admin', 'viewer'] %}
                   <th>АДСГ</th>
@@ -300,7 +277,7 @@
       <ul class="pagination justify-content-center">
         <!-- Previous button -->
         <li class="page-item {% if not pagination.has_prev %}disabled{% endif %}">
-          <a class="page-link" href="{{ url_for('records.index', page=pagination.prev_num, discharge_status=selected_status, treating_physician=selected_physician, discharge_department=selected_department, history=history_q, full_name=full_name_q, month_filter=month_filter_value, all_months='1' if show_all else '', has_death_date='1' if has_death_date else '') }}"
+          <a class="page-link" href="{{ url_with('records.index', page=pagination.prev_num) }}"
              {% if not pagination.has_prev %}tabindex="-1" aria-disabled="true"{% endif %}>
             <i class="bi bi-chevron-left"></i> Попередня
           </a>
@@ -312,7 +289,7 @@
 
         {% if start_page > 1 %}
           <li class="page-item">
-            <a class="page-link" href="{{ url_for('records.index', page=1, discharge_status=selected_status, treating_physician=selected_physician, discharge_department=selected_department, history=history_q, full_name=full_name_q, month_filter=month_filter_value, all_months='1' if show_all else '', has_death_date='1' if has_death_date else '') }}">1</a>
+            <a class="page-link" href="{{ url_with('records.index', page=1) }}">1</a>
           </li>
           {% if start_page > 2 %}
             <li class="page-item disabled"><span class="page-link">...</span></li>
@@ -321,7 +298,7 @@
 
         {% for page_num in range(start_page, end_page + 1) %}
           <li class="page-item {% if page_num == pagination.page %}active{% endif %}">
-            <a class="page-link" href="{{ url_for('records.index', page=page_num, discharge_status=selected_status, treating_physician=selected_physician, discharge_department=selected_department, history=history_q, full_name=full_name_q, month_filter=month_filter_value, all_months='1' if show_all else '', has_death_date='1' if has_death_date else '') }}">
+            <a class="page-link" href="{{ url_with('records.index', page=page_num) }}">
               {{ page_num }}
             </a>
           </li>
@@ -332,13 +309,13 @@
             <li class="page-item disabled"><span class="page-link">...</span></li>
           {% endif %}
           <li class="page-item">
-            <a class="page-link" href="{{ url_for('records.index', page=pagination.pages, discharge_status=selected_status, treating_physician=selected_physician, discharge_department=selected_department, history=history_q, full_name=full_name_q, month_filter=month_filter_value, all_months='1' if show_all else '', has_death_date='1' if has_death_date else '') }}">{{ pagination.pages }}</a>
+            <a class="page-link" href="{{ url_with('records.index', page=pagination.pages) }}">{{ pagination.pages }}</a>
           </li>
         {% endif %}
 
         <!-- Next button -->
         <li class="page-item {% if not pagination.has_next %}disabled{% endif %}">
-          <a class="page-link" href="{{ url_for('records.index', page=pagination.next_num, discharge_status=selected_status, treating_physician=selected_physician, discharge_department=selected_department, history=history_q, full_name=full_name_q, month_filter=month_filter_value, all_months='1' if show_all else '', has_death_date='1' if has_death_date else '') }}"
+          <a class="page-link" href="{{ url_with('records.index', page=pagination.next_num) }}"
              {% if not pagination.has_next %}tabindex="-1" aria-disabled="true"{% endif %}>
             Наступна <i class="bi bi-chevron-right"></i>
           </a>
@@ -859,7 +836,12 @@
           'X-CSRFToken': getCSRFToken()
         }
       })
-      .then(response => response.json())
+      .then(response => {
+        if (!response.ok) {
+          throw Object.assign(new Error(`Помилка сервера (HTTP ${response.status})`), { isHttp: true });
+        }
+        return response.json();
+      })
       .then(data => {
         saveBtn.innerHTML = originalText;
         saveBtn.disabled = false;
@@ -869,11 +851,8 @@
           updateCounter();
 
           if (closeAfter) {
-            // Close modal and reload page after short delay
-            setTimeout(function() {
-              bootstrap.Modal.getInstance(modal).hide();
-              location.reload();
-            }, 1000);
+            bootstrap.Modal.getInstance(modal).hide();
+            location.reload();
           } else {
             // Clear form but keep some fields
             clearForm(true);
@@ -885,7 +864,7 @@
       .catch(error => {
         saveBtn.innerHTML = originalText;
         saveBtn.disabled = false;
-        showError('Помилка з\'єднання з сервером');
+        showError(error.isHttp ? error.message : 'Помилка з\'єднання з сервером');
         console.error('Error:', error);
       });
     }
@@ -1023,19 +1002,19 @@
           'X-CSRFToken': getCSRFToken()
         }
       })
-      .then(response => response.json())
+      .then(response => {
+        if (!response.ok) {
+          throw Object.assign(new Error(`Помилка сервера (HTTP ${response.status})`), { isHttp: true });
+        }
+        return response.json();
+      })
       .then(data => {
         saveBtn.innerHTML = originalText;
         saveBtn.disabled = false;
 
         if (data.success) {
-          showSuccess(data.message);
-
-          // Close modal and reload page after short delay
-          setTimeout(function() {
-            bootstrap.Modal.getInstance(modal).hide();
-            location.reload();
-          }, 1000);
+          bootstrap.Modal.getInstance(modal).hide();
+          location.reload();
         } else {
           showError(data.error || 'Помилка при оновленні запису');
         }
@@ -1043,7 +1022,7 @@
       .catch(error => {
         saveBtn.innerHTML = originalText;
         saveBtn.disabled = false;
-        showError('Помилка з\'єднання з сервером');
+        showError(error.isHttp ? error.message : 'Помилка з\'єднання з сервером');
         console.error('Error:', error);
       });
     }
@@ -1065,164 +1044,14 @@
 
 {% if current_user.role in ['editor', 'admin', 'viewer'] %}
 <script>
-  // Quick export with current filters
-  function quickExportRecords() {
-    const form = document.createElement('form');
-    form.method = 'POST';
-    form.action = '{{ url_for("records.export") }}';
-    addCSRFToForm(form);
-
-    // Get current month filter values
-    const monthFilter = document.querySelector('input[name="month_filter"]');
-    let fromDate, toDate;
-
-    if (monthFilter && monthFilter.value) {
-      const [year, month] = monthFilter.value.split('-');
-      const lastDay = new Date(year, month, 0).getDate();
-      fromDate = `${year}-${month}-01`;
-      toDate = `${year}-${month}-${lastDay.toString().padStart(2, '0')}`;
-    } else {
-      // Use current month if no filter
-      const today = new Date();
-      const year = today.getFullYear();
-      const month = String(today.getMonth() + 1).padStart(2, '0');
-      const lastDay = new Date(year, today.getMonth() + 1, 0).getDate();
-      fromDate = `${year}-${month}-01`;
-      toDate = `${year}-${month}-${lastDay.toString().padStart(2, '0')}`;
-    }
-
-    // Get current filter values
-    const dischargeStatus = document.querySelector('select[name="discharge_status"]')?.value || '';
-    const treatingPhysician = document.querySelector('select[name="treating_physician"]')?.value || '';
-    const dischargeDepartment = document.querySelector('select[name="discharge_department"]')?.value || '';
-    const history = document.querySelector('input[name="history"]')?.value || '';
-    const fullName = document.querySelector('input[name="full_name"]')?.value || '';
-
-    // Add form fields
-    const fields = {
-      'export_mode': 'range',
-      'from_date': fromDate,
-      'to_date': toDate,
-      'discharge_status': dischargeStatus,
-      'treating_physician': treatingPhysician,
-      'discharge_department': dischargeDepartment,
-      'history': history,
-      'full_name': fullName
-    };
-
-    for (const [name, value] of Object.entries(fields)) {
-      const input = document.createElement('input');
-      input.type = 'hidden';
-      input.name = name;
-      input.value = value;
-      form.appendChild(input);
-    }
-
-    document.body.appendChild(form);
-    form.submit();
-  }
-
-  // Quick print with current filters
-  function printRecords() {
-    // Show loading toast
-    showPrintToast('Формування PDF документу...', 'info');
-
-    const form = document.createElement('form');
-    form.method = 'POST';
-    form.action = '{{ url_for("records.print_records") }}';
-    form.target = '_blank';  // Open PDF in new tab
-    addCSRFToForm(form);
-
-    // Get current month filter values
-    const monthFilter = document.querySelector('input[name="month_filter"]');
-    let fromDate, toDate;
-
-    if (monthFilter && monthFilter.value) {
-      const [year, month] = monthFilter.value.split('-');
-      const lastDay = new Date(year, month, 0).getDate();
-      fromDate = `${year}-${month}-01`;
-      toDate = `${year}-${month}-${lastDay.toString().padStart(2, '0')}`;
-    } else {
-      // Use current month if no filter
-      const today = new Date();
-      const year = today.getFullYear();
-      const month = String(today.getMonth() + 1).padStart(2, '0');
-      const lastDay = new Date(year, today.getMonth() + 1, 0).getDate();
-      fromDate = `${year}-${month}-01`;
-      toDate = `${year}-${month}-${lastDay.toString().padStart(2, '0')}`;
-    }
-
-    // Get current filter values
-    const dischargeStatus = document.querySelector('select[name="discharge_status"]')?.value || '';
-    const treatingPhysician = document.querySelector('select[name="treating_physician"]')?.value || '';
-    const dischargeDepartment = document.querySelector('select[name="discharge_department"]')?.value || '';
-    const history = document.querySelector('input[name="history"]')?.value || '';
-    const fullName = document.querySelector('input[name="full_name"]')?.value || '';
-
-    // Add form fields
-    const fields = {
-      'export_mode': 'range',
-      'from_date': fromDate,
-      'to_date': toDate,
-      'discharge_status': dischargeStatus,
-      'treating_physician': treatingPhysician,
-      'discharge_department': dischargeDepartment,
-      'history': history,
-      'full_name': fullName
-    };
-
-    for (const [name, value] of Object.entries(fields)) {
-      const input = document.createElement('input');
-      input.type = 'hidden';
-      input.name = name;
-      input.value = value;
-      form.appendChild(input);
-    }
-
-    document.body.appendChild(form);
-    form.submit();
-    document.body.removeChild(form);
-
-    // Show success message after a short delay
-    setTimeout(() => {
-      showPrintToast('PDF документ відкрито в новій вкладці', 'success');
-    }, 1500);
-  }
-
-  // Show toast notification for print
-  function showPrintToast(message, type) {
-    const toastContainer = document.getElementById('printToastContainer');
-    if (!toastContainer) return;
-
-    const toastId = 'toast-' + Date.now();
-    const bgClass = type === 'success' ? 'bg-success' : type === 'info' ? 'bg-info' : 'bg-warning';
-
-    const toastHtml = `
-      <div id="${toastId}" class="toast align-items-center text-white ${bgClass} border-0" role="alert" aria-live="assertive" aria-atomic="true">
-        <div class="d-flex">
-          <div class="toast-body">
-            <i class="bi bi-${type === 'success' ? 'check-circle' : type === 'info' ? 'hourglass-split' : 'exclamation-circle'} me-2"></i>
-            ${message}
-          </div>
-          <button type="button" class="btn-close btn-close-white me-2 m-auto" data-bs-dismiss="toast" aria-label="Close"></button>
-        </div>
-      </div>
-    `;
-
-    toastContainer.insertAdjacentHTML('beforeend', toastHtml);
-    const toastElement = document.getElementById(toastId);
-    const toast = new bootstrap.Toast(toastElement, {
-      autohide: true,
-      delay: type === 'info' ? 2000 : 3000
-    });
-    toast.show();
-
-    // Remove toast element after it's hidden
-    toastElement.addEventListener('hidden.bs.toast', function() {
-      toastElement.remove();
-    });
-  }
-
+  window.RecordsExportConfig = {
+    exportUrl: "{{ url_for('records.export') }}",
+    printUrl: "{{ url_for('records.print_records') }}",
+    filterFields: ['discharge_status', 'treating_physician', 'discharge_department', 'history', 'full_name']
+  };
+</script>
+<script src="{{ url_for('static', filename='records-export.js') }}"></script>
+<script>
   // Auto-fill dates and filters in export modal
   document.addEventListener('DOMContentLoaded', function() {
     const exportModal = document.getElementById('exportRecordsModal');

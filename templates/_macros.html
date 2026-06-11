@@ -1,0 +1,33 @@
+{# Спільні макроси. Імпортувати з контекстом, бо потрібні request/sort_by/sort_order:
+   {% from "_macros.html" import url_with, sort_th with context %} #}
+
+{# url_with(endpoint, **overrides) — бере всі поточні query-параметри (request.args),
+   накладає overrides і будує url_for. Параметр зі значенням none видаляється з URL. #}
+{%- macro url_with(endpoint) -%}
+  {{- url_for(endpoint, **dict(request.args.to_dict(), **kwargs)) -}}
+{%- endmacro -%}
+
+{# sort_th(endpoint, column, label) — клікабельний заголовок колонки з індикатором
+   напрямку сортування. Зберігає всі фільтри/per_page, скидає page на першу сторінку. #}
+{% macro sort_th(endpoint, column, label) %}
+  {% if sort_by == column %}
+    {% if sort_order == 'asc' %}
+      {% set new_order = 'desc' %}
+      {% set icon = 'bi-arrow-up' %}
+    {% else %}
+      {% set new_order = 'asc' %}
+      {% set icon = 'bi-arrow-down' %}
+    {% endif %}
+  {% else %}
+    {% set new_order = 'asc' %}
+    {% set icon = '' %}
+  {% endif %}
+  <th>
+    <a href="{{ url_with(endpoint, sort_by=column, sort_order=new_order, page=none) }}" class="text-decoration-none text-dark d-flex align-items-center gap-1" style="cursor: pointer;">
+      <span>{{ label }}</span>
+      {% if icon %}
+        <i class="{{ icon }}" style="font-size: 0.8em;"></i>
+      {% endif %}
+    </a>
+  </th>
+{% endmacro %}

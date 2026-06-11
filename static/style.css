@@ -394,6 +394,14 @@ h1, h2, h3, h4, h5, h6,
   -webkit-overflow-scrolling: touch;
 }
 
+/* Скрол-контейнер для великих таблиць записів: overflow на .table-responsive
+   робить sticky-шапку відносною саме до нього, тому обмежуємо висоту і
+   скролимо всередині — шапка лишається видимою. */
+.records-scroll {
+  max-height: 75vh;
+  overflow-y: auto;
+}
+
 .table {
   border-collapse: separate;
   border-spacing: 0;
