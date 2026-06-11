@@ -7,7 +7,7 @@
   <!-- Toast container for print notifications -->
   <div id="printToastContainer" class="toast-container position-fixed top-0 end-0 p-3" style="z-index: 9999;"></div>
 
-  <div class="d-flex align-items-center gap-2 mb-3 flex-wrap">
+  <div class="d-flex align-items-center gap-2 mb-2 flex-wrap">
     <h1 class="h4 mb-0 me-1" style="white-space: nowrap;">
       {% if show_all %}
         Амбулаторна доп. <span class="text-muted fw-normal">(усі)</span>
@@ -17,32 +17,6 @@
         Амбулаторна доп. <span class="text-muted fw-normal">(поточний місяць)</span>
       {% endif %}
     </h1>
-
-    <span class="stat-pill stat-pill-total" data-bs-toggle="tooltip" data-bs-title="Загальна кількість записів (з урахуванням фільтрів)">
-      <i class="bi bi-layers"></i>Всього: <strong>{{ count }}</strong>
-    </span>
-    {% for s in status_defs if s.show_in_stats %}
-      {% set c = status_counts.get(s.name, 0) %}
-      <span class="stat-pill stat-pill-{{ s.color }}{% if c == 0 %} stat-pill-muted{% endif %}" data-bs-toggle="tooltip" data-bs-title="Записи зі статусом '{{ s.name }}'">
-        <i class="bi {{ s.icon }}"></i>{{ s.name }}: <strong>{{ c }}</strong>
-        {% if count > 0 %}<span class="stat-pct">({{ "%.0f"|format(c / count * 100) }}%)</span>{% endif %}
-      </span>
-    {% endfor %}
-    <span class="stat-pill stat-pill-danger{% if count_urgent == 0 %} stat-pill-muted{% endif %}" data-bs-toggle="tooltip" data-bs-title="Записи з позначкою ургентного стану — незалежно від статусу, тому перетинаються зі статусними лічильниками">
-      <i class="bi bi-exclamation-triangle-fill"></i>Ургентних станів: <strong>{{ count_urgent }}</strong>
-      {% if count > 0 %}<span class="stat-pct">({{ "%.0f"|format(count_urgent / count * 100) }}%)</span>{% endif %}
-    </span>
-    <button type="button" class="btn btn-sm btn-link text-muted p-0" data-bs-toggle="popover" data-bs-placement="bottom" data-bs-html="true"
-            data-bs-title="<i class='bi bi-info-circle me-1'></i>Як рахується статистика?"
-            data-bs-content="<ul class='mb-0 ps-3'><li><strong>Статусні лічильники</strong> — кожен запис рахується рівно в одному (сума = Всього)</li><li><strong>Ургентних станів</strong> — окрема позначка, не статус: такі записи входять і у статусні лічильники</li><li>Відсотки округлені до цілого, тому їх сума може давати 99–101%</li></ul>">
-      <i class="bi bi-question-circle"></i>
-    </button>
-    {% if other_count %}
-      <span class="stat-pill stat-pill-secondary" data-bs-toggle="tooltip" data-bs-title="Записи зі статусами, яких немає в довіднику (Адмін → Статуси)">
-        <i class="bi bi-question-circle"></i>Інше: <strong>{{ other_count }}</strong>
-        {% if count > 0 %}<span class="stat-pct">({{ "%.0f"|format(other_count / count * 100) }}%)</span>{% endif %}
-      </span>
-    {% endif %}
 
     {% if current_user.role in ['editor', 'admin', 'viewer'] %}
     <div class="btn-group ms-auto">
@@ -63,6 +37,34 @@
       </button>
     </div>
     {% endif %}
+  </div>
+
+  <div class="stat-pills-row mb-3">
+    <span class="stat-pill stat-pill-total" data-bs-toggle="tooltip" data-bs-title="Загальна кількість записів (з урахуванням фільтрів)">
+      <i class="bi bi-layers"></i>Всього: <strong>{{ count }}</strong>
+    </span>
+    {% for s in status_defs if s.show_in_stats %}
+      {% set c = status_counts.get(s.name, 0) %}
+      <span class="stat-pill stat-pill-{{ s.color }}{% if c == 0 %} stat-pill-muted{% endif %}" data-bs-toggle="tooltip" data-bs-title="Записи зі статусом '{{ s.name }}'">
+        <i class="bi {{ s.icon }}"></i>{{ s.name }}: <strong>{{ c }}</strong>
+        {% if count > 0 %}<span class="stat-pct">({{ "%.0f"|format(c / count * 100) }}%)</span>{% endif %}
+      </span>
+    {% endfor %}
+    <span class="stat-pill stat-pill-danger{% if count_urgent == 0 %} stat-pill-muted{% endif %}" data-bs-toggle="tooltip" data-bs-title="Записи з позначкою ургентного стану — незалежно від статусу, тому перетинаються зі статусними лічильниками">
+      <i class="bi bi-exclamation-triangle-fill"></i>Ургентних станів: <strong>{{ count_urgent }}</strong>
+      {% if count > 0 %}<span class="stat-pct">({{ "%.0f"|format(count_urgent / count * 100) }}%)</span>{% endif %}
+    </span>
+    {% if other_count %}
+      <span class="stat-pill stat-pill-secondary" data-bs-toggle="tooltip" data-bs-title="Записи зі статусами, яких немає в довіднику (Адмін → Статуси)">
+        <i class="bi bi-question-circle"></i>Інше: <strong>{{ other_count }}</strong>
+        {% if count > 0 %}<span class="stat-pct">({{ "%.0f"|format(other_count / count * 100) }}%)</span>{% endif %}
+      </span>
+    {% endif %}
+    <button type="button" class="btn btn-sm btn-link text-muted p-0" data-bs-toggle="popover" data-bs-placement="bottom" data-bs-html="true"
+            data-bs-title="<i class='bi bi-info-circle me-1'></i>Як рахується статистика?"
+            data-bs-content="<ul class='mb-0 ps-3'><li><strong>Статусні лічильники</strong> — кожен запис рахується рівно в одному (сума = Всього)</li><li><strong>Ургентних станів</strong> — окрема позначка, не статус: такі записи входять і у статусні лічильники</li><li>Відсотки округлені до цілого, тому їх сума може давати 99–101%</li></ul>">
+      <i class="bi bi-question-circle"></i>
+    </button>
   </div>
 
   <div class="card mb-3">

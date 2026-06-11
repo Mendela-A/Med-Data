@@ -1089,3 +1089,15 @@ input[list]:focus::-webkit-calendar-picker-indicator { opacity: 1; }
   background-color: var(--color-primary);
   color: #fff;
 }
+
+/* Окремий рівний ряд статусних пілів під заголовком сторінки */
+.stat-pills-row {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 0.5rem;
+}
+
+.stat-pills-row .stat-pill {
+  min-height: 28px;
+}
