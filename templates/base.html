@@ -51,18 +51,36 @@
       {% endif %}
       {% if current_user.role == 'admin' %}
         <div class="topnav-divider"></div>
-        <a href="{{ url_for('admin.admin_users') }}" class="topnav-link{% if request.endpoint and 'user' in request.endpoint %} active{% endif %}" title="Користувачі">
-          <i class="bi bi-people"></i><span>Користувачі</span>
-        </a>
-        <a href="{{ url_for('admin.admin_departments') }}" class="topnav-link{% if request.endpoint and 'department' in request.endpoint %} active{% endif %}" title="Відділення">
-          <i class="bi bi-building"></i><span>Відділення</span>
-        </a>
-        <a href="{{ url_for('admin.admin_statuses') }}" class="topnav-link{% if request.endpoint and request.endpoint.startswith('admin.admin_statuses') %} active{% endif %}" title="Статуси">
-          <i class="bi bi-tags"></i><span>Статуси</span>
-        </a>
-        <a href="{{ url_for('admin.admin_audit') }}" class="topnav-link{% if request.endpoint == 'admin.admin_audit' %} active{% endif %}" title="Аудит">
-          <i class="bi bi-journal-text"></i><span>Аудит</span>
-        </a>
+        {% set admin_section_active = request.endpoint and request.endpoint.startswith('admin.') and request.endpoint != 'admin.admin_statistics' %}
+        <div class="dropdown">
+          <button class="topnav-link dropdown-toggle border-0 bg-transparent{% if admin_section_active %} active{% endif %}" type="button"
+                  data-bs-toggle="dropdown" aria-expanded="false" title="Налаштування">
+            <i class="bi bi-gear"></i><span>Налаштування</span>
+          </button>
+          <ul class="dropdown-menu shadow-sm">
+            <li>
+              <a class="dropdown-item{% if request.endpoint and 'user' in request.endpoint %} active{% endif %}" href="{{ url_for('admin.admin_users') }}">
+                <i class="bi bi-people me-2"></i>Користувачі
+              </a>
+            </li>
+            <li>
+              <a class="dropdown-item{% if request.endpoint and 'department' in request.endpoint %} active{% endif %}" href="{{ url_for('admin.admin_departments') }}">
+                <i class="bi bi-building me-2"></i>Відділення
+              </a>
+            </li>
+            <li>
+              <a class="dropdown-item{% if request.endpoint and request.endpoint.startswith('admin.admin_statuses') %} active{% endif %}" href="{{ url_for('admin.admin_statuses') }}">
+                <i class="bi bi-tags me-2"></i>Статуси
+              </a>
+            </li>
+            <li><hr class="dropdown-divider"></li>
+            <li>
+              <a class="dropdown-item{% if request.endpoint == 'admin.admin_audit' %} active{% endif %}" href="{{ url_for('admin.admin_audit') }}">
+                <i class="bi bi-journal-text me-2"></i>Аудит
+              </a>
+            </li>
+          </ul>
+        </div>
       {% endif %}
     </div>
 

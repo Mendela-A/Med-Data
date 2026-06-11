@@ -1082,3 +1082,10 @@ input[list]:focus::-webkit-calendar-picker-indicator { opacity: 1; }
   background-color: #475569 !important;
   border-color: #475569 !important;
 }
+
+/* Активний пункт у випадайках навігації — фірмовий колір */
+.dropdown-menu .dropdown-item.active,
+.dropdown-menu .dropdown-item:active {
+  background-color: var(--color-primary);
+  color: #fff;
+}
