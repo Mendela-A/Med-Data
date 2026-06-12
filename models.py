@@ -75,6 +75,8 @@ class Record(db.Model):
         db.Index('idx_record_date_of_discharge', 'date_of_discharge'),
         db.Index('idx_record_full_name', 'full_name'),
         db.Index('idx_record_updated_at', 'updated_at'),
+        db.Index('idx_record_is_urgent', 'is_urgent'),
+        db.Index('idx_record_history_submitted', 'history_submitted'),
     )
 
     id = db.Column(db.Integer, primary_key=True)
@@ -87,6 +89,8 @@ class Record(db.Model):
     discharge_status = db.Column(db.String(200), nullable=True)  # "статус_виписки"
     date_of_death = db.Column(db.Date, nullable=True)  # "дата_смерті"
     comment = db.Column(db.Text, nullable=True)  # "коментар"
+    is_urgent = db.Column(db.Boolean, nullable=True)  # None=не вказано, True=ургентний, False=плановий
+    history_submitted = db.Column(db.Boolean, nullable=False, default=False, server_default='0')  # чи здана документація
     adsj   = db.Column(db.String(200), nullable=True)  # "АДСГ"
     suma   = db.Column(db.Numeric(12, 2), nullable=True)  # "Сума"
     created_by = db.Column(db.Integer, db.ForeignKey('users.id'), nullable=True)

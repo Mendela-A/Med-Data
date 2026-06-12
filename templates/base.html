@@ -49,6 +49,11 @@
           <i class="bi bi-bar-chart-line"></i><span>Статистика</span>
         </a>
       {% endif %}
+      {% if current_user.role in ['operator', 'editor', 'admin', 'viewer'] and current_user.role != 'ambulatory' %}
+        <a href="{{ url_for('admin.admin_reports') }}" class="topnav-link{% if request.endpoint == 'admin.admin_reports' %} active{% endif %}" title="Звіти">
+          <i class="bi bi-file-earmark-bar-graph"></i><span>Звіти</span>
+        </a>
+      {% endif %}
       {% if current_user.role == 'admin' %}
         <div class="topnav-divider"></div>
         {% set admin_section_active = request.endpoint and request.endpoint.startswith('admin.') and request.endpoint != 'admin.admin_statistics' %}

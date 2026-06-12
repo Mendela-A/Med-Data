@@ -582,6 +582,121 @@ def admin_statistics():
     )
 
 
+# Reports Route
+@admin_bp.route('/reports')
+@role_required('operator', 'editor', 'admin', 'viewer')
+def admin_reports():
+    now = datetime.now()
+    today = now.date()
+
+    from_str = request.args.get('from_date', '').strip()
+    to_str = request.args.get('to_date', '').strip()
+
+    from_date = None
+    to_date = None
+    if from_str:
+        try:
+            from_date = date.fromisoformat(from_str)
+        except ValueError:
+            pass
+    if to_str:
+        try:
+            to_date = date.fromisoformat(to_str)
+        except ValueError:
+            pass
+
+    if from_date is None:
+        from_date = date(today.year, today.month, 1)
+    if to_date is None:
+        if from_date.month == 12:
+            to_date = date(from_date.year + 1, 1, 1) - timedelta(days=1)
+        else:
+            to_date = date(from_date.year, from_date.month + 1, 1) - timedelta(days=1)
+
+    if from_date > to_date:
+        from_date, to_date = to_date, from_date
+
+    query_end = to_date + timedelta(days=1)
+
+    if from_date.month == to_date.month and from_date.year == to_date.year and from_date.day == 1:
+        period_label = f"{UKRAINIAN_MONTHS[from_date.month]} {from_date.year}"
+    else:
+        period_label = f"{from_date.strftime('%d.%m.%Y')} — {to_date.strftime('%d.%m.%Y')}"
+
+    base_q = Record.query.filter(
+        Record.date_of_discharge.isnot(None),
+        Record.date_of_discharge >= from_date,
+        Record.date_of_discharge < query_end
+    )
+
+    # --- Submission stats ---
+    submission_row = db.session.query(
+        func.sum(case((Record.history_submitted == True, 1), else_=0)).label('submitted'),
+        func.sum(case((Record.history_submitted == False, 1), else_=0)).label('not_submitted'),
+    ).filter(
+        Record.date_of_discharge.isnot(None),
+        Record.date_of_discharge >= from_date,
+        Record.date_of_discharge < query_end
+    ).first()
+    submission_submitted = submission_row.submitted or 0
+    submission_not_submitted = submission_row.not_submitted or 0
+
+    submission_by_physician = db.session.query(
+        Record.treating_physician,
+        func.sum(case((Record.history_submitted == True, 1), else_=0)).label('submitted'),
+        func.sum(case((Record.history_submitted == False, 1), else_=0)).label('not_submitted'),
+        func.count(Record.id).label('total'),
+    ).filter(
+        Record.date_of_discharge.isnot(None),
+        Record.date_of_discharge >= from_date,
+        Record.date_of_discharge < query_end,
+        Record.treating_physician.isnot(None),
+        func.trim(Record.treating_physician) != ''
+    ).group_by(Record.treating_physician).order_by(func.count(Record.id).desc()).all()
+
+    # --- Urgency stats ---
+    urgency_row = db.session.query(
+        func.sum(case((Record.is_urgent == True, 1), else_=0)).label('urgent'),
+        func.sum(case((Record.is_urgent == False, 1), else_=0)).label('planned'),
+        func.sum(case((Record.is_urgent.is_(None), 1), else_=0)).label('unset'),
+    ).filter(
+        Record.date_of_discharge.isnot(None),
+        Record.date_of_discharge >= from_date,
+        Record.date_of_discharge < query_end
+    ).first()
+    urgency_urgent = urgency_row.urgent or 0
+    urgency_planned = urgency_row.planned or 0
+    urgency_unset = urgency_row.unset or 0
+
+    urgency_by_dept = db.session.query(
+        Record.discharge_department,
+        func.sum(case((Record.is_urgent == True, 1), else_=0)).label('urgent'),
+        func.sum(case((Record.is_urgent == False, 1), else_=0)).label('planned'),
+        func.sum(case((Record.is_urgent.is_(None), 1), else_=0)).label('unset'),
+        func.count(Record.id).label('total'),
+    ).filter(
+        Record.date_of_discharge.isnot(None),
+        Record.date_of_discharge >= from_date,
+        Record.date_of_discharge < query_end,
+        Record.discharge_department.isnot(None),
+        func.trim(Record.discharge_department) != ''
+    ).group_by(Record.discharge_department).order_by(func.count(Record.id).desc()).all()
+
+    return render_template(
+        'reports.html',
+        from_date=from_date,
+        to_date=to_date,
+        period_label=period_label,
+        submission_submitted=submission_submitted,
+        submission_not_submitted=submission_not_submitted,
+        submission_by_physician=submission_by_physician,
+        urgency_urgent=urgency_urgent,
+        urgency_planned=urgency_planned,
+        urgency_unset=urgency_unset,
+        urgency_by_dept=urgency_by_dept,
+    )
+
+
 # Audit Log Route
 @admin_bp.route('/audit')
 @role_required('admin')

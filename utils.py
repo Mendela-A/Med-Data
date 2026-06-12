@@ -65,6 +65,8 @@ def validate_record_form(form_data: dict, require_status_and_dept: bool = False)
     comment = form_data.get('comment', '').strip()
     adsj = form_data.get('adsj', '').strip() if require_status_and_dept else ''
     suma_str = form_data.get('suma', '').strip() if require_status_and_dept else ''
+    is_urgent_str = form_data.get('is_urgent', '').strip()
+    history_submitted = form_data.get('history_submitted') == '1'
 
     required = [date_str, full_name, treating_physician, history, k_days_str]
     if require_status_and_dept:
@@ -97,6 +99,8 @@ def validate_record_form(form_data: dict, require_status_and_dept: bool = False)
 
     suma = parse_numeric(suma_str) if suma_str else None
 
+    is_urgent = True if is_urgent_str == 'urgent' else (False if is_urgent_str == 'planned' else None)
+
     return {
         'date_of_discharge': date_of_discharge,
         'full_name': full_name,
@@ -109,6 +113,8 @@ def validate_record_form(form_data: dict, require_status_and_dept: bool = False)
         'comment': comment or None,
         'adsj': adsj or None,
         'suma': suma,
+        'is_urgent': is_urgent,
+        'history_submitted': history_submitted,
     }, None
 
 

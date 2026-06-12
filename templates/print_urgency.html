@@ -1,0 +1,154 @@
+<!DOCTYPE html>
+<html lang="uk">
+<head>
+    <meta charset="UTF-8">
+    <title>Звіт: Ургентність</title>
+    <style>
+        @page {
+            size: A4 portrait;
+            margin: 1.2cm 1cm;
+            @bottom-right {
+                content: "Стор. " counter(page) " з " counter(pages);
+                font-size: 8pt;
+                color: #666;
+            }
+        }
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        body { font-family: 'DejaVu Sans', Arial, sans-serif; font-size: 10pt; line-height: 1.3; color: #333; }
+
+        .header {
+            position: relative; text-align: center; margin-bottom: 10px;
+            padding-bottom: 8px; padding-left: 80px;
+            border-bottom: 2px solid #0f766e; min-height: 60px;
+        }
+        .header .logo { position: absolute; left: 0; top: 0; height: 55px; width: auto; }
+        .header h1 { font-size: 15pt; margin-bottom: 4px; color: #0f766e; }
+        .header .subtitle { font-size: 10pt; color: #666; }
+
+        .info-block {
+            display: flex; justify-content: space-between; margin-bottom: 12px;
+            font-size: 8pt; padding: 6px; background-color: #f8f9fa; border-radius: 4px;
+        }
+        .info-label { font-weight: bold; color: #555; }
+
+        .summary-cards { display: flex; gap: 10px; margin-bottom: 14px; }
+        .summary-card {
+            flex: 1; padding: 8px 10px; border-radius: 4px; text-align: center; font-size: 9pt;
+        }
+        .card-urgent  { background: #f8d7da; border-left: 4px solid #dc3545; }
+        .card-planned { background: #cff4fc; border-left: 4px solid #0dcaf0; }
+        .card-unset   { background: #e9ecef; border-left: 4px solid #adb5bd; }
+        .card-value { font-size: 20pt; font-weight: bold; line-height: 1.1; }
+        .card-label { font-size: 7.5pt; color: #555; margin-top: 2px; }
+        .card-pct   { font-size: 7pt; color: #777; }
+
+        table { width: 100%; border-collapse: collapse; margin-bottom: 10px; font-size: 9pt; }
+        thead { background-color: #0f766e; color: white; }
+        th { padding: 6px 5px; text-align: left; font-weight: bold; border: 1px solid #0f766e; }
+        td { padding: 5px 5px; border: 1px solid #ddd; vertical-align: middle; }
+        tbody tr:nth-child(even) { background-color: #f8f9fa; }
+
+        .progress-bar-wrap { width: 80px; height: 7px; background: #dee2e6; border-radius: 3px; display: inline-block; vertical-align: middle; }
+        .progress-bar-fill { height: 100%; border-radius: 3px; background: #dc3545; }
+
+        .badge { display: inline-block; padding: 1px 5px; border-radius: 3px; font-size: 8pt; font-weight: bold; }
+        .badge-danger { background: #dc3545; color: #fff; }
+        .badge-info   { background: #0dcaf0; color: #212529; }
+        .badge-muted  { background: #adb5bd; color: #fff; }
+
+        tfoot tr { background: #e9f5f3 !important; font-weight: bold; }
+
+        .footer { margin-top: 15px; padding-top: 8px; border-top: 1px solid #ddd; font-size: 7.5pt; color: #888; text-align: center; }
+        tr { page-break-inside: avoid; }
+        thead { display: table-header-group; }
+    </style>
+</head>
+<body>
+    <div class="header">
+        <img src="file:///app/static/pic/logo.png" alt="Logo" class="logo">
+        <h1>Звіт: Ургентність</h1>
+        <div class="subtitle">Сервіс виписок</div>
+    </div>
+
+    <div class="info-block">
+        <div>
+            <div><span class="info-label">Період:</span> {{ from_date.strftime('%d.%m.%Y') }} — {{ to_date.strftime('%d.%m.%Y') }}</div>
+            {% if filter_department %}
+            <div><span class="info-label">Відділення:</span> {{ filter_department }}</div>
+            {% endif %}
+        </div>
+        <div style="text-align: right;">
+            <div><span class="info-label">Сформував:</span> {{ generated_by }}</div>
+            <div><span class="info-label">Дата:</span> {{ generated_at.strftime('%d.%m.%Y %H:%M') }}</div>
+        </div>
+    </div>
+
+    {% set urg_known = urgency_urgent + urgency_planned %}
+    <div class="summary-cards">
+        <div class="summary-card card-urgent">
+            <div class="card-value" style="color:#dc3545;">{{ urgency_urgent }}</div>
+            <div class="card-label">Ургентних</div>
+            {% if urg_known > 0 %}<div class="card-pct">{{ "%.0f"|format(urgency_urgent / urg_known * 100) }}%</div>{% endif %}
+        </div>
+        <div class="summary-card card-planned">
+            <div class="card-value" style="color:#055160;">{{ urgency_planned }}</div>
+            <div class="card-label">Планових</div>
+            {% if urg_known > 0 %}<div class="card-pct">{{ "%.0f"|format(urgency_planned / urg_known * 100) }}%</div>{% endif %}
+        </div>
+        <div class="summary-card card-unset">
+            <div class="card-value" style="color:#6c757d;">{{ urgency_unset }}</div>
+            <div class="card-label">Не вказано</div>
+        </div>
+    </div>
+
+    {% if urgency_by_dept %}
+    <table>
+        <thead>
+            <tr>
+                <th>№</th>
+                <th>Відділення</th>
+                <th style="text-align:center;">Ургентних</th>
+                <th style="text-align:center;">Планових</th>
+                <th style="text-align:center;">Не вказано</th>
+                <th style="text-align:center;">Всього</th>
+                <th style="text-align:center;">Ург. %</th>
+                <th>Ургентність</th>
+            </tr>
+        </thead>
+        <tbody>
+            {% for row in urgency_by_dept %}
+            <tr>
+                <td>{{ loop.index }}</td>
+                <td>{{ row.discharge_department }}</td>
+                <td style="text-align:center;"><span class="badge badge-danger">{{ row.urgent }}</span></td>
+                <td style="text-align:center;"><span class="badge badge-info">{{ row.planned }}</span></td>
+                <td style="text-align:center;"><span class="badge badge-muted">{{ row.unset if row.unset is defined else (row.total - row.urgent - row.planned) }}</span></td>
+                <td style="text-align:center;">{{ row.total }}</td>
+                <td style="text-align:center;">{{ "%.0f"|format(row.urgent / row.total * 100) if row.total > 0 else 0 }}%</td>
+                <td>
+                    <div class="progress-bar-wrap">
+                        <div class="progress-bar-fill" style="width: {{ (row.urgent / row.total * 100) if row.total > 0 else 0 }}%;"></div>
+                    </div>
+                </td>
+            </tr>
+            {% endfor %}
+        </tbody>
+        <tfoot>
+            <tr>
+                <td colspan="2"><strong>Всього</strong></td>
+                <td style="text-align:center;">{{ urgency_urgent }}</td>
+                <td style="text-align:center;">{{ urgency_planned }}</td>
+                <td style="text-align:center;">{{ urgency_unset }}</td>
+                <td style="text-align:center;">{{ urgency_urgent + urgency_planned + urgency_unset }}</td>
+                <td style="text-align:center;">{{ "%.0f"|format(urgency_urgent / urg_known * 100) if urg_known > 0 else 0 }}%</td>
+                <td></td>
+            </tr>
+        </tfoot>
+    </table>
+    {% endif %}
+
+    <div class="footer">
+        Документ сформовано автоматично системою "Сервіс виписок"
+    </div>
+</body>
+</html>

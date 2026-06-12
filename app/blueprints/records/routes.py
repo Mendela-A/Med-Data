@@ -8,7 +8,7 @@ from flask_login import login_required, current_user
 from datetime import datetime, timezone, timedelta
 from io import BytesIO
 from sqlalchemy.orm import joinedload
-from sqlalchemy import func
+from sqlalchemy import func, case
 
 from app.extensions import db
 from models import Record, User, Department, log_action
@@ -115,6 +115,7 @@ def index():
     history_q = request.args.get('history', '').strip()
     full_name_q = request.args.get('full_name', '').strip()
     has_death_date = request.args.get('has_death_date', '').lower() in ('1', 'true', 'yes')
+    filter_history_submitted = request.args.get('history_submitted', '').strip()  # '1'=здані, '0'=незданні, ''=всі
 
     conditions = []
     if selected_status:
@@ -129,6 +130,10 @@ def index():
         conditions.append(Record.full_name.ilike(f'%{escape_like(full_name_q)}%', escape='\\'))
     if has_death_date:
         conditions.append(Record.date_of_death != None)
+    if filter_history_submitted == '1':
+        conditions.append(Record.history_submitted == True)
+    elif filter_history_submitted == '0':
+        conditions.append(Record.history_submitted == False)
     if conditions:
         q = q.filter(*conditions)
 
@@ -181,6 +186,12 @@ def index():
     count_discharged = q_alive.filter(Record.discharge_status == STATUS_DISCHARGED).count()
     count_processing = q_alive.filter(Record.discharge_status == STATUS_PROCESSING).count()
     count_violations = q_alive.filter(Record.discharge_status == STATUS_VIOLATIONS).count()
+
+    # Лічильники ургентних і зданих (по всьому поточному filtered set)
+    count_urgent = q.filter(Record.is_urgent == True).count()
+    count_planned = q.filter(Record.is_urgent == False).count()
+    count_submitted = q.filter(Record.history_submitted == True).count()
+    count_not_submitted = q.filter(Record.history_submitted == False).count()
 
     # Довідник статусів: селекти/бейджі + динамічні піли для несистемних
     # статусів (рахуються за тим самим правилом — без дати смерті)
@@ -239,7 +250,12 @@ def index():
                           count_processing=count_processing,
                           count_violations=count_violations,
                           count_deceased=count_deceased,
-                          active_filters_count=(1 if selected_status else 0) + (1 if selected_physician else 0) + (1 if selected_department else 0) + (1 if history_q else 0) + (1 if full_name_q else 0))
+                          filter_history_submitted=filter_history_submitted,
+                          count_urgent=count_urgent,
+                          count_planned=count_planned,
+                          count_submitted=count_submitted,
+                          count_not_submitted=count_not_submitted,
+                          active_filters_count=(1 if selected_status else 0) + (1 if selected_physician else 0) + (1 if selected_department else 0) + (1 if history_q else 0) + (1 if full_name_q else 0) + (1 if filter_history_submitted else 0))
 
 
 @records_bp.route('/export', methods=['POST'])
@@ -537,6 +553,8 @@ def add_record():
             discharge_status=get_default_status('records'),
             date_of_death=data['date_of_death'],
             comment=data['comment'],
+            is_urgent=data['is_urgent'],
+            history_submitted=data['history_submitted'],
             created_by=current_user.id,
             updated_by=current_user.id
         )
@@ -585,6 +603,8 @@ def api_add_record():
         discharge_status=get_default_status('records'),
         date_of_death=data['date_of_death'],
         comment=data['comment'],
+        is_urgent=data['is_urgent'],
+        history_submitted=data['history_submitted'],
         created_by=current_user.id,
         updated_by=current_user.id
     )
@@ -636,6 +656,8 @@ def api_edit_record(record_id):
     r.comment = data['comment']
     r.adsj = data['adsj']
     r.suma = data['suma']
+    r.is_urgent = data['is_urgent']
+    r.history_submitted = data['history_submitted']
     r.updated_by = current_user.id
     r.updated_at = datetime.now(timezone.utc)
 
@@ -684,6 +706,8 @@ def edit_record(record_id):
         r.comment = data['comment']
         r.adsj = data['adsj']
         r.suma = data['suma']
+        r.is_urgent = data['is_urgent']
+        r.history_submitted = data['history_submitted']
         r.updated_by = current_user.id
         r.updated_at = datetime.now(timezone.utc)
 
@@ -738,3 +762,157 @@ def delete_record(record_id):
     if request.form.get('has_death_date', '').strip():
         params['has_death_date'] = '1'
     return redirect(url_for('records.index', **params))
+
+
+@records_bp.route('/records/report/submission', methods=['POST'])
+@role_required('operator', 'editor', 'viewer')
+def report_submission():
+    from_str = request.form.get('from_date', '').strip()
+    to_str = request.form.get('to_date', '').strip()
+    if not from_str or not to_str:
+        flash('Будь ласка, вкажіть обидві дати', 'warning')
+        return redirect(url_for('records.index'))
+    try:
+        from_d = datetime.strptime(from_str, '%Y-%m-%d').date()
+        to_d = datetime.strptime(to_str, '%Y-%m-%d').date()
+    except ValueError:
+        flash('Невірний формат дати', 'warning')
+        return redirect(url_for('records.index'))
+    if from_d > to_d:
+        from_d, to_d = to_d, from_d
+    query_end = to_d + timedelta(days=1)
+
+    filter_physician = request.form.get('treating_physician', '').strip()
+
+    base_filter = [
+        Record.date_of_discharge.isnot(None),
+        Record.date_of_discharge >= from_d,
+        Record.date_of_discharge < query_end,
+        Record.treating_physician.isnot(None),
+    ]
+    if filter_physician:
+        base_filter.append(Record.treating_physician == filter_physician)
+
+    submission_row = db.session.query(
+        func.sum(case((Record.history_submitted == True, 1), else_=0)).label('submitted'),
+        func.sum(case((Record.history_submitted == False, 1), else_=0)).label('not_submitted'),
+    ).filter(*[
+        Record.date_of_discharge.isnot(None),
+        Record.date_of_discharge >= from_d,
+        Record.date_of_discharge < query_end,
+    ] + ([Record.treating_physician == filter_physician] if filter_physician else [])).first()
+
+    submission_by_physician = db.session.query(
+        Record.treating_physician,
+        func.sum(case((Record.history_submitted == True, 1), else_=0)).label('submitted'),
+        func.sum(case((Record.history_submitted == False, 1), else_=0)).label('not_submitted'),
+        func.count(Record.id).label('total')
+    ).filter(*base_filter).group_by(Record.treating_physician).order_by(
+        func.sum(case((Record.history_submitted == False, 1), else_=0)).desc()
+    ).all()
+
+    kyiv_tz = timezone(timedelta(hours=2))
+    try:
+        from weasyprint import HTML
+    except ImportError:
+        flash('Для формування PDF потрібен пакет WeasyPrint', 'danger')
+        return redirect(url_for('records.index'))
+
+    html_string = render_template(
+        'print_submission.html',
+        from_date=from_d,
+        to_date=to_d,
+        filter_physician=filter_physician,
+        submission_submitted=submission_row.submitted or 0,
+        submission_not_submitted=submission_row.not_submitted or 0,
+        submission_by_physician=submission_by_physician,
+        generated_by=current_user.username,
+        generated_at=datetime.now(kyiv_tz),
+    )
+    pdf = HTML(string=html_string).write_pdf()
+    bio = BytesIO(pdf)
+    bio.seek(0)
+    filename = f"submission_report_{from_d.strftime('%d-%m-%Y')}_{to_d.strftime('%d-%m-%Y')}.pdf"
+    try:
+        log_action(current_user.id, 'records.report_submission', 'report', None,
+                   f'from={from_d} to={to_d} physician={filter_physician}')
+        db.session.commit()
+    except Exception:
+        current_app.logger.exception('Failed to log report_submission action')
+    return send_file(bio, as_attachment=True, download_name=filename, mimetype='application/pdf')
+
+
+@records_bp.route('/records/report/urgency', methods=['POST'])
+@role_required('operator', 'editor', 'viewer')
+def report_urgency():
+    from_str = request.form.get('from_date', '').strip()
+    to_str = request.form.get('to_date', '').strip()
+    if not from_str or not to_str:
+        flash('Будь ласка, вкажіть обидві дати', 'warning')
+        return redirect(url_for('records.index'))
+    try:
+        from_d = datetime.strptime(from_str, '%Y-%m-%d').date()
+        to_d = datetime.strptime(to_str, '%Y-%m-%d').date()
+    except ValueError:
+        flash('Невірний формат дати', 'warning')
+        return redirect(url_for('records.index'))
+    if from_d > to_d:
+        from_d, to_d = to_d, from_d
+    query_end = to_d + timedelta(days=1)
+
+    filter_department = request.form.get('discharge_department', '').strip()
+
+    date_filter = [
+        Record.date_of_discharge.isnot(None),
+        Record.date_of_discharge >= from_d,
+        Record.date_of_discharge < query_end,
+    ]
+    dept_filter = ([Record.discharge_department == filter_department] if filter_department else [])
+
+    urgency_row = db.session.query(
+        func.sum(case((Record.is_urgent == True, 1), else_=0)).label('urgent'),
+        func.sum(case((Record.is_urgent == False, 1), else_=0)).label('planned'),
+        func.sum(case((Record.is_urgent.is_(None), 1), else_=0)).label('unset'),
+    ).filter(*(date_filter + dept_filter)).first()
+
+    urgency_by_dept = db.session.query(
+        Record.discharge_department,
+        func.sum(case((Record.is_urgent == True, 1), else_=0)).label('urgent'),
+        func.sum(case((Record.is_urgent == False, 1), else_=0)).label('planned'),
+        func.sum(case((Record.is_urgent.is_(None), 1), else_=0)).label('unset'),
+        func.count(Record.id).label('total')
+    ).filter(*(date_filter + dept_filter + [Record.discharge_department.isnot(None)])
+    ).group_by(Record.discharge_department).order_by(
+        func.sum(case((Record.is_urgent == True, 1), else_=0)).desc()
+    ).all()
+
+    kyiv_tz = timezone(timedelta(hours=2))
+    try:
+        from weasyprint import HTML
+    except ImportError:
+        flash('Для формування PDF потрібен пакет WeasyPrint', 'danger')
+        return redirect(url_for('records.index'))
+
+    html_string = render_template(
+        'print_urgency.html',
+        from_date=from_d,
+        to_date=to_d,
+        filter_department=filter_department,
+        urgency_urgent=urgency_row.urgent or 0,
+        urgency_planned=urgency_row.planned or 0,
+        urgency_unset=urgency_row.unset or 0,
+        urgency_by_dept=urgency_by_dept,
+        generated_by=current_user.username,
+        generated_at=datetime.now(kyiv_tz),
+    )
+    pdf = HTML(string=html_string).write_pdf()
+    bio = BytesIO(pdf)
+    bio.seek(0)
+    filename = f"urgency_report_{from_d.strftime('%d-%m-%Y')}_{to_d.strftime('%d-%m-%Y')}.pdf"
+    try:
+        log_action(current_user.id, 'records.report_urgency', 'report', None,
+                   f'from={from_d} to={to_d} dept={filter_department}')
+        db.session.commit()
+    except Exception:
+        current_app.logger.exception('Failed to log report_urgency action')
+    return send_file(bio, as_attachment=True, download_name=filename, mimetype='application/pdf')
