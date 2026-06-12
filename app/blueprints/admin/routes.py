@@ -631,6 +631,8 @@ def admin_reports():
         Record.date_of_discharge < query_end
     )
 
+    _SUBMISSION_EXCL_DEPTS = ['гінекологія', 'реанімація']
+
     # --- Submission stats ---
     submission_row = db.session.query(
         func.sum(case((Record.history_submitted == True, 1), else_=0)).label('submitted'),
@@ -638,7 +640,8 @@ def admin_reports():
     ).filter(
         Record.date_of_discharge.isnot(None),
         Record.date_of_discharge >= from_date,
-        Record.date_of_discharge < query_end
+        Record.date_of_discharge < query_end,
+        func.lower(Record.discharge_department).notin_(_SUBMISSION_EXCL_DEPTS),
     ).first()
     submission_submitted = submission_row.submitted or 0
     submission_not_submitted = submission_row.not_submitted or 0
@@ -653,7 +656,8 @@ def admin_reports():
         Record.date_of_discharge >= from_date,
         Record.date_of_discharge < query_end,
         Record.treating_physician.isnot(None),
-        func.trim(Record.treating_physician) != ''
+        func.trim(Record.treating_physician) != '',
+        func.lower(Record.discharge_department).notin_(_SUBMISSION_EXCL_DEPTS),
     ).group_by(Record.treating_physician).order_by(func.count(Record.id).desc()).all()
 
     # --- Urgency stats ---
@@ -731,6 +735,8 @@ def report_submission():
         from_date, to_date = to_date, from_date
     query_end = to_date + timedelta(days=1)
 
+    _SUBMISSION_EXCL_DEPTS = ['гінекологія', 'реанімація']
+
     submission_row = db.session.query(
         func.sum(case((Record.history_submitted == True, 1), else_=0)).label('submitted'),
         func.sum(case((Record.history_submitted == False, 1), else_=0)).label('not_submitted'),
@@ -738,6 +744,7 @@ def report_submission():
         Record.date_of_discharge.isnot(None),
         Record.date_of_discharge >= from_date,
         Record.date_of_discharge < query_end,
+        func.lower(Record.discharge_department).notin_(_SUBMISSION_EXCL_DEPTS),
     ).first()
 
     submission_by_physician = db.session.query(
@@ -751,6 +758,7 @@ def report_submission():
         Record.date_of_discharge < query_end,
         Record.treating_physician.isnot(None),
         func.trim(Record.treating_physician) != '',
+        func.lower(Record.discharge_department).notin_(_SUBMISSION_EXCL_DEPTS),
     ).group_by(Record.treating_physician).order_by(
         func.sum(case((Record.history_submitted == False, 1), else_=0)).desc()
     ).all()
