@@ -2,21 +2,12 @@
 
 {% block title %}Здача документації - Сервіс виписок{% endblock %}
 
-{% block breadcrumbs %}
-<li class="breadcrumb-item active">Звіти</li>
-{% endblock %}
+{% block breadcrumbs %}{% endblock %}
 
 {% block container_class %}container-fluid px-4{% endblock %}
 
 {% block content %}
 {% set sub_total = submission_submitted + submission_not_submitted %}
-
-<div class="d-flex justify-content-end mb-3 no-print">
-  <a class="btn btn-outline-secondary btn-sm"
-     href="{{ url_for('admin.report_submission', from_date=from_date.isoformat(), to_date=to_date.isoformat()) }}">
-    <i class="bi bi-file-earmark-pdf me-1"></i>Друкувати PDF
-  </a>
-</div>
 
 <!-- Date Range Filter -->
 <div class="card mb-3 no-print">
@@ -39,8 +30,12 @@
       <button type="button" class="btn btn-outline-secondary btn-sm" id="prevMonthBtn" title="Попередній місяць">
         <i class="bi bi-chevron-left me-1"></i>Попередній
       </button>
-      <div class="ms-auto">
+      <div class="ms-auto d-flex align-items-center gap-2">
         <span class="stat-pill stat-pill-info"><i class="bi bi-calendar3"></i>{{ period_label }}</span>
+        <a class="btn btn-outline-secondary btn-sm"
+           href="{{ url_for('admin.report_submission', from_date=from_date.isoformat(), to_date=to_date.isoformat()) }}">
+          <i class="bi bi-file-earmark-pdf me-1"></i>PDF
+        </a>
       </div>
     </form>
   </div>
