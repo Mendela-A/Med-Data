@@ -50,13 +50,43 @@
         </a>
       {% endif %}
       {% if current_user.role in ['operator', 'editor', 'admin', 'viewer'] and current_user.role != 'ambulatory' %}
-        <a href="{{ url_for('admin.admin_reports') }}" class="topnav-link{% if request.endpoint == 'admin.admin_reports' %} active{% endif %}" title="Звіти">
-          <i class="bi bi-file-earmark-bar-graph"></i><span>Звіти</span>
-        </a>
+        {% set reports_active = request.endpoint and request.endpoint.startswith('admin.report') %}
+        <div class="dropdown">
+          <button class="topnav-link dropdown-toggle border-0 bg-transparent{% if reports_active %} active{% endif %}"
+                  type="button" data-bs-toggle="dropdown" aria-expanded="false" title="Звіти">
+            <i class="bi bi-file-earmark-bar-graph"></i><span>Звіти</span>
+          </button>
+          <ul class="dropdown-menu shadow-sm">
+            <li>
+              <a class="dropdown-item{% if request.endpoint == 'admin.report_submission_page' %} active{% endif %}"
+                 href="{{ url_for('admin.report_submission_page') }}">
+                <i class="bi bi-file-earmark-check me-2 text-success"></i>Здача документації
+              </a>
+            </li>
+            <li>
+              <a class="dropdown-item{% if request.endpoint == 'admin.report_urgency_page' %} active{% endif %}"
+                 href="{{ url_for('admin.report_urgency_page') }}">
+                <i class="bi bi-lightning-fill me-2 text-danger"></i>Ургентність
+              </a>
+            </li>
+            <li>
+              <a class="dropdown-item{% if request.endpoint == 'admin.report_not_submitted_page' %} active{% endif %}"
+                 href="{{ url_for('admin.report_not_submitted_page') }}">
+                <i class="bi bi-file-earmark-x me-2 text-warning"></i>Не здані історії
+              </a>
+            </li>
+            <li>
+              <a class="dropdown-item{% if request.endpoint == 'admin.report_hospitalization_page' %} active{% endif %}"
+                 href="{{ url_for('admin.report_hospitalization_page') }}">
+                <i class="bi bi-clipboard2-pulse me-2 text-danger"></i>Госпіталізація
+              </a>
+            </li>
+          </ul>
+        </div>
       {% endif %}
       {% if current_user.role == 'admin' %}
         <div class="topnav-divider"></div>
-        {% set admin_section_active = request.endpoint and request.endpoint.startswith('admin.') and request.endpoint != 'admin.admin_statistics' %}
+        {% set admin_section_active = request.endpoint and request.endpoint.startswith('admin.') and request.endpoint != 'admin.admin_statistics' and not request.endpoint.startswith('admin.report') %}
         <div class="dropdown">
           <button class="topnav-link dropdown-toggle border-0 bg-transparent{% if admin_section_active %} active{% endif %}" type="button"
                   data-bs-toggle="dropdown" aria-expanded="false" title="Налаштування">
