@@ -633,6 +633,35 @@ def api_add_record():
         return jsonify({'success': False, 'error': 'Помилка при збереженні запису'}), 500
 
 
+@records_bp.route('/api/records/<int:record_id>/status', methods=['POST'])
+@role_required('operator')
+def api_update_record_status(record_id):
+    """AJAX endpoint for operator: update is_urgent and history_submitted only."""
+    r = db.get_or_404(Record, record_id)
+
+    is_urgent_raw = request.form.get('is_urgent', '')
+    if is_urgent_raw == 'urgent':
+        r.is_urgent = True
+    elif is_urgent_raw == 'planned':
+        r.is_urgent = False
+    else:
+        r.is_urgent = None
+
+    r.history_submitted = request.form.get('history_submitted') == '1'
+    r.updated_by = current_user.id
+    r.updated_at = datetime.now(timezone.utc)
+
+    try:
+        log_action(current_user.id, 'record.update_status', 'record', r.id,
+                   f'is_urgent={r.is_urgent} history_submitted={r.history_submitted}')
+        db.session.commit()
+        return jsonify({'success': True, 'record_id': r.id})
+    except Exception:
+        db.session.rollback()
+        current_app.logger.exception('Failed to update record status')
+        return jsonify({'success': False, 'error': 'Помилка при оновленні статусу'}), 500
+
+
 @records_bp.route('/api/records/<int:record_id>/edit', methods=['POST'])
 @role_required('editor')
 def api_edit_record(record_id):

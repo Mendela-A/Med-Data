@@ -229,6 +229,9 @@
                   <th>АДСГ</th>
                   <th>Сума</th>
                 {% endif %}
+                {% if current_user.role == 'operator' %}
+                  <th>Дія</th>
+                {% endif %}
                 {% if current_user.role in ['editor', 'admin'] %}
                   <th>Змінив</th>
                   <th>Дія</th>
@@ -292,6 +295,23 @@
             {% if current_user.role in ['editor', 'admin', 'viewer'] %}
               <td>{{ r.adsj or '' }}</td>
               <td>{{ r.suma | format_suma }}</td>
+            {% endif %}
+            {% if current_user.role == 'operator' %}
+              <td class="action-cell">
+                <div class="action-buttons-container">
+                  <button
+                    class="btn btn-xs btn-outline-secondary update-status-btn"
+                    data-bs-toggle="modal"
+                    data-bs-target="#updateStatusModal"
+                    data-record-id="{{ r.id }}"
+                    data-full-name="{{ r.full_name }}"
+                    data-is-urgent="{{ 'urgent' if r.is_urgent == true else ('planned' if r.is_urgent == false else '') }}"
+                    data-history-submitted="{{ '1' if r.history_submitted else '0' }}"
+                    title="Змінити статус">
+                    <i class="bi bi-toggle-on"></i>Статус
+                  </button>
+                </div>
+              </td>
             {% endif %}
             {% if current_user.role in ['editor', 'admin'] %}
               <td>{{ r.updater.username if r.updater else (r.creator.username if r.creator else r.updated_by or r.created_by) }}</td>
@@ -523,12 +543,8 @@
                     <label class="form-check-label text-danger fw-semibold" for="add_urgent"><i class="bi bi-lightning-fill me-1"></i>Ургентний</label>
                   </div>
                   <div class="form-check">
-                    <input class="form-check-input" type="radio" name="is_urgent" id="add_planned" value="planned">
+                    <input class="form-check-input" type="radio" name="is_urgent" id="add_planned" value="planned" checked>
                     <label class="form-check-label text-info-emphasis" for="add_planned"><i class="bi bi-calendar-check me-1"></i>Плановий</label>
-                  </div>
-                  <div class="form-check">
-                    <input class="form-check-input" type="radio" name="is_urgent" id="add_unset" value="" checked>
-                    <label class="form-check-label text-muted" for="add_unset">—</label>
                   </div>
                 </div>
               </div>
@@ -678,10 +694,6 @@
                     <input class="form-check-input" type="radio" name="is_urgent" id="edit_planned" value="planned">
                     <label class="form-check-label text-info-emphasis" for="edit_planned"><i class="bi bi-calendar-check me-1"></i>Плановий</label>
                   </div>
-                  <div class="form-check">
-                    <input class="form-check-input" type="radio" name="is_urgent" id="edit_unset" value="">
-                    <label class="form-check-label text-muted" for="edit_unset">—</label>
-                  </div>
                 </div>
                 {% else %}
                 <div class="pt-1">
@@ -791,6 +803,55 @@
             </button>
           </div>
         </form>
+      </div>
+    </div>
+  </div>
+  {% endif %}
+
+  {% if current_user.role == 'operator' %}
+  <!-- Update Status Modal -->
+  <div class="modal fade" id="updateStatusModal" tabindex="-1" aria-labelledby="updateStatusModalLabel" aria-hidden="true">
+    <div class="modal-dialog modal-sm">
+      <div class="modal-content">
+        <div class="modal-header">
+          <h5 class="modal-title" id="updateStatusModalLabel">Змінити статус</h5>
+          <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+        </div>
+        <div class="modal-body">
+          <div id="updateStatusSuccess" class="alert alert-success fade" role="alert" style="display:none;">
+            <i class="bi bi-check-circle-fill me-2"></i><span id="updateStatusSuccessMsg"></span>
+          </div>
+          <div id="updateStatusError" class="alert alert-danger fade" role="alert" style="display:none;">
+            <i class="bi bi-exclamation-triangle-fill me-2"></i><span id="updateStatusErrorMsg"></span>
+          </div>
+          <form id="updateStatusForm">
+            <input type="hidden" id="status_record_id" name="record_id">
+            <div class="mb-3">
+              <label class="form-label fw-semibold">Стан</label>
+              <div class="d-flex gap-3">
+                <div class="form-check">
+                  <input class="form-check-input" type="radio" name="is_urgent" id="su_urgent" value="urgent">
+                  <label class="form-check-label" for="su_urgent"><i class="bi bi-lightning-fill text-danger me-1"></i>Ургентний</label>
+                </div>
+                <div class="form-check">
+                  <input class="form-check-input" type="radio" name="is_urgent" id="su_planned" value="planned">
+                  <label class="form-check-label" for="su_planned"><i class="bi bi-calendar-check text-success me-1"></i>Плановий</label>
+                </div>
+              </div>
+            </div>
+            <div class="mb-3">
+              <label class="form-label fw-semibold">Здача документів</label>
+              <div class="form-check form-switch">
+                <input class="form-check-input" type="checkbox" id="su_history_submitted" name="history_submitted" value="1" role="switch">
+                <label class="form-check-label" for="su_history_submitted">Документи здано</label>
+              </div>
+            </div>
+          </form>
+        </div>
+        <div class="modal-footer">
+          <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Скасувати</button>
+          <button type="button" class="btn btn-primary" id="saveStatusBtn"><i class="bi bi-check-lg me-1"></i>Зберегти</button>
+        </div>
       </div>
     </div>
   </div>
@@ -1078,7 +1139,7 @@
       document.getElementById('edit_adsj').value = adsj;
       document.getElementById('edit_suma').value = suma;
       // is_urgent radio (operator/admin) or read-only display
-      const urgentVal = isUrgent || '';
+      const urgentVal = isUrgent || 'planned';
       const urgentRadios = document.querySelectorAll('#editRecordForm input[name="is_urgent"][type="radio"]');
       if (urgentRadios.length) {
         urgentRadios.forEach(r => { r.checked = r.value === urgentVal; });
@@ -1248,6 +1309,72 @@
       });
     }
   });
+</script>
+
+<script>
+  // Update Status Modal (operator)
+  (function() {
+    const modal = document.getElementById('updateStatusModal');
+    if (!modal) return;
+
+    document.addEventListener('click', function(e) {
+      const btn = e.target.closest('.update-status-btn');
+      if (!btn) return;
+
+      const recordId = btn.dataset.recordId;
+      const isUrgent = btn.dataset.isUrgent;
+      const historySubmitted = btn.dataset.historySubmitted;
+
+      document.getElementById('status_record_id').value = recordId;
+      document.getElementById('updateStatusModalLabel').textContent = `Статус запису #${recordId} — ${btn.dataset.fullName}`;
+
+      const suUrgentVal = isUrgent || 'planned';
+      document.querySelectorAll('#updateStatusForm input[name="is_urgent"]').forEach(r => {
+        r.checked = r.value === suUrgentVal;
+      });
+      document.getElementById('su_history_submitted').checked = historySubmitted === '1';
+
+      ['updateStatusSuccess', 'updateStatusError'].forEach(id => {
+        const el = document.getElementById(id);
+        el.style.display = 'none';
+        el.classList.remove('show');
+      });
+    });
+
+    document.getElementById('saveStatusBtn').addEventListener('click', function() {
+      const recordId = document.getElementById('status_record_id').value;
+      const form = document.getElementById('updateStatusForm');
+      const formData = new FormData(form);
+      if (!document.getElementById('su_history_submitted').checked) {
+        formData.set('history_submitted', '0');
+      }
+
+      fetchJSON(`/api/records/${recordId}/status`, { method: 'POST', body: formData })
+        .then(data => {
+          if (data.success) {
+            const successEl = document.getElementById('updateStatusSuccess');
+            document.getElementById('updateStatusSuccessMsg').textContent = 'Статус збережено';
+            successEl.style.display = '';
+            successEl.classList.add('show');
+            setTimeout(() => {
+              bootstrap.Modal.getInstance(modal).hide();
+              location.reload();
+            }, 800);
+          } else {
+            const errEl = document.getElementById('updateStatusError');
+            document.getElementById('updateStatusErrorMsg').textContent = data.error || 'Помилка';
+            errEl.style.display = '';
+            errEl.classList.add('show');
+          }
+        })
+        .catch(() => {
+          const errEl = document.getElementById('updateStatusError');
+          document.getElementById('updateStatusErrorMsg').textContent = 'Помилка мережі';
+          errEl.style.display = '';
+          errEl.classList.add('show');
+        });
+    });
+  })();
 </script>
 {% endif %}
 
