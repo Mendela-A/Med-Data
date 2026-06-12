@@ -7,7 +7,6 @@ from flask import render_template, redirect, url_for, flash, request, current_ap
 from flask_login import login_required, current_user
 from datetime import datetime, date, timedelta
 from io import BytesIO
-from collections import defaultdict
 from sqlalchemy import extract, case, func
 
 from app.extensions import db
@@ -714,34 +713,7 @@ def report_urgency_page():
 @role_required('operator', 'editor', 'admin', 'viewer')
 def report_submission():
     """PDF: history submission stats per physician."""
-    now = datetime.now()
-    today = now.date()
-    from_str = request.args.get('from_date', '').strip()
-    to_str   = request.args.get('to_date',   '').strip()
-    from_date = None
-    to_date   = None
-    if from_str:
-        try:
-            from_date = date.fromisoformat(from_str)
-        except ValueError:
-            pass
-    if to_str:
-        try:
-            to_date = date.fromisoformat(to_str)
-        except ValueError:
-            pass
-    if from_date is None:
-        from_date = date(today.year, today.month, 1)
-    if to_date is None:
-        if from_date.month == 12:
-            to_date = date(from_date.year + 1, 1, 1) - timedelta(days=1)
-        else:
-            to_date = date(from_date.year, from_date.month + 1, 1) - timedelta(days=1)
-    if from_date > to_date:
-        from_date, to_date = to_date, from_date
-    query_end = to_date + timedelta(days=1)
-
-    _SUBMISSION_EXCL_DEPTS = ['гінекологія', 'реанімація']
+    from_date, to_date, query_end, _ = _parse_report_dates()
 
     submission_row = db.session.query(
         func.sum(case((Record.history_submitted == True, 1), else_=0)).label('submitted'),
@@ -776,7 +748,7 @@ def report_submission():
         from weasyprint import HTML
     except ImportError:
         flash('Для формування PDF потрібен пакет WeasyPrint', 'danger')
-        return redirect(url_for('admin.admin_reports', from_date=from_str, to_date=to_str))
+        return redirect(url_for('admin.admin_reports'))
 
     html_string = render_template(
         'print_submission.html',
@@ -806,32 +778,7 @@ def report_submission():
 @role_required('operator', 'editor', 'admin', 'viewer')
 def report_urgency():
     """PDF: urgency stats per department."""
-    now = datetime.now()
-    today = now.date()
-    from_str = request.args.get('from_date', '').strip()
-    to_str   = request.args.get('to_date',   '').strip()
-    from_date = None
-    to_date   = None
-    if from_str:
-        try:
-            from_date = date.fromisoformat(from_str)
-        except ValueError:
-            pass
-    if to_str:
-        try:
-            to_date = date.fromisoformat(to_str)
-        except ValueError:
-            pass
-    if from_date is None:
-        from_date = date(today.year, today.month, 1)
-    if to_date is None:
-        if from_date.month == 12:
-            to_date = date(from_date.year + 1, 1, 1) - timedelta(days=1)
-        else:
-            to_date = date(from_date.year, from_date.month + 1, 1) - timedelta(days=1)
-    if from_date > to_date:
-        from_date, to_date = to_date, from_date
-    query_end = to_date + timedelta(days=1)
+    from_date, to_date, query_end, _ = _parse_report_dates()
 
     urgency_row = db.session.query(
         func.sum(case((Record.is_urgent == True, 1), else_=0)).label('urgent'),
@@ -867,7 +814,7 @@ def report_urgency():
         from weasyprint import HTML
     except ImportError:
         flash('Для формування PDF потрібен пакет WeasyPrint', 'danger')
-        return redirect(url_for('admin.admin_reports', from_date=from_str, to_date=to_str))
+        return redirect(url_for('admin.admin_reports'))
 
     html_string = render_template(
         'print_urgency.html',
