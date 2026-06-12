@@ -1037,7 +1037,7 @@
           updateCounter();
 
           if (closeAfter) {
-            bootstrap.Modal.getInstance(modal).hide();
+            bootstrap.Modal.getInstance(modal)?.hide();
             location.reload();
           } else {
             // Clear form but keep some fields
@@ -1229,7 +1229,7 @@
         saveBtn.disabled = false;
 
         if (data.success) {
-          bootstrap.Modal.getInstance(modal).hide();
+          bootstrap.Modal.getInstance(modal)?.hide();
           // Повертаємось до відредагованого рядка: hash підхоплює
           // обробник скролу з підсвіткою після перезавантаження
           location.hash = '#record-' + recordId;
@@ -1357,7 +1357,7 @@
             successEl.style.display = '';
             successEl.classList.add('show');
             setTimeout(() => {
-              bootstrap.Modal.getInstance(modal).hide();
+              bootstrap.Modal.getInstance(modal)?.hide();
               location.reload();
             }, 800);
           } else {

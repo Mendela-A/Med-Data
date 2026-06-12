@@ -603,8 +603,8 @@ def api_add_record():
         discharge_status=get_default_status('records'),
         date_of_death=data['date_of_death'],
         comment=data['comment'],
-        is_urgent=data['is_urgent'],
-        history_submitted=data['history_submitted'],
+        is_urgent=data['is_urgent'] if current_user.role in ('operator', 'admin') else None,
+        history_submitted=data['history_submitted'] if current_user.role in ('operator', 'admin') else False,
         created_by=current_user.id,
         updated_by=current_user.id
     )
@@ -736,8 +736,9 @@ def edit_record(record_id):
         r.comment = data['comment']
         r.adsj = data['adsj']
         r.suma = data['suma']
-        r.is_urgent = data['is_urgent']
-        r.history_submitted = data['history_submitted']
+        if current_user.role in ('operator', 'admin'):
+            r.is_urgent = data['is_urgent']
+            r.history_submitted = data['history_submitted']
         r.updated_by = current_user.id
         r.updated_at = datetime.now(timezone.utc)
 
