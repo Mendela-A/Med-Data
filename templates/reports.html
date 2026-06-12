@@ -311,12 +311,12 @@
   const prevMonthBtn = document.getElementById('prevMonthBtn');
   if (prevMonthBtn) {
     prevMonthBtn.addEventListener('click', function() {
-      const now = new Date();
-      const prev = new Date(now.getFullYear(), now.getMonth() - 1, 1);
+      const fromInput = document.querySelector('input[name="from_date"]');
+      const cur = fromInput.value ? new Date(fromInput.value + 'T00:00:00') : new Date();
+      const prev = new Date(cur.getFullYear(), cur.getMonth() - 1, 1);
       const lastDay = new Date(prev.getFullYear(), prev.getMonth() + 1, 0);
       const pad = n => String(n).padStart(2, '0');
-      document.querySelector('input[name="from_date"]').value =
-        `${prev.getFullYear()}-${pad(prev.getMonth()+1)}-01`;
+      fromInput.value = `${prev.getFullYear()}-${pad(prev.getMonth()+1)}-01`;
       document.querySelector('input[name="to_date"]').value =
         `${lastDay.getFullYear()}-${pad(lastDay.getMonth()+1)}-${pad(lastDay.getDate())}`;
       document.getElementById('dateRangeForm').submit();
