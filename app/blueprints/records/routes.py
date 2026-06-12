@@ -639,15 +639,17 @@ def api_update_record_status(record_id):
     """AJAX endpoint for operator: update is_urgent and history_submitted only."""
     r = db.get_or_404(Record, record_id)
 
+    # Валідуємо обидва поля до будь-яких змін об'єкта
     is_urgent_raw = request.form.get('is_urgent', '')
-    if is_urgent_raw == 'urgent':
-        r.is_urgent = True
-    elif is_urgent_raw == 'planned':
-        r.is_urgent = False
-    else:
-        r.is_urgent = None
+    # порожнє значення — запис без визначеного стану (None), не змінюємо на False
+    if is_urgent_raw not in ('urgent', 'planned', ''):
+        return jsonify({'success': False, 'error': 'Невідоме значення поля Стан'}), 400
+    history_submitted_raw = request.form.get('history_submitted', '0')
+    if history_submitted_raw not in ('0', '1'):
+        return jsonify({'success': False, 'error': 'Невідоме значення поля Здача документів'}), 400
 
-    r.history_submitted = request.form.get('history_submitted') == '1'
+    r.is_urgent = {'urgent': True, 'planned': False, '': None}[is_urgent_raw]
+    r.history_submitted = history_submitted_raw == '1'
     r.updated_by = current_user.id
     r.updated_at = datetime.now(timezone.utc)
 

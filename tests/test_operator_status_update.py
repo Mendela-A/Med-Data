@@ -166,3 +166,48 @@ def test_nonexistent_record_returns_404(app, client):
 
         resp = client.post('/api/records/99999/status', data={'is_urgent': 'urgent', 'history_submitted': '0'})
         assert resp.status_code == 404
+
+
+# --- Input validation ---
+
+def test_empty_is_urgent_keeps_none(app, client):
+    """Empty is_urgent leaves the record without a defined state (None)."""
+    with app.app_context():
+        u = ensure_user('op_s9', role='operator')
+        r = make_record(u.id, is_urgent=None)
+        login(client, 'op_s9')
+
+        resp = client.post(f'/api/records/{r.id}/status', data={'is_urgent': '', 'history_submitted': '1'})
+        assert resp.status_code == 200
+
+        updated = db.session.get(Record, r.id)
+        assert updated.is_urgent is None
+        assert updated.history_submitted is True
+
+
+def test_garbage_is_urgent_returns_400(app, client):
+    """Unknown is_urgent value is rejected with 400, record unchanged."""
+    with app.app_context():
+        u = ensure_user('op_s10', role='operator')
+        r = make_record(u.id, is_urgent=True)
+        login(client, 'op_s10')
+
+        resp = client.post(f'/api/records/{r.id}/status', data={'is_urgent': 'whatever', 'history_submitted': '0'})
+        assert resp.status_code == 400
+
+        updated = db.session.get(Record, r.id)
+        assert updated.is_urgent is True
+
+
+def test_garbage_history_submitted_returns_400(app, client):
+    """Unknown history_submitted value is rejected with 400."""
+    with app.app_context():
+        u = ensure_user('op_s11', role='operator')
+        r = make_record(u.id, history_submitted=False)
+        login(client, 'op_s11')
+
+        resp = client.post(f'/api/records/{r.id}/status', data={'is_urgent': 'urgent', 'history_submitted': 'yes'})
+        assert resp.status_code == 400
+
+        updated = db.session.get(Record, r.id)
+        assert updated.history_submitted is False

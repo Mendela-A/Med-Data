@@ -1331,9 +1331,10 @@
       document.getElementById('status_record_id').value = recordId;
       document.getElementById('updateStatusModalLabel').textContent = `Статус запису #${recordId} — ${btn.dataset.fullName}`;
 
-      const suUrgentVal = isUrgent || 'planned';
+      // Для старих записів без стану (is_urgent=NULL) не пре-вибираємо радіо,
+      // щоб збереження не змінювало стан, якого оператор не торкався
       document.querySelectorAll('#updateStatusForm input[name="is_urgent"]').forEach(r => {
-        r.checked = r.value === suUrgentVal;
+        r.checked = isUrgent !== '' && r.value === isUrgent;
       });
       document.getElementById('su_history_submitted').checked = historySubmitted === '1';
 
@@ -1344,7 +1345,8 @@
       });
     });
 
-    document.getElementById('saveStatusBtn').addEventListener('click', function() {
+    const saveBtn = document.getElementById('saveStatusBtn');
+    saveBtn.addEventListener('click', function() {
       const recordId = document.getElementById('status_record_id').value;
       const form = document.getElementById('updateStatusForm');
       const formData = new FormData(form);
@@ -1352,31 +1354,29 @@
         formData.set('history_submitted', '0');
       }
 
+      saveBtn.disabled = true;
+
       fetchJSON(`/api/records/${recordId}/status`, { method: 'POST', body: formData, headers: { 'X-CSRFToken': getCSRFToken() } })
-        .then(data => {
-          if (data.success) {
-            const successEl = document.getElementById('updateStatusSuccess');
-            document.getElementById('updateStatusSuccessMsg').textContent = 'Статус збережено';
-            successEl.style.display = '';
-            successEl.classList.add('show');
-            setTimeout(() => {
-              bootstrap.Modal.getInstance(modal)?.hide();
-              location.reload();
-            }, 800);
-          } else {
-            const errEl = document.getElementById('updateStatusError');
-            document.getElementById('updateStatusErrorMsg').textContent = data.error || 'Помилка';
-            errEl.style.display = '';
-            errEl.classList.add('show');
-          }
+        .then(() => {
+          const successEl = document.getElementById('updateStatusSuccess');
+          document.getElementById('updateStatusSuccessMsg').textContent = 'Статус збережено';
+          successEl.style.display = '';
+          successEl.classList.add('show');
+          document.activeElement?.blur();
+          bootstrap.Modal.getInstance(modal)?.hide();
+          location.reload();
         })
-        .catch(() => {
+        .catch(err => {
+          saveBtn.disabled = false;
           const errEl = document.getElementById('updateStatusError');
-          document.getElementById('updateStatusErrorMsg').textContent = 'Помилка мережі';
+          document.getElementById('updateStatusErrorMsg').textContent = err.message || 'Помилка';
           errEl.style.display = '';
           errEl.classList.add('show');
         });
     });
+
+    // Скидаємо стан кнопки при кожному відкритті модалки
+    modal.addEventListener('show.bs.modal', () => { saveBtn.disabled = false; });
   })();
 </script>
 {% endif %}
