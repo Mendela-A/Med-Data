@@ -3,9 +3,11 @@
 Admin routes
 """
 
-from flask import render_template, redirect, url_for, flash, request, current_app
+from flask import render_template, redirect, url_for, flash, request, current_app, send_file
 from flask_login import login_required, current_user
 from datetime import datetime, date, timedelta
+from io import BytesIO
+from collections import defaultdict
 from sqlalchemy import extract, case, func
 
 from app.extensions import db
@@ -695,6 +697,113 @@ def admin_reports():
         urgency_unset=urgency_unset,
         urgency_by_dept=urgency_by_dept,
     )
+
+
+@admin_bp.route('/reports/not-submitted')
+@role_required('operator', 'editor', 'admin', 'viewer')
+def report_not_submitted():
+    """PDF: unsubmitted histories per department / physician."""
+    now = datetime.now()
+    today = now.date()
+
+    from_str = request.args.get('from_date', '').strip()
+    to_str = request.args.get('to_date', '').strip()
+
+    from_date = None
+    to_date = None
+    if from_str:
+        try:
+            from_date = date.fromisoformat(from_str)
+        except ValueError:
+            pass
+    if to_str:
+        try:
+            to_date = date.fromisoformat(to_str)
+        except ValueError:
+            pass
+
+    if from_date is None:
+        from_date = date(today.year, today.month, 1)
+    if to_date is None:
+        if from_date.month == 12:
+            to_date = date(from_date.year + 1, 1, 1) - timedelta(days=1)
+        else:
+            to_date = date(from_date.year, from_date.month + 1, 1) - timedelta(days=1)
+
+    if from_date > to_date:
+        from_date, to_date = to_date, from_date
+
+    query_end = to_date + timedelta(days=1)
+
+    rows = db.session.query(
+        Record.discharge_department,
+        Record.treating_physician,
+        func.count(Record.id).label('not_submitted_count')
+    ).filter(
+        Record.date_of_discharge.isnot(None),
+        Record.date_of_discharge >= from_date,
+        Record.date_of_discharge < query_end,
+        Record.history_submitted == False,
+        Record.discharge_department.isnot(None),
+        func.trim(Record.discharge_department) != '',
+        Record.treating_physician.isnot(None),
+        func.trim(Record.treating_physician) != '',
+    ).group_by(
+        Record.discharge_department,
+        Record.treating_physician,
+    ).order_by(
+        Record.discharge_department,
+        func.count(Record.id).desc(),
+    ).all()
+
+    # Group into {dept: [{physician, count}, ...]}
+    dept_data = defaultdict(list)
+    for row in rows:
+        dept_data[row.discharge_department].append({
+            'physician': row.treating_physician,
+            'count': row.not_submitted_count,
+        })
+    dept_list = [
+        {'dept': dept, 'physicians': physicians, 'total': sum(p['count'] for p in physicians)}
+        for dept, physicians in dept_data.items()
+    ]
+    grand_total = sum(d['total'] for d in dept_list)
+
+    if from_date.year == to_date.year:
+        year_label = str(from_date.year)
+    else:
+        year_label = f"{from_date.year}–{to_date.year}"
+
+    kyiv_tz = __import__('datetime').timezone(__import__('datetime').timedelta(hours=2))
+    generated_at = datetime.now(kyiv_tz)
+
+    try:
+        from weasyprint import HTML
+    except ImportError:
+        flash('Для формування PDF потрібен пакет WeasyPrint', 'danger')
+        return redirect(url_for('admin.admin_reports', from_date=from_str, to_date=to_str))
+
+    html_string = render_template(
+        'print_not_submitted.html',
+        from_date=from_date,
+        to_date=to_date,
+        year_label=year_label,
+        dept_list=dept_list,
+        grand_total=grand_total,
+        generated_by=current_user.username,
+        generated_at=generated_at,
+    )
+    pdf = HTML(string=html_string).write_pdf()
+    bio = BytesIO(pdf)
+    bio.seek(0)
+    filename = f"not_submitted_{from_date.strftime('%d-%m-%Y')}_{to_date.strftime('%d-%m-%Y')}.pdf"
+    try:
+        log_action(current_user.id, 'admin.report_not_submitted', 'report', None,
+                   f'from={from_date} to={to_date} total={grand_total}')
+        db.session.commit()
+    except Exception:
+        current_app.logger.exception('Failed to log report_not_submitted action')
+    return send_file(bio, as_attachment=True, download_name=filename, mimetype='application/pdf')
 
 
 # Audit Log Route
