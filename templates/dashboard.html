@@ -1311,6 +1311,9 @@
   });
 </script>
 
+{% endif %}
+
+{% if current_user.role == 'operator' %}
 <script>
   // Update Status Modal (operator)
   (function() {
