@@ -1349,7 +1349,7 @@
         formData.set('history_submitted', '0');
       }
 
-      fetchJSON(`/api/records/${recordId}/status`, { method: 'POST', body: formData })
+      fetchJSON(`/api/records/${recordId}/status`, { method: 'POST', body: formData, headers: { 'X-CSRFToken': getCSRFToken() } })
         .then(data => {
           if (data.success) {
             const successEl = document.getElementById('updateStatusSuccess');
