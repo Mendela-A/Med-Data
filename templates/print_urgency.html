@@ -2,11 +2,11 @@
 <html lang="uk">
 <head>
     <meta charset="UTF-8">
-    <title>Звіт: Ургентність</title>
+    <title>Дані про госпіталізацію хворих в стаціонарі</title>
     <style>
         @page {
             size: A4 portrait;
-            margin: 1.2cm 1cm;
+            margin: 1.5cm 1.2cm;
             @bottom-right {
                 content: "Стор. " counter(page) " з " counter(pages);
                 font-size: 8pt;
@@ -14,137 +14,148 @@
             }
         }
         * { margin: 0; padding: 0; box-sizing: border-box; }
-        body { font-family: 'DejaVu Sans', Arial, sans-serif; font-size: 10pt; line-height: 1.3; color: #333; }
+        body { font-family: 'DejaVu Sans', Arial, sans-serif; font-size: 10pt; line-height: 1.3; color: #000; }
 
-        .header {
-            position: relative; text-align: center; margin-bottom: 10px;
-            padding-bottom: 8px; padding-left: 80px;
-            border-bottom: 2px solid #0f766e; min-height: 60px;
+        .doc-title {
+            text-align: center;
+            font-size: 13pt;
+            font-weight: bold;
+            font-style: italic;
+            margin-bottom: 4px;
         }
-        .header .logo { position: absolute; left: 0; top: 0; height: 55px; width: auto; }
-        .header h1 { font-size: 15pt; margin-bottom: 4px; color: #0f766e; }
-        .header .subtitle { font-size: 10pt; color: #666; }
-
+        .doc-subtitle {
+            text-align: center;
+            font-size: 9pt;
+            margin-bottom: 10px;
+            color: #555;
+        }
         .info-block {
-            display: flex; justify-content: space-between; margin-bottom: 12px;
-            font-size: 8pt; padding: 6px; background-color: #f8f9fa; border-radius: 4px;
+            display: flex;
+            justify-content: space-between;
+            margin-bottom: 14px;
+            font-size: 8pt;
+            padding: 5px 7px;
+            background: #f5f5f5;
+            border-radius: 3px;
         }
-        .info-label { font-weight: bold; color: #555; }
 
-        .summary-cards { display: flex; gap: 10px; margin-bottom: 14px; }
-        .summary-card {
-            flex: 1; padding: 8px 10px; border-radius: 4px; text-align: center; font-size: 9pt;
+        table { width: 100%; border-collapse: collapse; font-size: 9.5pt; }
+        th, td { border: 1px solid #000; padding: 4px 5px; vertical-align: middle; }
+
+        thead th {
+            text-align: center;
+            font-weight: bold;
+            background: #fff;
         }
-        .card-urgent  { background: #f8d7da; border-left: 4px solid #dc3545; }
-        .card-planned { background: #cff4fc; border-left: 4px solid #0dcaf0; }
-        .card-unset   { background: #e9ecef; border-left: 4px solid #adb5bd; }
-        .card-value { font-size: 20pt; font-weight: bold; line-height: 1.1; }
-        .card-label { font-size: 7.5pt; color: #555; margin-top: 2px; }
-        .card-pct   { font-size: 7pt; color: #777; }
+        th.col-dept  { width: 34%; text-align: left; }
+        th.col-total { width: 13%; }
+        th.col-num   { width: 12%; }
+        th.col-pct   { width: 10%; }
 
-        table { width: 100%; border-collapse: collapse; margin-bottom: 10px; font-size: 9pt; }
-        thead { background-color: #0f766e; color: white; }
-        th { padding: 6px 5px; text-align: left; font-weight: bold; border: 1px solid #0f766e; }
-        td { padding: 5px 5px; border: 1px solid #ddd; vertical-align: middle; }
-        tbody tr:nth-child(even) { background-color: #f8f9fa; }
+        td.left  { text-align: left; }
+        td.right { text-align: center; }
 
-        .progress-bar-wrap { width: 80px; height: 7px; background: #dee2e6; border-radius: 3px; display: inline-block; vertical-align: middle; }
-        .progress-bar-fill { height: 100%; border-radius: 3px; background: #dc3545; }
+        tr.grand-total td {
+            font-weight: bold;
+            font-size: 10pt;
+            background: #f0f0f0;
+            text-align: center;
+        }
+        tr.grand-total td:first-child { text-align: left; }
 
-        .badge { display: inline-block; padding: 1px 5px; border-radius: 3px; font-size: 8pt; font-weight: bold; }
-        .badge-danger { background: #dc3545; color: #fff; }
-        .badge-info   { background: #0dcaf0; color: #212529; }
-        .badge-muted  { background: #adb5bd; color: #fff; }
-
-        tfoot tr { background: #e9f5f3 !important; font-weight: bold; }
-
-        .footer { margin-top: 15px; padding-top: 8px; border-top: 1px solid #ddd; font-size: 7.5pt; color: #888; text-align: center; }
         tr { page-break-inside: avoid; }
         thead { display: table-header-group; }
+
+        .footnote {
+            margin-top: 8px;
+            font-size: 7.5pt;
+            color: #666;
+        }
+        .footer {
+            margin-top: 14px;
+            padding-top: 6px;
+            border-top: 1px solid #ccc;
+            font-size: 7.5pt;
+            color: #888;
+            text-align: center;
+        }
     </style>
 </head>
 <body>
-    <div class="header">
-        <img src="file:///app/static/pic/logo.png" alt="Logo" class="logo">
-        <h1>Звіт: Ургентність</h1>
-        <div class="subtitle">Сервіс виписок</div>
-    </div>
+
+    <div class="doc-title">Дані про госпіталізацію хворих в стаціонарі</div>
+    <div class="doc-subtitle">за {{ from_date.strftime('%d.%m.%Y') }} — {{ to_date.strftime('%d.%m.%Y') }}</div>
 
     <div class="info-block">
-        <div>
-            <div><span class="info-label">Період:</span> {{ from_date.strftime('%d.%m.%Y') }} — {{ to_date.strftime('%d.%m.%Y') }}</div>
-            {% if filter_department %}
-            <div><span class="info-label">Відділення:</span> {{ filter_department }}</div>
-            {% endif %}
-        </div>
-        <div style="text-align: right;">
-            <div><span class="info-label">Сформував:</span> {{ generated_by }}</div>
-            <div><span class="info-label">Дата:</span> {{ generated_at.strftime('%d.%m.%Y %H:%M') }}</div>
+        <div><strong>Період:</strong> {{ from_date.strftime('%d.%m.%Y') }} — {{ to_date.strftime('%d.%m.%Y') }}</div>
+        <div style="text-align:right;">
+            <strong>Сформував:</strong> {{ generated_by }} &nbsp;|&nbsp;
+            <strong>Дата:</strong> {{ generated_at.strftime('%d.%m.%Y %H:%M') }}
         </div>
     </div>
 
-    {% set urg_known = urgency_urgent + urgency_planned %}
-    <div class="summary-cards">
-        <div class="summary-card card-urgent">
-            <div class="card-value" style="color:#dc3545;">{{ urgency_urgent }}</div>
-            <div class="card-label">Ургентних</div>
-            {% if urg_known > 0 %}<div class="card-pct">{{ "%.0f"|format(urgency_urgent / urg_known * 100) }}%</div>{% endif %}
-        </div>
-        <div class="summary-card card-planned">
-            <div class="card-value" style="color:#055160;">{{ urgency_planned }}</div>
-            <div class="card-label">Планових</div>
-            {% if urg_known > 0 %}<div class="card-pct">{{ "%.0f"|format(urgency_planned / urg_known * 100) }}%</div>{% endif %}
-        </div>
-        <div class="summary-card card-unset">
-            <div class="card-value" style="color:#6c757d;">{{ urgency_unset }}</div>
-            <div class="card-label">Не вказано</div>
-        </div>
-    </div>
+    {% set grand_total = urgency_urgent + urgency_planned + urgency_unset %}
+    {% set grand_known = urgency_urgent + urgency_planned %}
 
-    {% if urgency_by_dept %}
     <table>
         <thead>
             <tr>
-                <th>№</th>
-                <th>Відділення</th>
-                <th style="text-align:center;">Ургентних</th>
-                <th style="text-align:center;">Планових</th>
-                <th style="text-align:center;">Не вказано</th>
-                <th style="text-align:center;">Всього</th>
-                <th style="text-align:center;">Ург. %</th>
-                <th>Ургентність</th>
+                <th class="col-dept" rowspan="2" style="text-align:left;">Відділення</th>
+                <th class="col-total" rowspan="2">Виписано<br>хворих</th>
+                <th colspan="2">Ургентно</th>
+                <th colspan="2">Планово</th>
+            </tr>
+            <tr>
+                <th class="col-num">Абс.</th>
+                <th class="col-pct">%</th>
+                <th class="col-num">Абс.</th>
+                <th class="col-pct">%</th>
             </tr>
         </thead>
         <tbody>
-            {% for row in urgency_by_dept %}
-            <tr>
-                <td>{{ loop.index }}</td>
-                <td>{{ row.discharge_department }}</td>
-                <td style="text-align:center;"><span class="badge badge-danger">{{ row.urgent }}</span></td>
-                <td style="text-align:center;"><span class="badge badge-info">{{ row.planned }}</span></td>
-                <td style="text-align:center;"><span class="badge badge-muted">{{ row.unset if row.unset is defined else (row.total - row.urgent - row.planned) }}</span></td>
-                <td style="text-align:center;">{{ row.total }}</td>
-                <td style="text-align:center;">{{ "%.0f"|format(row.urgent / row.total * 100) if row.total > 0 else 0 }}%</td>
-                <td>
-                    <div class="progress-bar-wrap">
-                        <div class="progress-bar-fill" style="width: {{ (row.urgent / row.total * 100) if row.total > 0 else 0 }}%;"></div>
-                    </div>
-                </td>
-            </tr>
-            {% endfor %}
+            {% if urgency_by_dept %}
+                {% for row in urgency_by_dept %}
+                {% set row_known = row.urgent + row.planned %}
+                <tr>
+                    <td class="left">{{ row.discharge_department }}</td>
+                    <td class="right">{{ row.total }}</td>
+                    <td class="right">{{ row.urgent }}</td>
+                    <td class="right">
+                        {%- if row_known > 0 -%}{{ "%.1f"|format(row.urgent / row_known * 100) }}{%- else -%}—{%- endif -%}
+                    </td>
+                    <td class="right">{{ row.planned }}</td>
+                    <td class="right">
+                        {%- if row_known > 0 -%}{{ "%.1f"|format(row.planned / row_known * 100) }}{%- else -%}—{%- endif -%}
+                    </td>
+                </tr>
+                {% endfor %}
+                <tr class="grand-total">
+                    <td>Всього по відділеннях</td>
+                    <td>{{ grand_total }}</td>
+                    <td>{{ urgency_urgent }}</td>
+                    <td>
+                        {%- if grand_known > 0 -%}{{ "%.1f"|format(urgency_urgent / grand_known * 100) }}{%- else -%}—{%- endif -%}
+                    </td>
+                    <td>{{ urgency_planned }}</td>
+                    <td>
+                        {%- if grand_known > 0 -%}{{ "%.1f"|format(urgency_planned / grand_known * 100) }}{%- else -%}—{%- endif -%}
+                    </td>
+                </tr>
+            {% else %}
+                <tr>
+                    <td colspan="6" style="text-align:center; padding: 12px; color:#555;">
+                        Немає даних про госпіталізацію за обраний період
+                    </td>
+                </tr>
+            {% endif %}
         </tbody>
-        <tfoot>
-            <tr>
-                <td colspan="2"><strong>Всього</strong></td>
-                <td style="text-align:center;">{{ urgency_urgent }}</td>
-                <td style="text-align:center;">{{ urgency_planned }}</td>
-                <td style="text-align:center;">{{ urgency_unset }}</td>
-                <td style="text-align:center;">{{ urgency_urgent + urgency_planned + urgency_unset }}</td>
-                <td style="text-align:center;">{{ "%.0f"|format(urgency_urgent / urg_known * 100) if urg_known > 0 else 0 }}%</td>
-                <td></td>
-            </tr>
-        </tfoot>
     </table>
+
+    {% if urgency_by_dept %}
+    <div class="footnote">
+        * Відсотки розраховуються лише по записах з вказаним типом (ургентні + планові).
+        Записи без вказаного типу включено до колонки «Виписано хворих».
+    </div>
     {% endif %}
 
     <div class="footer">

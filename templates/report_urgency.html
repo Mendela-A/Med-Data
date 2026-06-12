@@ -112,58 +112,48 @@
     {% endif %}
 
     {% if urgency_by_dept %}
-    <h6 class="text-muted mb-2"><i class="bi bi-building me-1"></i>По відділеннях</h6>
     <div class="table-responsive">
-      <table class="table table-sm table-hover align-middle">
+      <table class="table table-sm table-hover align-middle text-center">
         <thead class="table-light">
           <tr>
-            <th>Відділення</th>
-            <th class="text-center">Ургентних</th>
-            <th class="text-center">Планових</th>
-            <th class="text-center">Не вказано</th>
-            <th class="text-center">Всього</th>
-            <th class="text-center">Ург. %</th>
-            <th style="width: 120px;">Розподіл</th>
+            <th class="text-start" rowspan="2">Відділення</th>
+            <th rowspan="2">Виписано<br>хворих</th>
+            <th colspan="2" class="border-start">Ургентно</th>
+            <th colspan="2" class="border-start">Планово</th>
+          </tr>
+          <tr>
+            <th class="border-start">Абс.</th>
+            <th>%</th>
+            <th class="border-start">Абс.</th>
+            <th>%</th>
           </tr>
         </thead>
         <tbody>
           {% for row in urgency_by_dept %}
           {% set row_known = row.urgent + row.planned %}
           <tr>
-            <td>{{ row.discharge_department }}</td>
-            <td class="text-center"><span class="badge bg-danger">{{ row.urgent }}</span></td>
-            <td class="text-center"><span class="badge bg-info text-dark">{{ row.planned }}</span></td>
-            <td class="text-center"><span class="badge bg-secondary">{{ row.unset }}</span></td>
-            <td class="text-center">{{ row.total }}</td>
-            <td class="text-center">
-              {% if row_known > 0 %}{{ "%.0f"|format(row.urgent / row_known * 100) }}%{% else %}—{% endif %}
-            </td>
-            <td>
-              <div class="progress" style="height: 6px;">
-                {% if row_known > 0 %}
-                <div class="progress-bar bg-danger" style="width: {{ (row.urgent / row_known * 100) }}%;"></div>
-                <div class="progress-bar bg-info" style="width: {{ (row.planned / row_known * 100) }}%;"></div>
-                {% endif %}
-              </div>
-            </td>
+            <td class="text-start">{{ row.discharge_department }}</td>
+            <td>{{ row.total }}</td>
+            <td>{{ row.urgent }}</td>
+            <td>{%- if row_known > 0 -%}{{ "%.1f"|format(row.urgent / row_known * 100) }}{%- else -%}—{%- endif -%}</td>
+            <td>{{ row.planned }}</td>
+            <td>{%- if row_known > 0 -%}{{ "%.1f"|format(row.planned / row_known * 100) }}{%- else -%}—{%- endif -%}</td>
           </tr>
           {% endfor %}
         </tbody>
         <tfoot class="table-light fw-bold">
           <tr>
-            <td>Всього</td>
-            <td class="text-center">{{ urgency_urgent }}</td>
-            <td class="text-center">{{ urgency_planned }}</td>
-            <td class="text-center">{{ urgency_unset }}</td>
-            <td class="text-center">{{ urg_total }}</td>
-            <td class="text-center">
-              {% if urg_known > 0 %}{{ "%.0f"|format(urgency_urgent / urg_known * 100) }}%{% else %}—{% endif %}
-            </td>
-            <td></td>
+            <td class="text-start">Всього по відділеннях</td>
+            <td>{{ urg_total }}</td>
+            <td>{{ urgency_urgent }}</td>
+            <td>{%- if urg_known > 0 -%}{{ "%.1f"|format(urgency_urgent / urg_known * 100) }}{%- else -%}—{%- endif -%}</td>
+            <td>{{ urgency_planned }}</td>
+            <td>{%- if urg_known > 0 -%}{{ "%.1f"|format(urgency_planned / urg_known * 100) }}{%- else -%}—{%- endif -%}</td>
           </tr>
         </tfoot>
       </table>
     </div>
+    <p class="text-muted small mt-1">* % розраховується лише по записах з вказаним типом (ургентні + планові).</p>
     {% else %}
     <p class="text-muted small mb-0"><i class="bi bi-info-circle me-1"></i>Немає даних за обраний період</p>
     {% endif %}
