@@ -47,6 +47,9 @@
       <a href="{{ url_for('admin.admin_reports') }}" class="btn btn-outline-secondary btn-sm" title="Поточний місяць">
         <i class="bi bi-arrow-clockwise me-1"></i>Поточний
       </a>
+      <button type="button" class="btn btn-outline-secondary btn-sm" id="prevMonthBtn" title="Попередній місяць">
+        <i class="bi bi-chevron-left me-1"></i>Попередній
+      </button>
       <div class="ms-auto">
         <span class="stat-pill stat-pill-info"><i class="bi bi-calendar3"></i>{{ period_label }}</span>
       </div>
@@ -301,4 +304,23 @@
   </div>
 </div>
 
+{% endblock %}
+
+{% block scripts %}
+<script>
+  const prevMonthBtn = document.getElementById('prevMonthBtn');
+  if (prevMonthBtn) {
+    prevMonthBtn.addEventListener('click', function() {
+      const now = new Date();
+      const prev = new Date(now.getFullYear(), now.getMonth() - 1, 1);
+      const lastDay = new Date(prev.getFullYear(), prev.getMonth() + 1, 0);
+      const pad = n => String(n).padStart(2, '0');
+      document.querySelector('input[name="from_date"]').value =
+        `${prev.getFullYear()}-${pad(prev.getMonth()+1)}-01`;
+      document.querySelector('input[name="to_date"]').value =
+        `${lastDay.getFullYear()}-${pad(lastDay.getMonth()+1)}-${pad(lastDay.getDate())}`;
+      document.getElementById('dateRangeForm').submit();
+    });
+  }
+</script>
 {% endblock %}
