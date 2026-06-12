@@ -694,6 +694,7 @@ def report_urgency_page():
         Record.date_of_discharge < query_end,
         Record.discharge_department.isnot(None),
         func.trim(Record.discharge_department) != '',
+        func.lower(Record.discharge_department).notin_(['гінекологічне', 'гінекологія']),
     ).group_by(Record.discharge_department).order_by(func.count(Record.id).desc()).all()
 
     return render_template(
@@ -854,6 +855,7 @@ def report_urgency():
         Record.date_of_discharge < query_end,
         Record.discharge_department.isnot(None),
         func.trim(Record.discharge_department) != '',
+        func.lower(Record.discharge_department).notin_(['гінекологічне', 'гінекологія']),
     ).group_by(Record.discharge_department).order_by(
         func.sum(case((Record.is_urgent == True, 1), else_=0)).desc()
     ).all()
