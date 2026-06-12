@@ -514,6 +514,7 @@
                 <textarea class="form-control" id="comment" name="comment" rows="2"></textarea>
               </div>
 
+{% if current_user.role in ['operator', 'admin'] %}
               <div class="col-md-6">
                 <label class="form-label">Стан</label>
                 <div class="d-flex gap-3 pt-1">
@@ -541,6 +542,7 @@
                   </div>
                 </div>
               </div>
+{% endif %}
 
               <div class="col-12">
                 <div class="form-check">
@@ -666,6 +668,7 @@
 
               <div class="col-md-6">
                 <label class="form-label">Стан</label>
+                {% if current_user.role in ['operator', 'admin'] %}
                 <div class="d-flex gap-3 pt-1">
                   <div class="form-check">
                     <input class="form-check-input" type="radio" name="is_urgent" id="edit_urgent" value="urgent">
@@ -680,16 +683,29 @@
                     <label class="form-check-label text-muted" for="edit_unset">—</label>
                   </div>
                 </div>
+                {% else %}
+                <div class="pt-1">
+                  <input type="hidden" name="is_urgent" id="edit_urgent_hidden" value="">
+                  <span id="edit_urgent_display" class="text-muted">—</span>
+                </div>
+                {% endif %}
               </div>
 
               <div class="col-md-6">
                 <label class="form-label">Здача документів</label>
+                {% if current_user.role in ['operator', 'admin'] %}
                 <div class="pt-1">
                   <div class="form-check form-switch">
                     <input class="form-check-input" type="checkbox" id="edit_history_submitted" name="history_submitted" value="1">
                     <label class="form-check-label" for="edit_history_submitted">Документи здано</label>
                   </div>
                 </div>
+                {% else %}
+                <div class="pt-1">
+                  <input type="hidden" name="history_submitted" id="edit_history_submitted_hidden" value="0">
+                  <span id="edit_history_submitted_display" class="text-muted">—</span>
+                </div>
+                {% endif %}
               </div>
             </div>
           </form>
@@ -1061,13 +1077,34 @@
       document.getElementById('edit_comment').value = comment;
       document.getElementById('edit_adsj').value = adsj;
       document.getElementById('edit_suma').value = suma;
-      // is_urgent radio
+      // is_urgent radio (operator/admin) or read-only display
       const urgentVal = isUrgent || '';
-      document.querySelectorAll('#editRecordForm input[name="is_urgent"]').forEach(r => {
-        r.checked = r.value === urgentVal;
-      });
-      // history_submitted checkbox
-      document.getElementById('edit_history_submitted').checked = historySubmitted === '1';
+      const urgentRadios = document.querySelectorAll('#editRecordForm input[name="is_urgent"][type="radio"]');
+      if (urgentRadios.length) {
+        urgentRadios.forEach(r => { r.checked = r.value === urgentVal; });
+      } else {
+        const hiddenUrgent = document.getElementById('edit_urgent_hidden');
+        const displayUrgent = document.getElementById('edit_urgent_display');
+        if (hiddenUrgent) hiddenUrgent.value = urgentVal;
+        if (displayUrgent) {
+          if (urgentVal === 'urgent') displayUrgent.innerHTML = '<i class="bi bi-lightning-fill text-danger me-1"></i><span class="text-danger fw-semibold">Ургентний</span>';
+          else if (urgentVal === 'planned') displayUrgent.innerHTML = '<i class="bi bi-calendar-check text-info-emphasis me-1"></i><span class="text-info-emphasis">Плановий</span>';
+          else displayUrgent.textContent = '—';
+        }
+      }
+      // history_submitted checkbox (operator/admin) or read-only display
+      const hsCheckbox = document.getElementById('edit_history_submitted');
+      if (hsCheckbox) {
+        hsCheckbox.checked = historySubmitted === '1';
+      } else {
+        const hiddenHs = document.getElementById('edit_history_submitted_hidden');
+        const displayHs = document.getElementById('edit_history_submitted_display');
+        if (hiddenHs) hiddenHs.value = historySubmitted === '1' ? '1' : '0';
+        if (displayHs) {
+          if (historySubmitted === '1') displayHs.innerHTML = '<i class="bi bi-check-circle-fill text-success me-1"></i>Здано';
+          else displayHs.innerHTML = '<i class="bi bi-x-circle text-warning me-1"></i>Не здано';
+        }
+      }
 
       // Update modal title
       document.getElementById('editRecordModalLabel').textContent = `Редагувати запис #${recordId}`;
