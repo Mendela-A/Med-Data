@@ -39,6 +39,16 @@
       </li>
       <li><hr class="dropdown-divider"></li>
       <li>
+        <a class="dropdown-item" href="{{ url_for('admin.report_submission', from_date=from_date.isoformat(), to_date=to_date.isoformat()) }}">
+          <i class="bi bi-file-earmark-check me-2 text-success"></i>Здача документації
+        </a>
+      </li>
+      <li>
+        <a class="dropdown-item" href="{{ url_for('admin.report_urgency', from_date=from_date.isoformat(), to_date=to_date.isoformat()) }}">
+          <i class="bi bi-lightning-fill me-2 text-danger"></i>Ургентність
+        </a>
+      </li>
+      <li>
         <a class="dropdown-item" href="{{ url_for('admin.report_not_submitted', from_date=from_date.isoformat(), to_date=to_date.isoformat()) }}">
           <i class="bi bi-file-earmark-x me-2 text-warning"></i>Не здані історії по відділеннях
         </a>

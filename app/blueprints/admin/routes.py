@@ -806,6 +806,185 @@ def report_not_submitted():
     return send_file(bio, as_attachment=True, download_name=filename, mimetype='application/pdf')
 
 
+@admin_bp.route('/reports/submission')
+@role_required('operator', 'editor', 'admin', 'viewer')
+def report_submission():
+    """PDF: history submission stats per physician."""
+    now = datetime.now()
+    today = now.date()
+    from_str = request.args.get('from_date', '').strip()
+    to_str   = request.args.get('to_date',   '').strip()
+    from_date = None
+    to_date   = None
+    if from_str:
+        try:
+            from_date = date.fromisoformat(from_str)
+        except ValueError:
+            pass
+    if to_str:
+        try:
+            to_date = date.fromisoformat(to_str)
+        except ValueError:
+            pass
+    if from_date is None:
+        from_date = date(today.year, today.month, 1)
+    if to_date is None:
+        if from_date.month == 12:
+            to_date = date(from_date.year + 1, 1, 1) - timedelta(days=1)
+        else:
+            to_date = date(from_date.year, from_date.month + 1, 1) - timedelta(days=1)
+    if from_date > to_date:
+        from_date, to_date = to_date, from_date
+    query_end = to_date + timedelta(days=1)
+
+    submission_row = db.session.query(
+        func.sum(case((Record.history_submitted == True, 1), else_=0)).label('submitted'),
+        func.sum(case((Record.history_submitted == False, 1), else_=0)).label('not_submitted'),
+    ).filter(
+        Record.date_of_discharge.isnot(None),
+        Record.date_of_discharge >= from_date,
+        Record.date_of_discharge < query_end,
+    ).first()
+
+    submission_by_physician = db.session.query(
+        Record.treating_physician,
+        func.sum(case((Record.history_submitted == True, 1), else_=0)).label('submitted'),
+        func.sum(case((Record.history_submitted == False, 1), else_=0)).label('not_submitted'),
+        func.count(Record.id).label('total'),
+    ).filter(
+        Record.date_of_discharge.isnot(None),
+        Record.date_of_discharge >= from_date,
+        Record.date_of_discharge < query_end,
+        Record.treating_physician.isnot(None),
+        func.trim(Record.treating_physician) != '',
+    ).group_by(Record.treating_physician).order_by(
+        func.sum(case((Record.history_submitted == False, 1), else_=0)).desc()
+    ).all()
+
+    import datetime as _dt
+    kyiv_tz = _dt.timezone(_dt.timedelta(hours=2))
+
+    try:
+        from weasyprint import HTML
+    except ImportError:
+        flash('Для формування PDF потрібен пакет WeasyPrint', 'danger')
+        return redirect(url_for('admin.admin_reports', from_date=from_str, to_date=to_str))
+
+    html_string = render_template(
+        'print_submission.html',
+        from_date=from_date,
+        to_date=to_date,
+        filter_physician='',
+        submission_submitted=submission_row.submitted or 0,
+        submission_not_submitted=submission_row.not_submitted or 0,
+        submission_by_physician=submission_by_physician,
+        generated_by=current_user.username,
+        generated_at=datetime.now(kyiv_tz),
+    )
+    pdf = HTML(string=html_string).write_pdf()
+    bio = BytesIO(pdf)
+    bio.seek(0)
+    filename = f"submission_{from_date.strftime('%d-%m-%Y')}_{to_date.strftime('%d-%m-%Y')}.pdf"
+    try:
+        log_action(current_user.id, 'admin.report_submission', 'report', None,
+                   f'from={from_date} to={to_date}')
+        db.session.commit()
+    except Exception:
+        current_app.logger.exception('Failed to log report_submission')
+    return send_file(bio, as_attachment=True, download_name=filename, mimetype='application/pdf')
+
+
+@admin_bp.route('/reports/urgency')
+@role_required('operator', 'editor', 'admin', 'viewer')
+def report_urgency():
+    """PDF: urgency stats per department."""
+    now = datetime.now()
+    today = now.date()
+    from_str = request.args.get('from_date', '').strip()
+    to_str   = request.args.get('to_date',   '').strip()
+    from_date = None
+    to_date   = None
+    if from_str:
+        try:
+            from_date = date.fromisoformat(from_str)
+        except ValueError:
+            pass
+    if to_str:
+        try:
+            to_date = date.fromisoformat(to_str)
+        except ValueError:
+            pass
+    if from_date is None:
+        from_date = date(today.year, today.month, 1)
+    if to_date is None:
+        if from_date.month == 12:
+            to_date = date(from_date.year + 1, 1, 1) - timedelta(days=1)
+        else:
+            to_date = date(from_date.year, from_date.month + 1, 1) - timedelta(days=1)
+    if from_date > to_date:
+        from_date, to_date = to_date, from_date
+    query_end = to_date + timedelta(days=1)
+
+    urgency_row = db.session.query(
+        func.sum(case((Record.is_urgent == True, 1), else_=0)).label('urgent'),
+        func.sum(case((Record.is_urgent == False, 1), else_=0)).label('planned'),
+        func.sum(case((Record.is_urgent.is_(None), 1), else_=0)).label('unset'),
+    ).filter(
+        Record.date_of_discharge.isnot(None),
+        Record.date_of_discharge >= from_date,
+        Record.date_of_discharge < query_end,
+    ).first()
+
+    urgency_by_dept = db.session.query(
+        Record.discharge_department,
+        func.sum(case((Record.is_urgent == True, 1), else_=0)).label('urgent'),
+        func.sum(case((Record.is_urgent == False, 1), else_=0)).label('planned'),
+        func.sum(case((Record.is_urgent.is_(None), 1), else_=0)).label('unset'),
+        func.count(Record.id).label('total'),
+    ).filter(
+        Record.date_of_discharge.isnot(None),
+        Record.date_of_discharge >= from_date,
+        Record.date_of_discharge < query_end,
+        Record.discharge_department.isnot(None),
+        func.trim(Record.discharge_department) != '',
+    ).group_by(Record.discharge_department).order_by(
+        func.sum(case((Record.is_urgent == True, 1), else_=0)).desc()
+    ).all()
+
+    import datetime as _dt
+    kyiv_tz = _dt.timezone(_dt.timedelta(hours=2))
+
+    try:
+        from weasyprint import HTML
+    except ImportError:
+        flash('Для формування PDF потрібен пакет WeasyPrint', 'danger')
+        return redirect(url_for('admin.admin_reports', from_date=from_str, to_date=to_str))
+
+    html_string = render_template(
+        'print_urgency.html',
+        from_date=from_date,
+        to_date=to_date,
+        filter_department='',
+        urgency_urgent=urgency_row.urgent or 0,
+        urgency_planned=urgency_row.planned or 0,
+        urgency_unset=urgency_row.unset or 0,
+        urgency_by_dept=urgency_by_dept,
+        generated_by=current_user.username,
+        generated_at=datetime.now(kyiv_tz),
+    )
+    pdf = HTML(string=html_string).write_pdf()
+    bio = BytesIO(pdf)
+    bio.seek(0)
+    filename = f"urgency_{from_date.strftime('%d-%m-%Y')}_{to_date.strftime('%d-%m-%Y')}.pdf"
+    try:
+        log_action(current_user.id, 'admin.report_urgency', 'report', None,
+                   f'from={from_date} to={to_date}')
+        db.session.commit()
+    except Exception:
+        current_app.logger.exception('Failed to log report_urgency')
+    return send_file(bio, as_attachment=True, download_name=filename, mimetype='application/pdf')
+
+
 @admin_bp.route('/reports/hospitalization')
 @role_required('operator', 'editor', 'admin', 'viewer')
 def report_hospitalization():
