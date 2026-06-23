@@ -1,0 +1,120 @@
+{% extends "base.html" %}
+
+{% block title %}{{ physician }} — Здача документації{% endblock %}
+
+{% block breadcrumbs %}{% endblock %}
+
+{% block container_class %}container-fluid px-4{% endblock %}
+
+{% block content %}
+{% set n_not = not_submitted_records|length %}
+{% set n_sub = submitted_records|length %}
+{% set n_total = n_not + n_sub %}
+
+<!-- Toolbar -->
+<div class="card mb-3 no-print">
+  <div class="card-body py-2 d-flex align-items-center gap-2 flex-wrap">
+    <a href="{{ url_for('admin.report_submission_page', from_date=from_date.isoformat(), to_date=to_date.isoformat()) }}"
+       class="btn btn-outline-secondary btn-sm">
+      <i class="bi bi-arrow-left me-1"></i>До зведення
+    </a>
+    <span class="stat-pill stat-pill-info"><i class="bi bi-calendar3"></i>{{ period_label }}</span>
+    <div class="ms-auto d-flex align-items-center gap-2">
+      <a class="btn btn-outline-secondary btn-sm"
+         href="{{ url_for('admin.report_submission_physician_pdf', physician=physician, from_date=from_date.isoformat(), to_date=to_date.isoformat()) }}">
+        <i class="bi bi-file-earmark-pdf me-1"></i>PDF
+      </a>
+      <a class="btn btn-outline-success btn-sm"
+         href="{{ url_for('admin.report_submission_physician_xlsx', physician=physician, from_date=from_date.isoformat(), to_date=to_date.isoformat()) }}">
+        <i class="bi bi-file-earmark-excel me-1"></i>Excel
+      </a>
+    </div>
+  </div>
+</div>
+
+<div class="card mb-4">
+  <div class="card-header d-flex align-items-center gap-2">
+    <i class="bi bi-person-badge text-success"></i>
+    <strong>{{ physician }}</strong>
+    <span class="badge bg-secondary ms-auto">{{ period_label }}</span>
+  </div>
+  <div class="card-body">
+
+    <!-- Summary cards -->
+    <div class="row g-3 mb-3 row-cols-1 row-cols-sm-3">
+      <div class="col">
+        <div class="card h-100 border-warning">
+          <div class="card-body text-center py-3">
+            <h2 class="mb-0 text-warning">{{ n_not }}</h2>
+            <div class="text-muted small">Не здано</div>
+          </div>
+        </div>
+      </div>
+      <div class="col">
+        <div class="card h-100 border-success">
+          <div class="card-body text-center py-3">
+            <h2 class="mb-0 text-success">{{ n_sub }}</h2>
+            <div class="text-muted small">Здано</div>
+          </div>
+        </div>
+      </div>
+      <div class="col">
+        <div class="card h-100">
+          <div class="card-body text-center py-3">
+            <h2 class="mb-0">{{ n_total }}</h2>
+            <div class="text-muted small">Всього записів</div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    {% macro records_table(records) %}
+    <div class="table-responsive mb-4">
+      <table class="table table-sm table-hover align-middle">
+        <thead class="table-light">
+          <tr>
+            <th style="width: 40px;">№</th>
+            <th>Дата виписки</th>
+            <th>ПІБ</th>
+            <th>Відділення</th>
+            <th>№ історії хвороби</th>
+            <th>Статус виписки</th>
+          </tr>
+        </thead>
+        <tbody>
+          {% for r in records %}
+          <tr>
+            <td>{{ loop.index }}</td>
+            <td>{{ r.date_of_discharge.strftime('%d.%m.%Y') if r.date_of_discharge else '—' }}</td>
+            <td>{{ r.full_name }}</td>
+            <td>{{ r.discharge_department or '—' }}</td>
+            <td>{{ r.history or '—' }}</td>
+            <td>{{ r.discharge_status or '—' }}</td>
+          </tr>
+          {% endfor %}
+        </tbody>
+      </table>
+    </div>
+    {% endmacro %}
+
+    <h6 class="text-muted mb-2">
+      <span class="badge bg-warning text-dark me-1">{{ n_not }}</span>Не здано
+    </h6>
+    {% if not_submitted_records %}
+      {{ records_table(not_submitted_records) }}
+    {% else %}
+      <p class="text-muted small mb-4"><i class="bi bi-info-circle me-1"></i>Немає незданих історій за обраний період</p>
+    {% endif %}
+
+    <h6 class="text-muted mb-2">
+      <span class="badge bg-success me-1">{{ n_sub }}</span>Здано
+    </h6>
+    {% if submitted_records %}
+      {{ records_table(submitted_records) }}
+    {% else %}
+      <p class="text-muted small mb-0"><i class="bi bi-info-circle me-1"></i>Немає зданих історій за обраний період</p>
+    {% endif %}
+
+  </div>
+</div>
+{% endblock %}

@@ -36,6 +36,10 @@
            href="{{ url_for('admin.report_submission', from_date=from_date.isoformat(), to_date=to_date.isoformat()) }}">
           <i class="bi bi-file-earmark-pdf me-1"></i>PDF
         </a>
+        <a class="btn btn-outline-success btn-sm"
+           href="{{ url_for('admin.report_submission_xlsx', from_date=from_date.isoformat(), to_date=to_date.isoformat()) }}">
+          <i class="bi bi-file-earmark-excel me-1"></i>Excel (всі лікарі)
+        </a>
       </div>
     </form>
   </div>
@@ -112,7 +116,7 @@
         <tbody>
           {% for row in submission_by_physician %}
           <tr>
-            <td>{{ row.treating_physician }}</td>
+            <td><a href="{{ url_for('admin.report_submission_physician', physician=row.treating_physician, from_date=from_date.isoformat(), to_date=to_date.isoformat()) }}">{{ row.treating_physician }}</a></td>
             <td class="text-center"><span class="badge bg-success">{{ row.submitted }}</span></td>
             <td class="text-center"><span class="badge bg-warning text-dark">{{ row.not_submitted }}</span></td>
             <td class="text-center">{{ row.total }}</td>

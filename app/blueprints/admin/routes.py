@@ -619,6 +619,20 @@ def _parse_report_dates():
     return from_date, to_date, query_end, period_label
 
 
+def _physician_records(physician, from_date, query_end):
+    """Записи одного лікаря за період (з тими ж виключеннями, що й звіт)."""
+    return Record.query.filter(
+        Record.date_of_discharge.isnot(None),
+        Record.date_of_discharge >= from_date,
+        Record.date_of_discharge < query_end,
+        Record.treating_physician == physician,
+        func.lower(Record.discharge_department).notin_(_SUBMISSION_EXCL_DEPTS),
+    ).order_by(
+        Record.history_submitted.asc(),            # спершу «не здано»
+        Record.date_of_discharge.desc(),
+    ).all()
+
+
 # Reports Route
 @admin_bp.route('/reports')
 @role_required('operator', 'editor', 'admin', 'viewer')
@@ -772,6 +786,251 @@ def report_submission():
     except Exception:
         current_app.logger.exception('Failed to log report_submission')
     return send_file(bio, as_attachment=True, download_name=filename, mimetype='application/pdf')
+
+
+_SUBMISSION_PHYSICIAN_COLS = ['№', 'Дата виписки', 'ПІБ', 'Відділення', '№ історії хвороби', 'Статус виписки']
+
+
+def _filename_part(text):
+    """Безпечний фрагмент імені файлу з імені лікаря (зберігає кирилицю)."""
+    safe = ''.join(ch if ch.isalnum() else '_' for ch in (text or '').strip())
+    return safe.strip('_') or 'physician'
+
+
+@admin_bp.route('/reports/submission-page/physician')
+@role_required('operator', 'editor', 'admin', 'viewer')
+def report_submission_physician():
+    """HTML: перелік історій одного лікаря (здано / не здано) за період."""
+    physician = request.args.get('physician', '').strip()
+    from_date, to_date, query_end, period_label = _parse_report_dates()
+
+    if not physician:
+        flash('Не вказано лікаря', 'warning')
+        return redirect(url_for('admin.report_submission_page',
+                                from_date=from_date.isoformat(), to_date=to_date.isoformat()))
+
+    records = _physician_records(physician, from_date, query_end)
+    not_submitted_records = [r for r in records if not r.history_submitted]
+    submitted_records = [r for r in records if r.history_submitted]
+
+    return render_template(
+        'report_submission_physician.html',
+        physician=physician,
+        from_date=from_date,
+        to_date=to_date,
+        period_label=period_label,
+        not_submitted_records=not_submitted_records,
+        submitted_records=submitted_records,
+    )
+
+
+@admin_bp.route('/reports/submission/physician.pdf')
+@role_required('operator', 'editor', 'admin', 'viewer')
+def report_submission_physician_pdf():
+    """PDF: перелік історій одного лікаря (здано / не здано) за період."""
+    physician = request.args.get('physician', '').strip()
+    from_date, to_date, query_end, _ = _parse_report_dates()
+
+    if not physician:
+        flash('Не вказано лікаря', 'warning')
+        return redirect(url_for('admin.report_submission_page',
+                                from_date=from_date.isoformat(), to_date=to_date.isoformat()))
+
+    records = _physician_records(physician, from_date, query_end)
+    not_submitted_records = [r for r in records if not r.history_submitted]
+    submitted_records = [r for r in records if r.history_submitted]
+
+    try:
+        from weasyprint import HTML
+    except ImportError:
+        flash('Для формування PDF потрібен пакет WeasyPrint', 'danger')
+        return redirect(url_for('admin.report_submission_physician',
+                                physician=physician,
+                                from_date=from_date.isoformat(), to_date=to_date.isoformat()))
+
+    import datetime as _dt
+    kyiv_tz = _dt.timezone(_dt.timedelta(hours=2))
+
+    html_string = render_template(
+        'print_submission_physician.html',
+        physician=physician,
+        from_date=from_date,
+        to_date=to_date,
+        not_submitted_records=not_submitted_records,
+        submitted_records=submitted_records,
+        generated_by=current_user.username,
+        generated_at=datetime.now(kyiv_tz),
+    )
+    pdf = HTML(string=html_string).write_pdf()
+    bio = BytesIO(pdf)
+    bio.seek(0)
+    filename = (f"submission_{_filename_part(physician)}_"
+                f"{from_date.strftime('%d-%m-%Y')}_{to_date.strftime('%d-%m-%Y')}.pdf")
+    try:
+        log_action(current_user.id, 'admin.report_submission_physician', 'report', None,
+                   f'physician={physician} from={from_date} to={to_date}')
+        db.session.commit()
+    except Exception:
+        current_app.logger.exception('Failed to log report_submission_physician')
+    return send_file(bio, as_attachment=True, download_name=filename, mimetype='application/pdf')
+
+
+def _style_xlsx_header(ws):
+    """Стиль рядка заголовків (як у records.export)."""
+    from openpyxl.styles import Font, PatternFill, Alignment
+    header_fill = PatternFill(start_color='366092', end_color='366092', fill_type='solid')
+    header_font = Font(bold=True, color='FFFFFF')
+    for cell in ws[1]:
+        cell.fill = header_fill
+        cell.font = header_font
+        cell.alignment = Alignment(horizontal='center', vertical='center')
+
+
+def _autosize_xlsx(ws):
+    """Авторозмір колонок (як у records.export)."""
+    from openpyxl.utils import get_column_letter
+    for i, col in enumerate(ws.columns, 1):
+        max_length = 0
+        column = get_column_letter(i)
+        for cell in col:
+            try:
+                if len(str(cell.value)) > max_length:
+                    max_length = len(str(cell.value))
+            except Exception:
+                pass
+        ws.column_dimensions[column].width = min(max_length + 2, 50)
+
+
+@admin_bp.route('/reports/submission/physician.xlsx')
+@role_required('operator', 'editor', 'admin', 'viewer')
+def report_submission_physician_xlsx():
+    """Excel: перелік історій одного лікаря (здано / не здано) за період."""
+    from openpyxl import Workbook
+
+    physician = request.args.get('physician', '').strip()
+    from_date, to_date, query_end, _ = _parse_report_dates()
+
+    if not physician:
+        flash('Не вказано лікаря', 'warning')
+        return redirect(url_for('admin.report_submission_page',
+                                from_date=from_date.isoformat(), to_date=to_date.isoformat()))
+
+    records = _physician_records(physician, from_date, query_end)
+
+    wb = Workbook()
+    ws = wb.active
+    ws.title = 'Здача'
+    ws.append(_SUBMISSION_PHYSICIAN_COLS + ['Здано'])
+    for idx, r in enumerate(records, 1):
+        ws.append([
+            idx,
+            r.date_of_discharge.strftime('%d.%m.%Y') if r.date_of_discharge else '',
+            r.full_name,
+            r.discharge_department or '',
+            r.history or '',
+            r.discharge_status or '',
+            'Так' if r.history_submitted else 'Ні',
+        ])
+    _style_xlsx_header(ws)
+    _autosize_xlsx(ws)
+
+    bio = BytesIO()
+    wb.save(bio)
+    bio.seek(0)
+    filename = (f"submission_{_filename_part(physician)}_"
+                f"{from_date.strftime('%d-%m-%Y')}_{to_date.strftime('%d-%m-%Y')}.xlsx")
+    try:
+        log_action(current_user.id, 'admin.report_submission_physician', 'export', None,
+                   f'physician={physician} from={from_date} to={to_date} count={len(records)}')
+        db.session.commit()
+    except Exception:
+        current_app.logger.exception('Failed to log report_submission_physician xlsx')
+    return send_file(bio, as_attachment=True, download_name=filename,
+                     mimetype='application/vnd.openxmlformats-officedocument.spreadsheetml.sheet')
+
+
+@admin_bp.route('/reports/submission.xlsx')
+@role_required('operator', 'editor', 'admin', 'viewer')
+def report_submission_xlsx():
+    """Excel «по всіх лікарях»: лист «Зведення» + лист «Всі записи»."""
+    from openpyxl import Workbook
+
+    from_date, to_date, query_end, _ = _parse_report_dates()
+
+    submission_by_physician = db.session.query(
+        Record.treating_physician,
+        func.sum(case((Record.history_submitted == True, 1), else_=0)).label('submitted'),
+        func.sum(case((Record.history_submitted == False, 1), else_=0)).label('not_submitted'),
+        func.count(Record.id).label('total'),
+    ).filter(
+        Record.date_of_discharge.isnot(None),
+        Record.date_of_discharge >= from_date,
+        Record.date_of_discharge < query_end,
+        Record.treating_physician.isnot(None),
+        func.trim(Record.treating_physician) != '',
+        func.lower(Record.discharge_department).notin_(_SUBMISSION_EXCL_DEPTS),
+    ).group_by(Record.treating_physician).order_by(func.count(Record.id).desc()).all()
+
+    all_records = Record.query.filter(
+        Record.date_of_discharge.isnot(None),
+        Record.date_of_discharge >= from_date,
+        Record.date_of_discharge < query_end,
+        Record.treating_physician.isnot(None),
+        func.trim(Record.treating_physician) != '',
+        func.lower(Record.discharge_department).notin_(_SUBMISSION_EXCL_DEPTS),
+    ).order_by(
+        func.lower(Record.treating_physician).asc(),
+        Record.history_submitted.asc(),
+        Record.date_of_discharge.desc(),
+    ).all()
+
+    wb = Workbook()
+
+    # Лист 1 — Зведення
+    ws_sum = wb.active
+    ws_sum.title = 'Зведення'
+    ws_sum.append(['Лікар', 'Здано', 'Не здано', 'Всього', '% здачі'])
+    tot_submitted = tot_not = tot_all = 0
+    for row in submission_by_physician:
+        pct = round(row.submitted / row.total * 100) if row.total else 0
+        ws_sum.append([row.treating_physician, row.submitted, row.not_submitted, row.total, f'{pct}%'])
+        tot_submitted += row.submitted
+        tot_not += row.not_submitted
+        tot_all += row.total
+    tot_pct = round(tot_submitted / tot_all * 100) if tot_all else 0
+    ws_sum.append(['Всього', tot_submitted, tot_not, tot_all, f'{tot_pct}%'])
+    _style_xlsx_header(ws_sum)
+    _autosize_xlsx(ws_sum)
+
+    # Лист 2 — Всі записи
+    ws_det = wb.create_sheet('Всі записи')
+    ws_det.append(['№', 'Дата виписки', 'ПІБ', 'Відділення', 'Лікар', '№ історії хвороби', 'Статус виписки', 'Здано'])
+    for idx, r in enumerate(all_records, 1):
+        ws_det.append([
+            idx,
+            r.date_of_discharge.strftime('%d.%m.%Y') if r.date_of_discharge else '',
+            r.full_name,
+            r.discharge_department or '',
+            r.treating_physician,
+            r.history or '',
+            r.discharge_status or '',
+            'Так' if r.history_submitted else 'Ні',
+        ])
+    _style_xlsx_header(ws_det)
+    _autosize_xlsx(ws_det)
+
+    bio = BytesIO()
+    wb.save(bio)
+    bio.seek(0)
+    filename = f"submission_all_{from_date.strftime('%d-%m-%Y')}_{to_date.strftime('%d-%m-%Y')}.xlsx"
+    try:
+        log_action(current_user.id, 'admin.report_submission_all', 'export', None,
+                   f'from={from_date} to={to_date} count={len(all_records)}')
+        db.session.commit()
+    except Exception:
+        current_app.logger.exception('Failed to log report_submission_all xlsx')
+    return send_file(bio, as_attachment=True, download_name=filename,
+                     mimetype='application/vnd.openxmlformats-officedocument.spreadsheetml.sheet')
 
 
 @admin_bp.route('/reports/urgency')
