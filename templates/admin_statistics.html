@@ -16,11 +16,11 @@
       <label class="form-label mb-0 me-1">
         <i class="bi bi-calendar-range me-1"></i><strong>Період:</strong>
       </label>
-      <input type="date" class="form-control form-control-sm" id="from_date" name="from_date"
-             value="{{ from_date.isoformat() }}" style="width: auto;">
+      <input type="date" class="form-control form-control-sm w-auto" id="from_date" name="from_date"
+             value="{{ from_date.isoformat() }}">
       <span class="text-muted">—</span>
-      <input type="date" class="form-control form-control-sm" id="to_date" name="to_date"
-             value="{{ to_date.isoformat() }}" style="width: auto;">
+      <input type="date" class="form-control form-control-sm w-auto" id="to_date" name="to_date"
+             value="{{ to_date.isoformat() }}">
       <button type="submit" class="btn btn-primary btn-sm">
         <i class="bi bi-search me-1"></i>Показати
       </button>
@@ -47,7 +47,7 @@
         <div class="card-body">
           <div class="d-flex justify-content-between align-items-start mb-2">
             <div>
-              <h6 class="card-subtitle text-muted mb-1" style="font-size: 0.85rem;">
+              <h6 class="card-subtitle text-muted mb-1 card-subtitle-sm">
                 <i class="bi bi-clipboard-data me-1"></i>Всього записів
               </h6>
               <h3 class="mb-0 text-primary">{{ total_records }}</h3>
@@ -68,10 +68,10 @@
               {% endif %}
             </div>
           </div>
-          <div class="progress" style="height: 4px;">
+          <div class="progress progress-thin">
             <div class="progress-bar bg-primary" role="progressbar" style="width: 100%"></div>
           </div>
-          <small class="text-muted" style="font-size: 0.75rem;">100% від всього</small>
+          <small class="text-muted text-caption">100% від всього</small>
         </div>
       </div>
     </a>
@@ -85,7 +85,7 @@
         <div class="card-body">
           <div class="d-flex justify-content-between align-items-start mb-2">
             <div>
-              <h6 class="card-subtitle text-muted mb-1" style="font-size: 0.85rem;">
+              <h6 class="card-subtitle text-muted mb-1 card-subtitle-sm">
                 <i class="bi bi-hourglass-split me-1"></i>Опрацьовується
               </h6>
               <h3 class="mb-0 text-warning">{{ status_distribution['Опрацьовується'] }}</h3>
@@ -106,11 +106,11 @@
               {% endif %}
             </div>
           </div>
-          <div class="progress" style="height: 4px;">
+          <div class="progress progress-thin">
             <div class="progress-bar bg-warning" role="progressbar"
                  style="width: {{ (status_distribution['Опрацьовується'] / total_records * 100) if total_records > 0 else 0 }}%"></div>
           </div>
-          <small class="text-muted" style="font-size: 0.75rem;">
+          <small class="text-muted text-caption">
             {{ "%.1f"|format((status_distribution['Опрацьовується'] / total_records * 100) if total_records > 0 else 0) }}% від всього
           </small>
         </div>
@@ -126,7 +126,7 @@
         <div class="card-body">
           <div class="d-flex justify-content-between align-items-start mb-2">
             <div>
-              <h6 class="card-subtitle text-muted mb-1" style="font-size: 0.85rem;">
+              <h6 class="card-subtitle text-muted mb-1 card-subtitle-sm">
                 <i class="bi bi-check-circle me-1"></i>Виписаних
               </h6>
               <h3 class="mb-0 text-success">{{ status_distribution['Виписаний'] }}</h3>
@@ -147,11 +147,11 @@
               {% endif %}
             </div>
           </div>
-          <div class="progress" style="height: 4px;">
+          <div class="progress progress-thin">
             <div class="progress-bar bg-success" role="progressbar"
                  style="width: {{ (status_distribution['Виписаний'] / total_records * 100) if total_records > 0 else 0 }}%"></div>
           </div>
-          <small class="text-muted" style="font-size: 0.75rem;">
+          <small class="text-muted text-caption">
             {{ "%.1f"|format((status_distribution['Виписаний'] / total_records * 100) if total_records > 0 else 0) }}% від всього
           </small>
         </div>
@@ -167,7 +167,7 @@
         <div class="card-body">
           <div class="d-flex justify-content-between align-items-start mb-2">
             <div>
-              <h6 class="card-subtitle text-muted mb-1" style="font-size: 0.85rem;">
+              <h6 class="card-subtitle text-muted mb-1 card-subtitle-sm">
                 <i class="bi bi-exclamation-triangle me-1"></i>Порушені вимоги
               </h6>
               <h3 class="mb-0 text-danger">{{ status_distribution['Порушені вимоги'] }}</h3>
@@ -188,11 +188,11 @@
               {% endif %}
             </div>
           </div>
-          <div class="progress" style="height: 4px;">
+          <div class="progress progress-thin">
             <div class="progress-bar bg-danger" role="progressbar"
                  style="width: {{ (status_distribution['Порушені вимоги'] / total_records * 100) if total_records > 0 else 0 }}%"></div>
           </div>
-          <small class="text-muted" style="font-size: 0.75rem;">
+          <small class="text-muted text-caption">
             {{ "%.1f"|format((status_distribution['Порушені вимоги'] / total_records * 100) if total_records > 0 else 0) }}% від всього
           </small>
         </div>
@@ -208,7 +208,7 @@
         <div class="card-body">
           <div class="d-flex justify-content-between align-items-start mb-2">
             <div>
-              <h6 class="card-subtitle text-muted mb-1" style="font-size: 0.85rem;">
+              <h6 class="card-subtitle text-muted mb-1 card-subtitle-sm">
                 <i class="bi bi-heartbreak me-1"></i>Померло
               </h6>
               <h3 class="mb-0 text-body-emphasis">{{ status_distribution['Помер'] }}</h3>
@@ -229,11 +229,11 @@
               {% endif %}
             </div>
           </div>
-          <div class="progress" style="height: 4px;">
+          <div class="progress progress-thin">
             <div class="progress-bar bg-dark" role="progressbar"
                  style="width: {{ (status_distribution['Помер'] / total_records * 100) if total_records > 0 else 0 }}%"></div>
           </div>
-          <small class="text-muted" style="font-size: 0.75rem;">
+          <small class="text-muted text-caption">
             {{ "%.1f"|format((status_distribution['Помер'] / total_records * 100) if total_records > 0 else 0) }}% від всього
           </small>
         </div>
@@ -249,17 +249,17 @@
       <div class="card-body">
         <div class="d-flex justify-content-between align-items-start mb-2">
           <div>
-            <h6 class="card-subtitle text-muted mb-1" style="font-size: 0.85rem;">
+            <h6 class="card-subtitle text-muted mb-1 card-subtitle-sm">
               <i class="bi bi-cash-stack me-1"></i>Загальна сума (АДСГ)
             </h6>
             <h3 class="mb-0 text-info">{{ adsj_total_suma|format_suma }}</h3>
           </div>
           <span class="badge bg-info-subtle text-info">грн</span>
         </div>
-        <div class="progress" style="height: 4px;">
+        <div class="progress progress-thin">
           <div class="progress-bar bg-info" role="progressbar" style="width: 100%"></div>
         </div>
-        <small class="text-muted" style="font-size: 0.75rem;">за обраний період</small>
+        <small class="text-muted text-caption">за обраний період</small>
       </div>
     </div>
   </div>
@@ -348,7 +348,7 @@
                  class="text-decoration-none">
                 <div class="d-flex align-items-center">
                   <span class="badge bg-warning me-2">{{ status_by_dept[dept]['Опрацьовується'] }}</span>
-                  <div class="progress flex-grow-1" style="height: 8px; min-width: 60px;">
+                  <div class="progress flex-grow-1 progress-md">
                     <div class="progress-bar bg-warning" style="width: {{ proc_pct }}%"></div>
                   </div>
                 </div>
@@ -360,7 +360,7 @@
                  class="text-decoration-none">
                 <div class="d-flex align-items-center">
                   <span class="badge bg-success me-2">{{ status_by_dept[dept]['Виписаний'] }}</span>
-                  <div class="progress flex-grow-1" style="height: 8px; min-width: 60px;">
+                  <div class="progress flex-grow-1 progress-md">
                     <div class="progress-bar bg-success" style="width: {{ disch_pct }}%"></div>
                   </div>
                 </div>
@@ -372,7 +372,7 @@
                  class="text-decoration-none">
                 <div class="d-flex align-items-center">
                   <span class="badge bg-danger me-2">{{ status_by_dept[dept]['Порушені вимоги'] }}</span>
-                  <div class="progress flex-grow-1" style="height: 8px; min-width: 60px;">
+                  <div class="progress flex-grow-1 progress-md">
                     <div class="progress-bar bg-danger" style="width: {{ viol_pct }}%"></div>
                   </div>
                 </div>
@@ -384,7 +384,7 @@
                  class="text-decoration-none">
                 <div class="d-flex align-items-center">
                   <span class="badge bg-dark me-2">{{ status_by_dept[dept]['Помер'] }}</span>
-                  <div class="progress flex-grow-1" style="height: 8px; min-width: 60px;">
+                  <div class="progress flex-grow-1 progress-md">
                     <div class="progress-bar bg-dark" style="width: {{ dec_pct }}%"></div>
                   </div>
                 </div>
@@ -441,9 +441,9 @@
       </table>
     </div>
     {% else %}
-    <div class="text-center py-4">
-      <i class="bi bi-building text-muted" style="font-size: 2rem;"></i>
-      <p class="text-muted mt-2 mb-0">Немає даних за обраний період</p>
+    <div class="empty-state">
+      <i class="bi bi-building" aria-hidden="true"></i>
+      <p class="mb-0">Немає даних за обраний період</p>
     </div>
     {% endif %}
   </div>
@@ -491,9 +491,9 @@
       </table>
     </div>
     {% else %}
-    <div class="text-center py-4">
-      <i class="bi bi-tags text-muted" style="font-size: 2rem;"></i>
-      <p class="text-muted mt-2 mb-0">Немає даних за обраний період</p>
+    <div class="empty-state">
+      <i class="bi bi-tags" aria-hidden="true"></i>
+      <p class="mb-0">Немає даних за обраний період</p>
     </div>
     {% endif %}
   </div>
@@ -539,9 +539,9 @@
       </table>
     </div>
     {% else %}
-    <div class="text-center py-4">
-      <i class="bi bi-calendar-x text-muted" style="font-size: 2rem;"></i>
-      <p class="text-muted mt-2 mb-0">Немає даних за обраний період</p>
+    <div class="empty-state">
+      <i class="bi bi-calendar-x" aria-hidden="true"></i>
+      <p class="mb-0">Немає даних за обраний період</p>
     </div>
     {% endif %}
   </div>

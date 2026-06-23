@@ -16,11 +16,11 @@
       <label class="form-label mb-0 me-1">
         <i class="bi bi-calendar-range me-1"></i><strong>Період:</strong>
       </label>
-      <input type="date" class="form-control form-control-sm" name="from_date"
-             value="{{ from_date.isoformat() }}" style="width: auto;">
+      <input type="date" class="form-control form-control-sm w-auto" name="from_date"
+             value="{{ from_date.isoformat() }}">
       <span class="text-muted">—</span>
-      <input type="date" class="form-control form-control-sm" name="to_date"
-             value="{{ to_date.isoformat() }}" style="width: auto;">
+      <input type="date" class="form-control form-control-sm w-auto" name="to_date"
+             value="{{ to_date.isoformat() }}">
       <button type="submit" class="btn btn-primary btn-sm">
         <i class="bi bi-search me-1"></i>Показати
       </button>
@@ -61,7 +61,7 @@
             <h2 class="mb-0 text-success">{{ submission_submitted }}</h2>
             <div class="text-muted small">Здано</div>
             {% if sub_total > 0 %}
-            <div class="text-muted" style="font-size: 0.75rem;">{{ "%.0f"|format(submission_submitted / sub_total * 100) }}%</div>
+            <div class="text-muted text-caption">{{ "%.0f"|format(submission_submitted / sub_total * 100) }}%</div>
             {% endif %}
           </div>
         </div>
@@ -72,7 +72,7 @@
             <h2 class="mb-0 text-warning">{{ submission_not_submitted }}</h2>
             <div class="text-muted small">Не здано</div>
             {% if sub_total > 0 %}
-            <div class="text-muted" style="font-size: 0.75rem;">{{ "%.0f"|format(submission_not_submitted / sub_total * 100) }}%</div>
+            <div class="text-muted text-caption">{{ "%.0f"|format(submission_not_submitted / sub_total * 100) }}%</div>
             {% endif %}
           </div>
         </div>
@@ -93,7 +93,7 @@
         <span>Здано {{ submission_submitted }} з {{ sub_total }}</span>
         <span>{{ "%.0f"|format(submission_submitted / sub_total * 100) }}%</span>
       </div>
-      <div class="progress" style="height: 8px;">
+      <div class="progress progress-md">
         <div class="progress-bar bg-success" style="width: {{ (submission_submitted / sub_total * 100) }}%;"></div>
       </div>
     </div>
@@ -124,7 +124,7 @@
               {% if row.total > 0 %}{{ "%.0f"|format(row.submitted / row.total * 100) }}%{% else %}—{% endif %}
             </td>
             <td>
-              <div class="progress" style="height: 6px;">
+              <div class="progress progress-md">
                 <div class="progress-bar bg-success" style="width: {{ (row.submitted / row.total * 100) if row.total > 0 else 0 }}%;"></div>
               </div>
             </td>

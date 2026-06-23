@@ -1101,3 +1101,24 @@ input[list]:focus::-webkit-calendar-picker-indicator { opacity: 1; }
 .stat-pills-row .stat-pill {
   min-height: 28px;
 }
+
+/* ===== Презентаційні утиліти (узгодження повторюваних inline-стилів) ===== */
+/* Дрібні розміри тексту зі сталої шкали */
+.text-caption { font-size: 0.75rem; }       /* підписи під картками/прогресами */
+.card-subtitle-sm { font-size: 0.85rem; }   /* підзаголовки KPI-карток */
+
+/* Тонкі прогрес-бари (фіксована висота) */
+.progress-thin { height: 4px; }
+.progress-md { height: 8px; min-width: 60px; }
+
+/* Уніфікований «порожній стан»: іконка + підпис по центру */
+.empty-state {
+  text-align: center;
+  color: var(--color-text-muted);
+  padding: 1.5rem 0;
+}
+.empty-state .bi {
+  font-size: 2rem;
+  display: block;
+  margin-bottom: 0.5rem;
+}

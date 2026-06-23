@@ -17,11 +17,11 @@
       <label class="form-label mb-0 me-1">
         <i class="bi bi-calendar-range me-1"></i><strong>Період:</strong>
       </label>
-      <input type="date" class="form-control form-control-sm" name="from_date"
-             value="{{ from_date.isoformat() }}" style="width: auto;">
+      <input type="date" class="form-control form-control-sm w-auto" name="from_date"
+             value="{{ from_date.isoformat() }}">
       <span class="text-muted">—</span>
-      <input type="date" class="form-control form-control-sm" name="to_date"
-             value="{{ to_date.isoformat() }}" style="width: auto;">
+      <input type="date" class="form-control form-control-sm w-auto" name="to_date"
+             value="{{ to_date.isoformat() }}">
       <button type="submit" class="btn btn-primary btn-sm">
         <i class="bi bi-search me-1"></i>Показати
       </button>
@@ -58,7 +58,7 @@
             <h2 class="mb-0 text-danger">{{ urgency_urgent }}</h2>
             <div class="text-muted small">Ургентних</div>
             {% if urg_known > 0 %}
-            <div class="text-muted" style="font-size: 0.75rem;">{{ "%.0f"|format(urgency_urgent / urg_known * 100) }}%</div>
+            <div class="text-muted text-caption">{{ "%.0f"|format(urgency_urgent / urg_known * 100) }}%</div>
             {% endif %}
           </div>
         </div>
@@ -69,7 +69,7 @@
             <h2 class="mb-0 text-info">{{ urgency_planned }}</h2>
             <div class="text-muted small">Планових</div>
             {% if urg_known > 0 %}
-            <div class="text-muted" style="font-size: 0.75rem;">{{ "%.0f"|format(urgency_planned / urg_known * 100) }}%</div>
+            <div class="text-muted text-caption">{{ "%.0f"|format(urgency_planned / urg_known * 100) }}%</div>
             {% endif %}
           </div>
         </div>
@@ -98,7 +98,7 @@
         <span>Ургентних {{ urgency_urgent }} / Планових {{ urgency_planned }}</span>
         <span>{{ "%.0f"|format(urgency_urgent / urg_known * 100) }}% ургентних</span>
       </div>
-      <div class="progress" style="height: 8px;">
+      <div class="progress progress-md">
         <div class="progress-bar bg-danger" style="width: {{ (urgency_urgent / urg_known * 100) }}%;" title="Ургентні"></div>
         <div class="progress-bar bg-info" style="width: {{ (urgency_planned / urg_known * 100) }}%;" title="Планові"></div>
       </div>
