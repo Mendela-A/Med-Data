@@ -502,13 +502,13 @@ def form007_dept_month_print(department_id):
         flash('WeasyPrint не встановлено.', 'danger')
         return redirect(url_for('statisty.form007_dept_month',
                                 department_id=department_id,
-                                from_date=from_date.strftime('%Y-%m')))
+                                from_date=first_day.strftime('%Y-%m')))
 
     pdf = HTML(string=html_string).write_pdf()
     bio = BytesIO(pdf)
     bio.seek(0)
     dept_slug = dept.name.replace(' ', '_')[:30]
-    filename = f"forma007_{dept_slug}_{from_date.strftime('%Y-%m')}.pdf"
+    filename = f"forma007_{dept_slug}_{first_day.strftime('%Y-%m')}.pdf"
     return send_file(bio, as_attachment=False,
                      download_name=filename, mimetype='application/pdf')
 
