@@ -1,5 +1,6 @@
 {% extends "base.html" %}
 {% from "_macros.html" import url_with, sort_th with context %}
+{% from "_records_stats_pills.html" import records_stats_row1, records_stats_row2 with context %}
 {% block title %}Мої записи — поточний місяць{% endblock %}
 {% block container_class %}container-fluid px-4{% endblock %}
 
@@ -24,114 +25,37 @@
     </a>
     {% endif %}
 
-    <div id="records-stats-container" class="d-flex align-items-center gap-2 flex-wrap flex-grow-1">
-      <span class="stat-pill stat-pill-info{% if count == 0 %} stat-pill-muted{% endif %}" data-bs-toggle="tooltip" data-bs-title="Всі виписки за обраний період">
-        <i class="bi bi-layers"></i>Всього: <strong>{{ count }}</strong>
-      </span>
-      <span class="stat-pill stat-pill-success{% if count_discharged == 0 %} stat-pill-muted{% endif %}" data-bs-toggle="tooltip" data-bs-title="Записи зі статусом 'Виписаний' без дати смерті">
-        Виписаних: <strong>{{ count_discharged }}</strong>
-        {% if count > 0 %}<span class="stat-pct">({{ "%.0f"|format(count_discharged / count * 100) }}%)</span>{% endif %}
-      </span>
-      <span class="stat-pill stat-pill-warning{% if count_processing == 0 %} stat-pill-muted{% endif %}" data-bs-toggle="tooltip" data-bs-title="Записи зі статусом 'Опрацьовується' без дати смерті">
-        Опрацьовується: <strong>{{ count_processing }}</strong>
-        {% if count > 0 %}<span class="stat-pct">({{ "%.0f"|format(count_processing / count * 100) }}%)</span>{% endif %}
-      </span>
-      <span class="stat-pill stat-pill-danger{% if count_violations == 0 %} stat-pill-muted{% endif %}" data-bs-toggle="tooltip" data-bs-title="Записи зі статусом 'Порушені вимоги' без дати смерті">
-        Порушення: <strong>{{ count_violations }}</strong>
-        {% if count > 0 %}<span class="stat-pct">({{ "%.0f"|format(count_violations / count * 100) }}%)</span>{% endif %}
-      </span>
-      <span class="stat-pill stat-pill-dark{% if count_deceased == 0 %} stat-pill-muted{% endif %}" data-bs-toggle="tooltip" data-bs-title="Всі записи з датою смерті (незалежно від статусу)">
-        Померло: <strong>{{ count_deceased }}</strong>
-        {% if count > 0 %}<span class="stat-pct">({{ "%.0f"|format(count_deceased / count * 100) }}%)</span>{% endif %}
-      </span>
-      <button type="button" class="btn btn-sm btn-link text-muted p-0" data-bs-toggle="popover" data-bs-placement="bottom" data-bs-html="true"
-              data-bs-title="<i class='bi bi-info-circle me-1'></i>Як рахується статистика?"
-              data-bs-content="<ul class='mb-0 ps-3'><li><strong>Померло</strong> — пріоритетна категорія: всі записи з датою смерті</li><li><strong>Виписаних, Опрацьовується, Порушення</strong> — тільки записи БЕЗ дати смерті</li><li><strong>Всього</strong> = sum всіх категорій</li></ul>">
-        <i class="bi bi-question-circle"></i>
+    {% if current_user.role in ['editor', 'admin', 'viewer'] %}
+    <div class="btn-group ms-auto">
+      <button type="button" class="btn btn-primary btn-sm dropdown-toggle" data-bs-toggle="dropdown" aria-expanded="false">
+        <i class="bi bi-file-earmark-arrow-down me-1"></i>Звіти
       </button>
-      {% if current_user.role in ['editor', 'admin', 'viewer'] %}
-      <div class="btn-group ms-auto">
-        <button type="button" class="btn btn-primary btn-sm dropdown-toggle" data-bs-toggle="dropdown" aria-expanded="false">
-          <i class="bi bi-file-earmark-arrow-down me-1"></i>Звіти
-        </button>
-        <ul class="dropdown-menu dropdown-menu-end">
-          <li><a class="dropdown-item" href="#" onclick="quickExportRecords(); return false;"><i class="bi bi-file-earmark-excel me-2"></i>Експортувати в Excel</a></li>
-          <li><a class="dropdown-item" href="#" onclick="printRecords(); return false;"><i class="bi bi-printer me-2"></i>Друк (PDF)</a></li>
-          <li><hr class="dropdown-divider"></li>
-          <li><a class="dropdown-item" href="#" data-bs-toggle="modal" data-bs-target="#exportRecordsModal"><i class="bi bi-calendar-range me-2"></i>Детальний експорт...</a></li>
-        </ul>
-      </div>
-      {% elif current_user.role == 'operator' %}
-      <div class="ms-auto">
-        <button type="button" class="btn btn-primary btn-sm" data-bs-toggle="modal" data-bs-target="#addRecordModal">
-          <i class="bi bi-plus-circle me-1"></i>Додати запис
-        </button>
-      </div>
-      {% endif %}
+      <ul class="dropdown-menu dropdown-menu-end">
+        <li><a class="dropdown-item" href="#" onclick="quickExportRecords(); return false;"><i class="bi bi-file-earmark-excel me-2"></i>Експортувати в Excel</a></li>
+        <li><a class="dropdown-item" href="#" onclick="printRecords(); return false;"><i class="bi bi-printer me-2"></i>Друк (PDF)</a></li>
+        <li><hr class="dropdown-divider"></li>
+        <li><a class="dropdown-item" href="#" data-bs-toggle="modal" data-bs-target="#exportRecordsModal"><i class="bi bi-calendar-range me-2"></i>Детальний експорт...</a></li>
+      </ul>
     </div>
+    {% elif current_user.role == 'operator' %}
+    <div class="ms-auto">
+      <button type="button" class="btn btn-primary btn-sm" data-bs-toggle="modal" data-bs-target="#addRecordModal">
+        <i class="bi bi-plus-circle me-1"></i>Додати запис
+      </button>
+    </div>
+    {% endif %}
   </div>
 
-  <div class="stat-pills-row mb-3">
-    <span class="stat-pill stat-pill-total" data-bs-toggle="tooltip" data-bs-title="Загальна кількість записів (з урахуванням фільтрів)">
-      <i class="bi bi-layers"></i>Всього: <strong>{{ count }}</strong>
-    </span>
-    <span class="stat-pill stat-pill-success{% if count_discharged == 0 %} stat-pill-muted{% endif %}" data-bs-toggle="tooltip" data-bs-title="Записи зі статусом 'Виписаний' без дати смерті">
-      Виписаних: <strong>{{ count_discharged }}</strong>
-      {% if count > 0 %}<span class="stat-pct">({{ "%.0f"|format(count_discharged / count * 100) }}%)</span>{% endif %}
-    </span>
-    <span class="stat-pill stat-pill-warning{% if count_processing == 0 %} stat-pill-muted{% endif %}" data-bs-toggle="tooltip" data-bs-title="Записи зі статусом 'Опрацьовується' без дати смерті">
-      Опрацьовується: <strong>{{ count_processing }}</strong>
-      {% if count > 0 %}<span class="stat-pct">({{ "%.0f"|format(count_processing / count * 100) }}%)</span>{% endif %}
-    </span>
-    <span class="stat-pill stat-pill-danger{% if count_violations == 0 %} stat-pill-muted{% endif %}" data-bs-toggle="tooltip" data-bs-title="Записи зі статусом 'Порушені вимоги' без дати смерті">
-      Порушення: <strong>{{ count_violations }}</strong>
-      {% if count > 0 %}<span class="stat-pct">({{ "%.0f"|format(count_violations / count * 100) }}%)</span>{% endif %}
-    </span>
-    {% for s in status_defs if s.show_in_stats and not s.is_system %}
-      {% set c = extra_status_counts.get(s.name, 0) %}
-      <span class="stat-pill stat-pill-{{ s.color }}{% if c == 0 %} stat-pill-muted{% endif %}" data-bs-toggle="tooltip" data-bs-title="Записи зі статусом '{{ s.name }}' без дати смерті">
-        <i class="bi {{ s.icon }}"></i>{{ s.name }}: <strong>{{ c }}</strong>
-        {% if count > 0 %}<span class="stat-pct">({{ "%.0f"|format(c / count * 100) }}%)</span>{% endif %}
-      </span>
-    {% endfor %}
-    <span class="stat-pill stat-pill-dark{% if count_deceased == 0 %} stat-pill-muted{% endif %}" data-bs-toggle="tooltip" data-bs-title="Всі записи з датою смерті (незалежно від статусу)">
-      Померло: <strong>{{ count_deceased }}</strong>
-      {% if count > 0 %}<span class="stat-pct">({{ "%.0f"|format(count_deceased / count * 100) }}%)</span>{% endif %}
-    </span>
-    <button type="button" class="btn btn-sm btn-link text-muted p-0" data-bs-toggle="popover" data-bs-placement="bottom" data-bs-html="true"
-            data-bs-title="<i class='bi bi-info-circle me-1'></i>Як рахується статистика?"
-            data-bs-content="<ul class='mb-0 ps-3'><li><strong>Померло</strong> — пріоритетна категорія: всі записи з датою смерті</li><li><strong>Виписаних, Опрацьовується, Порушення</strong> — тільки записи БЕЗ дати смерті</li><li><strong>Всього</strong> = сума всіх категорій</li></ul>">
-      <i class="bi bi-question-circle"></i>
-    </button>
+  <div id="records-stats-row1" class="stat-pills-row mb-3">
+    {{ records_stats_row1(count, count_discharged, count_processing, count_violations, count_deceased, extra_status_counts, status_defs) }}
   </div>
 
-  <div class="stat-pills-row mb-2">
-    <a href="{{ url_with('records.index', history_submitted='0') }}"
-       class="stat-pill stat-pill-warning text-decoration-none{% if count_not_submitted == 0 %} stat-pill-muted{% endif %}"
-       data-bs-toggle="tooltip" data-bs-title="Записи де документацію ще не здано">
-      <i class="bi bi-file-earmark-x"></i>Не здано: <strong>{{ count_not_submitted }}</strong>
-      {% if count > 0 %}<span class="stat-pct">({{ "%.0f"|format(count_not_submitted / count * 100) }}%)</span>{% endif %}
-    </a>
-    <a href="{{ url_with('records.index', history_submitted='1') }}"
-       class="stat-pill stat-pill-success text-decoration-none{% if count_submitted == 0 %} stat-pill-muted{% endif %}"
-       data-bs-toggle="tooltip" data-bs-title="Записи де документацію вже здано">
-      <i class="bi bi-file-earmark-check"></i>Здано: <strong>{{ count_submitted }}</strong>
-      {% if count > 0 %}<span class="stat-pct">({{ "%.0f"|format(count_submitted / count * 100) }}%)</span>{% endif %}
-    </a>
-    <span class="stat-pill stat-pill-danger{% if count_urgent == 0 %} stat-pill-muted{% endif %}"
-          data-bs-toggle="tooltip" data-bs-title="Ургентні пацієнти">
-      <i class="bi bi-lightning-fill"></i>Ургентних: <strong>{{ count_urgent }}</strong>
-      {% if count > 0 %}<span class="stat-pct">({{ "%.0f"|format(count_urgent / count * 100) }}%)</span>{% endif %}
-    </span>
-    <span class="stat-pill stat-pill-info{% if count_planned == 0 %} stat-pill-muted{% endif %}"
-          data-bs-toggle="tooltip" data-bs-title="Планові пацієнти">
-      <i class="bi bi-calendar-check"></i>Планових: <strong>{{ count_planned }}</strong>
-      {% if count > 0 %}<span class="stat-pct">({{ "%.0f"|format(count_planned / count * 100) }}%)</span>{% endif %}
-    </span>
+  <div id="records-stats-row2" class="stat-pills-row mb-2">
+    {{ records_stats_row2(count, count_not_submitted, count_submitted, count_urgent, count_planned) }}
   </div>
 
 
-  <div class="card mb-3 filter-card">
+  <div class="card mb-3">
     <div class="card-body py-3">
       <h5 class="card-title mb-3 d-flex align-items-center gap-2">
         <span>Фільтри</span>
@@ -143,8 +67,8 @@
         </div>
       </h5>
       <form method="get" class="filter-autosubmit">
-        <div class="row g-3 mb-3">
-          <div class="col-sm-6 col-md-4 col-xl-2">
+        <div class="d-flex flex-wrap gap-3 mb-3">
+          <div class="filter-field">
             <label class="form-label small mb-1"><i class="bi bi-calendar-month me-1"></i>Місяць</label>
             <div class="month-picker" data-value="{{ month_filter_value }}" data-min="2020-01">
               <input type="hidden" name="month_filter" id="month_filter" class="mp-hidden-input" value="{{ month_filter_value }}"
@@ -161,7 +85,7 @@
             </div>
           </div>
 
-          <div class="col-sm-6 col-md-4 col-xl-2">
+          <div class="filter-field">
             <label class="form-label small mb-1"><i class="bi bi-flag me-1"></i>Статус виписки</label>
             <select class="form-select form-select-sm" name="discharge_status"
                     hx-get="{{ url_for('records.index') }}"
@@ -180,7 +104,7 @@
             </select>
           </div>
 
-          <div class="col-sm-6 col-md-4 col-xl-2">
+          <div class="filter-field">
             <label class="form-label small mb-1"><i class="bi bi-hospital me-1"></i>Відділення</label>
             <select class="form-select form-select-sm" name="discharge_department"
                     hx-get="{{ url_for('records.index') }}"
@@ -195,7 +119,7 @@
             </select>
           </div>
 
-          <div class="col-sm-6 col-md-4 col-xl-2">
+          <div class="filter-field">
             <label class="form-label small mb-1"><i class="bi bi-person-badge me-1"></i>Лікуючий лікар</label>
             <select class="form-select form-select-sm" name="treating_physician"
                     hx-get="{{ url_for('records.index') }}"
@@ -210,7 +134,7 @@
             </select>
           </div>
 
-          <div class="col-sm-6 col-md-4 col-xl-2">
+          <div class="filter-field">
             <label class="form-label small mb-1"><i class="bi bi-person-lines-fill me-1"></i>ПІБ</label>
             <input class="form-control form-control-sm" name="full_name" placeholder="Пошук за ПІБ" value="{{ full_name_q }}"
                    hx-get="{{ url_for('records.index') }}"
@@ -220,7 +144,7 @@
                    hx-indicator="#search-spinner">
           </div>
 
-          <div class="col-sm-6 col-md-4 col-xl-2">
+          <div class="filter-field">
             <label class="form-label small mb-1"><i class="bi bi-file-medical me-1"></i>Номер історії</label>
             <input class="form-control form-control-sm" name="history" placeholder="Введіть номер" value="{{ history_q }}"
                    hx-get="{{ url_for('records.index') }}"
@@ -230,7 +154,7 @@
                    hx-indicator="#search-spinner">
           </div>
 
-          <div class="col-sm-6 col-md-4 col-xl-2">
+          <div class="filter-field">
             <label class="form-label small mb-1"><i class="bi bi-file-earmark-check me-1"></i>Здача документів</label>
             <select class="form-select form-select-sm" name="history_submitted">
               <option value="" {% if filter_history_submitted == '' %}selected{% endif %}>Всі</option>

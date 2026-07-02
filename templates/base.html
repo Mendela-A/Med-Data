@@ -367,6 +367,7 @@
 
       // Перемикач теми — спільна функція застосування
       function applyBsTheme(dark) {
+        document.documentElement.setAttribute('data-theme', dark ? 'dark' : 'light');
         if (dark) {
           document.documentElement.setAttribute('data-bs-theme', 'dark');
         } else {

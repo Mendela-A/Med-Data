@@ -1,0 +1,62 @@
+{# Shared markup for the records stats pills, rendered both on full page load (dashboard.html)
+   and on htmx OOB swap (_records_table_partial.html) so filter changes keep both rows in sync. #}
+{% from "_macros.html" import url_with with context %}
+
+{% macro records_stats_row1(count, count_discharged, count_processing, count_violations, count_deceased, extra_status_counts, status_defs) %}
+  <span class="stat-pill stat-pill-total" data-bs-toggle="tooltip" data-bs-title="Загальна кількість записів (з урахуванням фільтрів)">
+    <i class="bi bi-layers"></i>Всього: <strong>{{ count }}</strong>
+  </span>
+  <span class="stat-pill stat-pill-success{% if count_discharged == 0 %} stat-pill-muted{% endif %}" data-bs-toggle="tooltip" data-bs-title="Записи зі статусом 'Виписаний' без дати смерті">
+    Виписаних: <strong>{{ count_discharged }}</strong>
+    {% if count > 0 %}<span class="stat-pct">({{ "%.0f"|format(count_discharged / count * 100) }}%)</span>{% endif %}
+  </span>
+  <span class="stat-pill stat-pill-warning{% if count_processing == 0 %} stat-pill-muted{% endif %}" data-bs-toggle="tooltip" data-bs-title="Записи зі статусом 'Опрацьовується' без дати смерті">
+    Опрацьовується: <strong>{{ count_processing }}</strong>
+    {% if count > 0 %}<span class="stat-pct">({{ "%.0f"|format(count_processing / count * 100) }}%)</span>{% endif %}
+  </span>
+  <span class="stat-pill stat-pill-danger{% if count_violations == 0 %} stat-pill-muted{% endif %}" data-bs-toggle="tooltip" data-bs-title="Записи зі статусом 'Порушені вимоги' без дати смерті">
+    Порушення: <strong>{{ count_violations }}</strong>
+    {% if count > 0 %}<span class="stat-pct">({{ "%.0f"|format(count_violations / count * 100) }}%)</span>{% endif %}
+  </span>
+  {% for s in status_defs if s.show_in_stats and not s.is_system %}
+    {% set c = extra_status_counts.get(s.name, 0) %}
+    <span class="stat-pill stat-pill-{{ s.color }}{% if c == 0 %} stat-pill-muted{% endif %}" data-bs-toggle="tooltip" data-bs-title="Записи зі статусом '{{ s.name }}' без дати смерті">
+      <i class="bi {{ s.icon }}"></i>{{ s.name }}: <strong>{{ c }}</strong>
+      {% if count > 0 %}<span class="stat-pct">({{ "%.0f"|format(c / count * 100) }}%)</span>{% endif %}
+    </span>
+  {% endfor %}
+  <span class="stat-pill stat-pill-dark{% if count_deceased == 0 %} stat-pill-muted{% endif %}" data-bs-toggle="tooltip" data-bs-title="Всі записи з датою смерті (незалежно від статусу)">
+    Померло: <strong>{{ count_deceased }}</strong>
+    {% if count > 0 %}<span class="stat-pct">({{ "%.0f"|format(count_deceased / count * 100) }}%)</span>{% endif %}
+  </span>
+  <button type="button" class="btn btn-sm btn-link text-muted p-0" data-bs-toggle="popover" data-bs-placement="bottom" data-bs-html="true"
+          data-bs-title="<i class='bi bi-info-circle me-1'></i>Як рахується статистика?"
+          data-bs-content="<ul class='mb-0 ps-3'><li><strong>Померло</strong> — пріоритетна категорія: всі записи з датою смерті</li><li><strong>Виписаних, Опрацьовується, Порушення</strong> — тільки записи БЕЗ дати смерті</li><li><strong>Всього</strong> = сума всіх категорій</li></ul>">
+    <i class="bi bi-question-circle"></i>
+  </button>
+{% endmacro %}
+
+{% macro records_stats_row2(count, count_not_submitted, count_submitted, count_urgent, count_planned) %}
+  <a href="{{ url_with('records.index', history_submitted='0') }}"
+     class="stat-pill stat-pill-warning text-decoration-none{% if count_not_submitted == 0 %} stat-pill-muted{% endif %}"
+     data-bs-toggle="tooltip" data-bs-title="Записи де документацію ще не здано">
+    <i class="bi bi-file-earmark-x"></i>Не здано: <strong>{{ count_not_submitted }}</strong>
+    {% if count > 0 %}<span class="stat-pct">({{ "%.0f"|format(count_not_submitted / count * 100) }}%)</span>{% endif %}
+  </a>
+  <a href="{{ url_with('records.index', history_submitted='1') }}"
+     class="stat-pill stat-pill-success text-decoration-none{% if count_submitted == 0 %} stat-pill-muted{% endif %}"
+     data-bs-toggle="tooltip" data-bs-title="Записи де документацію вже здано">
+    <i class="bi bi-file-earmark-check"></i>Здано: <strong>{{ count_submitted }}</strong>
+    {% if count > 0 %}<span class="stat-pct">({{ "%.0f"|format(count_submitted / count * 100) }}%)</span>{% endif %}
+  </a>
+  <span class="stat-pill stat-pill-danger{% if count_urgent == 0 %} stat-pill-muted{% endif %}"
+        data-bs-toggle="tooltip" data-bs-title="Ургентні пацієнти">
+    <i class="bi bi-lightning-fill"></i>Ургентних: <strong>{{ count_urgent }}</strong>
+    {% if count > 0 %}<span class="stat-pct">({{ "%.0f"|format(count_urgent / count * 100) }}%)</span>{% endif %}
+  </span>
+  <span class="stat-pill stat-pill-info{% if count_planned == 0 %} stat-pill-muted{% endif %}"
+        data-bs-toggle="tooltip" data-bs-title="Планові пацієнти">
+    <i class="bi bi-calendar-check"></i>Планових: <strong>{{ count_planned }}</strong>
+    {% if count > 0 %}<span class="stat-pct">({{ "%.0f"|format(count_planned / count * 100) }}%)</span>{% endif %}
+  </span>
+{% endmacro %}

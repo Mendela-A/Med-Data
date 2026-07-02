@@ -157,6 +157,8 @@ def index():
                               records=records,
                               pagination=pagination,
                               statuses=statuses,
+                              status_defs=status_defs,
+                              extra_status_counts=extra_status_counts,
                               physicians=physicians,
                               departments=departments,
                               selected_status=selected_status,
@@ -177,6 +179,10 @@ def index():
                               count_processing=count_processing,
                               count_violations=count_violations,
                               count_deceased=count_deceased,
+                              count_urgent=count_urgent,
+                              count_planned=count_planned,
+                              count_submitted=count_submitted,
+                              count_not_submitted=count_not_submitted,
                               active_filters_count=active_filters_count)
 
     return render_template('dashboard.html',

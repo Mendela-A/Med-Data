@@ -463,6 +463,13 @@ h1, h2, h3, h4, h5, h6,
   margin-bottom: 0.5rem;
 }
 
+/* Evenly-filling filter fields — no fixed 12-col grid, so any number of
+   fields packs into one row on wide screens instead of leaving a dangling row */
+.filter-field {
+  flex: 1 1 160px;
+  min-width: 160px;
+}
+
 .card-body form .form-label.small {
   font-weight: 500;
   color: var(--color-text-muted);
@@ -667,15 +674,15 @@ td .badge {
 }
 
 .stat-pill-primary {
-  background-color: var(--color-primary);
   border-color: var(--color-primary);
-  color: #fff;
+  color: var(--color-primary);
+  background-color: var(--color-primary-light);
 }
 
 .stat-pill-secondary {
-  background-color: #64748b;
   border-color: #64748b;
-  color: #fff;
+  color: #475569;
+  background-color: rgba(100, 116, 139, 0.07);
 }
 
 /* Muted state for zero values */
@@ -725,9 +732,19 @@ html[data-theme="dark"] .stat-pill-dark {
   border-color: rgba(148, 163, 184, 0.4);
   background-color: rgba(148, 163, 184, 0.07);
 }
+html[data-theme="dark"] .stat-pill-primary {
+  color: #2dd4bf;
+  border-color: rgba(45, 212, 191, 0.45);
+  background-color: rgba(45, 212, 191, 0.1);
+}
+html[data-theme="dark"] .stat-pill-secondary {
+  color: #94a3b8;
+  border-color: rgba(148, 163, 184, 0.4);
+  background-color: rgba(148, 163, 184, 0.07);
+}
 html[data-theme="dark"] .stat-pill-muted {
   border-color: #374151 !important;
-  color: #4b5563 !important;
+  color: #cbd5e1 !important;
 }
 
 /* Compact records table */
@@ -1842,6 +1859,10 @@ html[data-theme="dark"] .text-muted {
 html[data-theme="dark"] .filter-card {
   background-color: rgba(20, 184, 166, 0.07) !important;
   border-color: rgba(20, 184, 166, 0.18) !important;
+}
+html[data-theme="dark"] .filter-card .card-title,
+[data-bs-theme="dark"] .filter-card .card-title {
+  color: #5eead4; /* teal-300 — var(--color-primary) is too dark to read on dark backgrounds */
 }
 
 
