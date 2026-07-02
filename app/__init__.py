@@ -4,7 +4,7 @@ Flask application factory для створення екземплярів до�
 Використовується для легшого тестування та масштабування.
 """
 
-from flask import Flask, jsonify
+from flask import Flask, jsonify, request, flash, redirect, url_for
 
 
 def create_app(config_class=None):
@@ -63,6 +63,20 @@ def create_app(config_class=None):
     from app.blueprints.ambulatory import ambulatory_bp
     app.register_blueprint(ambulatory_bp)
 
+    # CSRF errors: для AJAX повертаємо JSON із зрозумілим поясненням,
+    # інакше fetch показував оману «Помилка з'єднання з сервером»
+    from flask_wtf.csrf import CSRFError
+
+    @app.errorhandler(CSRFError)
+    def handle_csrf_error(e):
+        if request.headers.get('X-Requested-With') == 'XMLHttpRequest':
+            return jsonify({
+                'success': False,
+                'error': 'Сесія застаріла. Оновіть сторінку (F5) і повторіть спробу — дані форми перед цим скопіюйте.',
+            }), 400
+        flash('Сесія застаріла. Спробуйте ще раз.', 'warning')
+        return redirect(request.referrer or url_for('auth.login'))
+
     # Lightweight health check — only verifies the process is alive (no DB query).
     # SQLite is always reachable if the Flask process responds; a DB query here
     # adds 2880 unnecessary writes/day from Docker's 30s healthcheck interval.
@@ -78,7 +92,10 @@ def create_app(config_class=None):
     @app.cli.command('init-db')
     def init_db():
         """Create database tables."""
+        from models import seed_status_options
         db.create_all()
+        if seed_status_options():
+            click.echo('Seeded default status options.')
         click.echo('Initialized the database.')
 
     @app.cli.command('create-admin')
@@ -177,10 +194,12 @@ def create_app(config_class=None):
     @click.option('--password', required=True, help='Admin password (min 8 chars)')
     def init_db_with_admin(username, password):
         """Create database tables and an admin user if not present."""
+        from models import seed_status_options
         if len(password) < 8:
             click.echo('Error: Password must be at least 8 characters.')
             return
         db.create_all()
+        seed_status_options()
         if not User.query.filter_by(username=username).first():
             u = User(username=username, role='admin')
             u.set_password(password)

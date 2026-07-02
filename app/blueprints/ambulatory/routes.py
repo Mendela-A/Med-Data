@@ -13,10 +13,10 @@ from sqlalchemy import func, case
 from app.extensions import db
 from models import AmbulatoryRecord, User, log_action
 from decorators import role_required
-from utils import (clear_dropdown_cache, get_user_map, escape_like,
-                   validate_ambulatory_form, get_distinct_ambulatory_statuses,
-                   get_distinct_ambulatory_doctors, parse_month_range,
-                   parse_export_date_range, autosize_columns, clamp_per_page)
+from utils import (parse_date, clear_dropdown_cache, get_user_map, escape_like,
+                   validate_ambulatory_form, get_ambulatory_statuses,
+                   get_default_ambulatory_status, get_distinct_ambulatory_doctors,
+                   parse_month_range, parse_export_date_range, autosize_columns, clamp_per_page)
 from constants import STATUS_PROCESSING, STATUS_DISCHARGED, STATUS_NO_EPISODE, KYIV_TZ
 from . import ambulatory_bp
 
@@ -28,6 +28,7 @@ def index():
     from_d, to_d, selected_year, selected_month = parse_month_range(request.args)
 
     q = AmbulatoryRecord.query.options(joinedload(AmbulatoryRecord.creator), joinedload(AmbulatoryRecord.updater))
+    date_conditions = []
     if not show_all:
         q = q.filter(
             AmbulatoryRecord.date >= from_d,
@@ -57,7 +58,8 @@ def index():
         q = q.filter(*conditions)
 
     # Dropdown data (cached)
-    statuses = get_distinct_ambulatory_statuses()
+    status_defs = get_ambulatory_statuses()  # активні, для селектів і пілів
+    status_meta = {s['name']: s for s in get_ambulatory_statuses(include_inactive=True)}  # для бейджів
     doctors = get_distinct_ambulatory_doctors()
 
     # Sorting
@@ -91,15 +93,12 @@ def index():
             else:
                 q = q.order_by(col.desc())
 
-    # Compute all stats in ONE query before applying sort
-    stats_row = q.with_entities(
-        func.count(AmbulatoryRecord.id),
-        func.sum(case((AmbulatoryRecord.discharge_status == STATUS_DISCHARGED, 1), else_=0)),
-        func.sum(case((AmbulatoryRecord.discharge_status == STATUS_PROCESSING, 1), else_=0)),
-        func.sum(case((AmbulatoryRecord.is_urgent == True, 1), else_=0)),
-        func.sum(case((AmbulatoryRecord.discharge_status == STATUS_NO_EPISODE, 1), else_=0)),
-    ).one()
-    count, count_discharged, count_processing, count_urgent, count_no_episode = (v or 0 for v in stats_row)
+    count = q.count()
+    status_counts = {name: cnt for name, cnt in
+                     q.with_entities(AmbulatoryRecord.discharge_status, func.count(AmbulatoryRecord.id))
+                     .group_by(AmbulatoryRecord.discharge_status).all() if name}
+    count_urgent = q.filter(AmbulatoryRecord.is_urgent == True).count()
+    other_count = sum(cnt for name, cnt in status_counts.items() if name not in status_meta)
 
     # Pagination
     page = request.args.get('page', 1, type=int)
@@ -122,7 +121,11 @@ def index():
     return render_template('ambulatory_list.html',
                            records=records,
                            pagination=pagination,
-                           statuses=statuses,
+                           status_defs=status_defs,
+                           status_meta=status_meta,
+                           status_counts=status_counts,
+                           other_count=other_count,
+                           default_status=get_default_ambulatory_status(),
                            doctors=doctors,
                            selected_status=selected_status,
                            selected_doctor=selected_doctor,
@@ -137,10 +140,7 @@ def index():
                            sort_order=sort_order,
                            user_map=user_map,
                            count=count,
-                           count_discharged=count_discharged,
-                           count_processing=count_processing,
                            count_urgent=count_urgent,
-                           count_no_episode=count_no_episode,
                            active_filters_count=active_filters_count)
 
 
@@ -352,7 +352,7 @@ def add_record():
             birth_date=data['birth_date'],
             doctor=data['doctor'],
             diagnosis=data['diagnosis'],
-            discharge_status=STATUS_PROCESSING,
+            discharge_status=get_default_ambulatory_status(),
             comment=data['comment'],
             is_urgent=data['is_urgent'],
             created_by=current_user.id,
@@ -400,7 +400,7 @@ def api_add_record():
         birth_date=data['birth_date'],
         doctor=data['doctor'],
         diagnosis=data['diagnosis'],
-        discharge_status=STATUS_PROCESSING,
+        discharge_status=get_default_ambulatory_status(),
         comment=data['comment'],
         is_urgent=data['is_urgent'],
         created_by=current_user.id,
@@ -474,6 +474,7 @@ def edit_record(record_id):
     doctors = get_distinct_ambulatory_doctors()
     return render_template('ambulatory_edit.html',
                            r=r,
+                           status_defs=get_ambulatory_statuses(),
                            selected_status=request.args.get('discharge_status', ''),
                            selected_doctor=request.args.get('doctor', ''),
                            full_name_q=request.args.get('full_name', ''),

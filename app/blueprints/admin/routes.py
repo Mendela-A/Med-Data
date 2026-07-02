@@ -3,17 +3,19 @@
 Admin routes
 """
 
-from flask import render_template, redirect, url_for, flash, request, current_app
+from flask import render_template, redirect, url_for, flash, request, current_app, send_file
 from flask_login import login_required, current_user
 from datetime import datetime, date, timedelta
-from sqlalchemy import case, func
+from io import BytesIO
+from sqlalchemy import extract, case, func
 
 from app.extensions import db, cache
-from models import User, Department, Audit, Record, DailyReport, AmbulatoryRecord, log_action
+from models import User, Department, Audit, Record, DailyReport, AmbulatoryRecord, NSZUCorrection, StatusOption, log_action
 from decorators import role_required
 from utils import clear_dropdown_cache, escape_like, get_distinct_audit_actions, clamp_per_page
 from constants import (VALID_ROLES, STATUS_DISCHARGED, STATUS_PROCESSING, STATUS_VIOLATIONS,
-                       STATUS_DECEASED, STATUS_NO_GROUP, STATUS_NO_EPISODE, TABS, DEFAULT_ROLE_TABS)
+                       STATUS_DECEASED, STATUS_NO_GROUP, STATUS_NO_EPISODE, TABS, DEFAULT_ROLE_TABS,
+                       UKRAINIAN_MONTHS)
 from . import admin_bp
 
 
@@ -277,6 +279,201 @@ def admin_delete_department(dept_id):
     return redirect(url_for('admin.admin_departments'))
 
 
+# Status Dictionary Routes (scopes: ambulatory / records / nszu)
+STATUS_COLORS = ('primary', 'success', 'info', 'warning', 'danger', 'secondary', 'dark')
+
+STATUS_SCOPES = {
+    'ambulatory': {'label': 'Амбулаторія', 'model': AmbulatoryRecord, 'column': 'discharge_status'},
+    'records': {'label': 'Записи (стаціонар)', 'model': Record, 'column': 'discharge_status'},
+    'nszu': {'label': 'НСЗУ', 'model': NSZUCorrection, 'column': 'status'},
+}
+
+
+def _valid_scope(scope):
+    return scope if scope in STATUS_SCOPES else 'ambulatory'
+
+
+def _scope_status_column(scope):
+    cfg = STATUS_SCOPES[scope]
+    return getattr(cfg['model'], cfg['column'])
+
+
+def _status_usage_counts(scope):
+    """Кількість записів відповідного розділу на кожен статус (одним GROUP BY)."""
+    col = _scope_status_column(scope)
+    model = STATUS_SCOPES[scope]['model']
+    rows = db.session.query(col, func.count(model.id)).group_by(col).all()
+    return {name: cnt for name, cnt in rows if name}
+
+
+@admin_bp.route('/statuses')
+@role_required('admin')
+def admin_statuses():
+    scope = _valid_scope(request.args.get('scope', 'ambulatory'))
+    statuses = (StatusOption.query.filter_by(scope=scope)
+                .order_by(StatusOption.sort_order, StatusOption.name).all())
+    usage = _status_usage_counts(scope)
+    known = {s.name for s in statuses}
+    orphans = {name: cnt for name, cnt in usage.items() if name not in known}
+    return render_template('admin_statuses.html',
+                           statuses=statuses, usage=usage, orphans=orphans,
+                           colors=STATUS_COLORS, scope=scope,
+                           scopes={k: v['label'] for k, v in STATUS_SCOPES.items()})
+
+
+@admin_bp.route('/statuses/create', methods=['POST'])
+@role_required('admin')
+def admin_create_status():
+    scope = _valid_scope(request.form.get('scope', 'ambulatory'))
+    name = request.form.get('name', '').strip()
+    color = request.form.get('color', '').strip()
+    icon = request.form.get('icon', '').strip() or 'bi-circle'
+    show_in_stats = request.form.get('show_in_stats') == 'on'
+
+    if not name:
+        flash('Назва статусу обов\'язкова', 'warning')
+        return redirect(url_for('admin.admin_statuses', scope=scope))
+    if color not in STATUS_COLORS:
+        color = 'secondary'
+    if StatusOption.query.filter_by(scope=scope, name=name).first():
+        flash('Статус з такою назвою вже існує', 'warning')
+        return redirect(url_for('admin.admin_statuses', scope=scope))
+
+    max_order = db.session.query(func.max(StatusOption.sort_order)).filter_by(scope=scope).scalar() or 0
+    s = StatusOption(scope=scope, name=name, color=color, icon=icon,
+                     sort_order=max_order + 10, show_in_stats=show_in_stats)
+    db.session.add(s)
+    db.session.flush()
+    log_action(current_user.id, 'status.create', 'status_option', s.id, f'scope={scope}, name={name}')
+    db.session.commit()
+    clear_dropdown_cache()
+    current_app.logger.info(f'StatusOption created: [{scope}] {name} by {current_user.username}')
+    flash(f'Статус «{name}» успішно створено', 'success')
+    return redirect(url_for('admin.admin_statuses', scope=scope))
+
+
+@admin_bp.route('/statuses/<int:status_id>/update', methods=['POST'])
+@role_required('admin')
+def admin_update_status(status_id):
+    s = db.get_or_404(StatusOption, status_id)
+    new_name = request.form.get('name', '').strip()
+    color = request.form.get('color', '').strip()
+    icon = request.form.get('icon', '').strip() or s.icon
+    sort_order = request.form.get('sort_order', type=int)
+    show_in_stats = request.form.get('show_in_stats') == 'on'
+
+    if not new_name:
+        flash('Назва статусу обов\'язкова', 'warning')
+        return redirect(url_for('admin.admin_statuses', scope=s.scope))
+
+    old_name = s.name
+    renamed = new_name != old_name
+    if renamed and s.is_system:
+        flash(f'Статус «{old_name}» — системний (на ньому тримаються статистика і звіти), його не можна перейменувати', 'warning')
+        return redirect(url_for('admin.admin_statuses', scope=s.scope))
+    if renamed and StatusOption.query.filter_by(scope=s.scope, name=new_name).first():
+        flash('Статус з такою назвою вже існує', 'warning')
+        return redirect(url_for('admin.admin_statuses', scope=s.scope))
+
+    s.name = new_name
+    if color in STATUS_COLORS:
+        s.color = color
+    s.icon = icon
+    if sort_order is not None:
+        s.sort_order = sort_order
+    s.show_in_stats = show_in_stats
+
+    try:
+        renamed_count = 0
+        if renamed:
+            # Записи зберігають статус текстом — перейменування мусить
+            # оновити їх в тій самій транзакції, інакше фільтри/піли
+            # «загублять» старі записи.
+            col = _scope_status_column(s.scope)
+            model = STATUS_SCOPES[s.scope]['model']
+            renamed_count = (model.query
+                             .filter(col == old_name)
+                             .update({STATUS_SCOPES[s.scope]['column']: new_name},
+                                     synchronize_session=False))
+        details = f'scope={s.scope}, name={old_name}->{new_name}, color={s.color}, records_renamed={renamed_count}'
+        log_action(current_user.id, 'status.update', 'status_option', s.id, details)
+        db.session.commit()
+    except Exception:
+        db.session.rollback()
+        current_app.logger.exception('Failed to update status option')
+        flash('Помилка при збереженні статусу', 'danger')
+        return redirect(url_for('admin.admin_statuses', scope=s.scope))
+
+    clear_dropdown_cache()
+    current_app.logger.info(f'StatusOption updated: [{s.scope}] {old_name}->{new_name} by {current_user.username}')
+    if renamed and renamed_count:
+        flash(f'Статус «{old_name}» перейменовано на «{new_name}», оновлено записів: {renamed_count}', 'success')
+    else:
+        flash(f'Статус «{new_name}» оновлено', 'success')
+    return redirect(url_for('admin.admin_statuses', scope=s.scope))
+
+
+@admin_bp.route('/statuses/<int:status_id>/set-default', methods=['POST'])
+@role_required('admin')
+def admin_set_default_status(status_id):
+    s = db.get_or_404(StatusOption, status_id)
+    if not s.is_active:
+        flash('Неактивний статус не може бути статусом за замовчуванням', 'warning')
+        return redirect(url_for('admin.admin_statuses', scope=s.scope))
+    StatusOption.query.filter_by(scope=s.scope).update({'is_default': False}, synchronize_session=False)
+    s.is_default = True
+    log_action(current_user.id, 'status.set_default', 'status_option', s.id, f'scope={s.scope}, name={s.name}')
+    db.session.commit()
+    clear_dropdown_cache()
+    flash(f'Статус «{s.name}» встановлено за замовчуванням для нових записів', 'success')
+    return redirect(url_for('admin.admin_statuses', scope=s.scope))
+
+
+@admin_bp.route('/statuses/<int:status_id>/toggle', methods=['POST'])
+@role_required('admin')
+def admin_toggle_status(status_id):
+    s = db.get_or_404(StatusOption, status_id)
+    if s.is_system:
+        flash(f'Статус «{s.name}» — системний, його не можна деактивувати', 'warning')
+        return redirect(url_for('admin.admin_statuses', scope=s.scope))
+    if s.is_active and s.is_default:
+        flash('Статус за замовчуванням не можна деактивувати — спочатку призначте інший', 'warning')
+        return redirect(url_for('admin.admin_statuses', scope=s.scope))
+    s.is_active = not s.is_active
+    action = 'status.activate' if s.is_active else 'status.deactivate'
+    log_action(current_user.id, action, 'status_option', s.id, f'scope={s.scope}, name={s.name}')
+    db.session.commit()
+    clear_dropdown_cache()
+    state = 'активовано' if s.is_active else 'деактивовано'
+    flash(f'Статус «{s.name}» {state}', 'success')
+    return redirect(url_for('admin.admin_statuses', scope=s.scope))
+
+
+@admin_bp.route('/statuses/<int:status_id>/delete', methods=['POST'])
+@role_required('admin')
+def admin_delete_status(status_id):
+    s = db.get_or_404(StatusOption, status_id)
+    if s.is_system:
+        flash(f'Статус «{s.name}» — системний, його не можна видалити', 'warning')
+        return redirect(url_for('admin.admin_statuses', scope=s.scope))
+    col = _scope_status_column(s.scope)
+    in_use = STATUS_SCOPES[s.scope]['model'].query.filter(col == s.name).count()
+    if in_use:
+        flash(f'Неможливо видалити статус «{s.name}» — використовується в {in_use} записах. Деактивуйте його натомість.', 'danger')
+        return redirect(url_for('admin.admin_statuses', scope=s.scope))
+    if s.is_default:
+        flash('Статус за замовчуванням не можна видалити — спочатку призначте інший', 'warning')
+        return redirect(url_for('admin.admin_statuses', scope=s.scope))
+    saved_id, saved_name, saved_scope = s.id, s.name, s.scope
+    db.session.delete(s)
+    log_action(current_user.id, 'status.delete', 'status_option', saved_id, f'scope={saved_scope}, name={saved_name}')
+    db.session.commit()
+    clear_dropdown_cache()
+    current_app.logger.info(f'StatusOption deleted: [{saved_scope}] {saved_name} by {current_user.username}')
+    flash(f'Статус «{saved_name}» видалено', 'danger')
+    return redirect(url_for('admin.admin_statuses', scope=saved_scope))
+
+
 # Statistics Route
 @admin_bp.route('/statistics')
 @role_required('admin', 'viewer')
@@ -333,9 +530,9 @@ def admin_statistics():
     # Exclusive upper bound for queries (to_date is inclusive, so +1 day)
     query_end = to_date + timedelta(days=1)
 
-    # Period label for display
+    # Period label for display (українські назви місяців, не залежимо від локалі)
     if from_date.day == 1 and to_date == (date(from_date.year, from_date.month + 1, 1) - timedelta(days=1) if from_date.month < 12 else date(from_date.year + 1, 1, 1) - timedelta(days=1)):
-        period_label = datetime(from_date.year, from_date.month, 1).strftime('%B %Y')
+        period_label = f"{UKRAINIAN_MONTHS[from_date.month]} {from_date.year}"
     else:
         period_label = f"{from_date.strftime('%d.%m.%Y')} — {to_date.strftime('%d.%m.%Y')}"
 
@@ -348,9 +545,9 @@ def admin_statistics():
                                from_date=from_date, to_date=to_date,
                                **_cached)
 
-    # 1. Records per day by discharge date (M3: removed func.date() wrapper)
-    records_per_day = db.session.query(
-        Record.date_of_discharge.label('date'),
+    # 1. Records per day by discharge date
+    per_day_rows = db.session.query(
+        func.date(Record.date_of_discharge).label('date'),
         func.count(Record.id).label('count')
     ).filter(
         Record.date_of_discharge.isnot(None),
@@ -360,7 +557,13 @@ def admin_statistics():
         Record.date_of_discharge
     ).order_by(Record.date_of_discharge).all()
 
-    # 2. Status distribution by department + ALOS (H2: added avg k_days)
+    max_per_day = max((r.count for r in per_day_rows), default=0)
+    records_per_day = []
+    for r in per_day_rows:
+        d = r.date if not isinstance(r.date, str) else datetime.strptime(r.date, '%Y-%m-%d').date()
+        records_per_day.append({'date': d.strftime('%d.%m.%Y'), 'count': r.count})
+
+    # 2. Status distribution by department + ALOS
     dept_stats = db.session.query(
         Record.discharge_department,
         func.sum(case((Record.date_of_death.isnot(None), 1), else_=0)).label('deceased'),
@@ -514,6 +717,7 @@ def admin_statistics():
 
     ctx = dict(
         records_per_day=records_per_day,
+        max_per_day=max_per_day,
         status_by_dept=status_by_dept,
         dept_list=dept_list,
         status_distribution=status_distribution,
@@ -536,6 +740,524 @@ def admin_statistics():
         to_date=to_date,
         **ctx,
     )
+
+
+_SUBMISSION_EXCL_DEPTS = ['гінекологія', 'реанімація']
+
+
+def _parse_report_dates():
+    today = datetime.now().date()
+    from_str = request.args.get('from_date', '').strip()
+    to_str = request.args.get('to_date', '').strip()
+    from_date = None
+    to_date = None
+    if from_str:
+        try:
+            from_date = date.fromisoformat(from_str)
+        except ValueError:
+            pass
+    if to_str:
+        try:
+            to_date = date.fromisoformat(to_str)
+        except ValueError:
+            pass
+    if from_date is None:
+        from_date = date(today.year, today.month, 1)
+    if to_date is None:
+        if from_date.month == 12:
+            to_date = date(from_date.year + 1, 1, 1) - timedelta(days=1)
+        else:
+            to_date = date(from_date.year, from_date.month + 1, 1) - timedelta(days=1)
+    if from_date > to_date:
+        from_date, to_date = to_date, from_date
+    query_end = to_date + timedelta(days=1)
+    if from_date.month == to_date.month and from_date.year == to_date.year and from_date.day == 1:
+        period_label = f"{UKRAINIAN_MONTHS[from_date.month]} {from_date.year}"
+    else:
+        period_label = f"{from_date.strftime('%d.%m.%Y')} — {to_date.strftime('%d.%m.%Y')}"
+    return from_date, to_date, query_end, period_label
+
+
+def _physician_records(physician, from_date, query_end):
+    """Записи одного лікаря за період (з тими ж виключеннями, що й звіт)."""
+    return Record.query.filter(
+        Record.date_of_discharge.isnot(None),
+        Record.date_of_discharge >= from_date,
+        Record.date_of_discharge < query_end,
+        Record.treating_physician == physician,
+        func.lower(Record.discharge_department).notin_(_SUBMISSION_EXCL_DEPTS),
+    ).order_by(
+        Record.history_submitted.asc(),            # спершу «не здано»
+        Record.date_of_discharge.desc(),
+    ).all()
+
+
+# Reports Route
+@admin_bp.route('/reports')
+@role_required('operator', 'editor', 'admin', 'viewer')
+def admin_reports():
+    return redirect(url_for('admin.report_submission_page'))
+
+
+@admin_bp.route('/reports/submission-page')
+@role_required('operator', 'editor', 'admin', 'viewer')
+def report_submission_page():
+    from_date, to_date, query_end, period_label = _parse_report_dates()
+
+    submission_row = db.session.query(
+        func.sum(case((Record.history_submitted == True, 1), else_=0)).label('submitted'),
+        func.sum(case((Record.history_submitted == False, 1), else_=0)).label('not_submitted'),
+    ).filter(
+        Record.date_of_discharge.isnot(None),
+        Record.date_of_discharge >= from_date,
+        Record.date_of_discharge < query_end,
+        func.lower(Record.discharge_department).notin_(_SUBMISSION_EXCL_DEPTS),
+    ).first()
+
+    submission_by_physician = db.session.query(
+        Record.treating_physician,
+        func.sum(case((Record.history_submitted == True, 1), else_=0)).label('submitted'),
+        func.sum(case((Record.history_submitted == False, 1), else_=0)).label('not_submitted'),
+        func.count(Record.id).label('total'),
+    ).filter(
+        Record.date_of_discharge.isnot(None),
+        Record.date_of_discharge >= from_date,
+        Record.date_of_discharge < query_end,
+        Record.treating_physician.isnot(None),
+        func.trim(Record.treating_physician) != '',
+        func.lower(Record.discharge_department).notin_(_SUBMISSION_EXCL_DEPTS),
+    ).group_by(Record.treating_physician).order_by(func.count(Record.id).desc()).all()
+
+    return render_template(
+        'report_submission.html',
+        from_date=from_date,
+        to_date=to_date,
+        period_label=period_label,
+        submission_submitted=submission_row.submitted or 0,
+        submission_not_submitted=submission_row.not_submitted or 0,
+        submission_by_physician=submission_by_physician,
+    )
+
+
+@admin_bp.route('/reports/urgency-page')
+@role_required('operator', 'editor', 'admin', 'viewer')
+def report_urgency_page():
+    from_date, to_date, query_end, period_label = _parse_report_dates()
+
+    urgency_row = db.session.query(
+        func.sum(case((Record.is_urgent == True, 1), else_=0)).label('urgent'),
+        func.sum(case((Record.is_urgent == False, 1), else_=0)).label('planned'),
+        func.sum(case((Record.is_urgent.is_(None), 1), else_=0)).label('unset'),
+    ).filter(
+        Record.date_of_discharge.isnot(None),
+        Record.date_of_discharge >= from_date,
+        Record.date_of_discharge < query_end,
+    ).first()
+
+    urgency_by_dept = db.session.query(
+        Record.discharge_department,
+        func.sum(case((Record.is_urgent == True, 1), else_=0)).label('urgent'),
+        func.sum(case((Record.is_urgent == False, 1), else_=0)).label('planned'),
+        func.sum(case((Record.is_urgent.is_(None), 1), else_=0)).label('unset'),
+        func.count(Record.id).label('total'),
+    ).filter(
+        Record.date_of_discharge.isnot(None),
+        Record.date_of_discharge >= from_date,
+        Record.date_of_discharge < query_end,
+        Record.discharge_department.isnot(None),
+        func.trim(Record.discharge_department) != '',
+        func.lower(Record.discharge_department).notin_(['гінекологічне', 'гінекологія']),
+    ).group_by(Record.discharge_department).order_by(func.count(Record.id).desc()).all()
+
+    return render_template(
+        'report_urgency.html',
+        from_date=from_date,
+        to_date=to_date,
+        period_label=period_label,
+        urgency_urgent=urgency_row.urgent or 0,
+        urgency_planned=urgency_row.planned or 0,
+        urgency_unset=urgency_row.unset or 0,
+        urgency_by_dept=urgency_by_dept,
+    )
+
+
+
+@admin_bp.route('/reports/submission')
+@role_required('operator', 'editor', 'admin', 'viewer')
+def report_submission():
+    """PDF: history submission stats per physician."""
+    from_date, to_date, query_end, _ = _parse_report_dates()
+
+    submission_row = db.session.query(
+        func.sum(case((Record.history_submitted == True, 1), else_=0)).label('submitted'),
+        func.sum(case((Record.history_submitted == False, 1), else_=0)).label('not_submitted'),
+    ).filter(
+        Record.date_of_discharge.isnot(None),
+        Record.date_of_discharge >= from_date,
+        Record.date_of_discharge < query_end,
+        func.lower(Record.discharge_department).notin_(_SUBMISSION_EXCL_DEPTS),
+    ).first()
+
+    submission_by_physician = db.session.query(
+        Record.treating_physician,
+        func.sum(case((Record.history_submitted == True, 1), else_=0)).label('submitted'),
+        func.sum(case((Record.history_submitted == False, 1), else_=0)).label('not_submitted'),
+        func.count(Record.id).label('total'),
+    ).filter(
+        Record.date_of_discharge.isnot(None),
+        Record.date_of_discharge >= from_date,
+        Record.date_of_discharge < query_end,
+        Record.treating_physician.isnot(None),
+        func.trim(Record.treating_physician) != '',
+        func.lower(Record.discharge_department).notin_(_SUBMISSION_EXCL_DEPTS),
+    ).group_by(Record.treating_physician).order_by(
+        func.sum(case((Record.history_submitted == False, 1), else_=0)).desc()
+    ).all()
+
+    import datetime as _dt
+    kyiv_tz = _dt.timezone(_dt.timedelta(hours=2))
+
+    try:
+        from weasyprint import HTML
+    except ImportError:
+        flash('Для формування PDF потрібен пакет WeasyPrint', 'danger')
+        return redirect(url_for('admin.admin_reports'))
+
+    html_string = render_template(
+        'print_submission.html',
+        from_date=from_date,
+        to_date=to_date,
+        filter_physician='',
+        submission_submitted=submission_row.submitted or 0,
+        submission_not_submitted=submission_row.not_submitted or 0,
+        submission_by_physician=submission_by_physician,
+        generated_by=current_user.username,
+        generated_at=datetime.now(kyiv_tz),
+    )
+    pdf = HTML(string=html_string).write_pdf()
+    bio = BytesIO(pdf)
+    bio.seek(0)
+    filename = f"submission_{from_date.strftime('%d-%m-%Y')}_{to_date.strftime('%d-%m-%Y')}.pdf"
+    try:
+        log_action(current_user.id, 'admin.report_submission', 'report', None,
+                   f'from={from_date} to={to_date}')
+        db.session.commit()
+    except Exception:
+        current_app.logger.exception('Failed to log report_submission')
+    return send_file(bio, as_attachment=True, download_name=filename, mimetype='application/pdf')
+
+
+_SUBMISSION_PHYSICIAN_COLS = ['№', 'Дата виписки', 'ПІБ', 'Відділення', '№ історії хвороби', 'Статус виписки']
+
+
+def _filename_part(text):
+    """Безпечний фрагмент імені файлу з імені лікаря (зберігає кирилицю)."""
+    safe = ''.join(ch if ch.isalnum() else '_' for ch in (text or '').strip())
+    return safe.strip('_') or 'physician'
+
+
+@admin_bp.route('/reports/submission-page/physician')
+@role_required('operator', 'editor', 'admin', 'viewer')
+def report_submission_physician():
+    """HTML: перелік історій одного лікаря (здано / не здано) за період."""
+    physician = request.args.get('physician', '').strip()
+    from_date, to_date, query_end, period_label = _parse_report_dates()
+
+    if not physician:
+        flash('Не вказано лікаря', 'warning')
+        return redirect(url_for('admin.report_submission_page',
+                                from_date=from_date.isoformat(), to_date=to_date.isoformat()))
+
+    records = _physician_records(physician, from_date, query_end)
+    not_submitted_records = [r for r in records if not r.history_submitted]
+    submitted_records = [r for r in records if r.history_submitted]
+
+    return render_template(
+        'report_submission_physician.html',
+        physician=physician,
+        from_date=from_date,
+        to_date=to_date,
+        period_label=period_label,
+        not_submitted_records=not_submitted_records,
+        submitted_records=submitted_records,
+    )
+
+
+@admin_bp.route('/reports/submission/physician.pdf')
+@role_required('operator', 'editor', 'admin', 'viewer')
+def report_submission_physician_pdf():
+    """PDF: перелік історій одного лікаря (здано / не здано) за період."""
+    physician = request.args.get('physician', '').strip()
+    from_date, to_date, query_end, _ = _parse_report_dates()
+
+    if not physician:
+        flash('Не вказано лікаря', 'warning')
+        return redirect(url_for('admin.report_submission_page',
+                                from_date=from_date.isoformat(), to_date=to_date.isoformat()))
+
+    records = _physician_records(physician, from_date, query_end)
+    not_submitted_records = [r for r in records if not r.history_submitted]
+    submitted_records = [r for r in records if r.history_submitted]
+
+    try:
+        from weasyprint import HTML
+    except ImportError:
+        flash('Для формування PDF потрібен пакет WeasyPrint', 'danger')
+        return redirect(url_for('admin.report_submission_physician',
+                                physician=physician,
+                                from_date=from_date.isoformat(), to_date=to_date.isoformat()))
+
+    import datetime as _dt
+    kyiv_tz = _dt.timezone(_dt.timedelta(hours=2))
+
+    html_string = render_template(
+        'print_submission_physician.html',
+        physician=physician,
+        from_date=from_date,
+        to_date=to_date,
+        not_submitted_records=not_submitted_records,
+        submitted_records=submitted_records,
+        generated_by=current_user.username,
+        generated_at=datetime.now(kyiv_tz),
+    )
+    pdf = HTML(string=html_string).write_pdf()
+    bio = BytesIO(pdf)
+    bio.seek(0)
+    filename = (f"submission_{_filename_part(physician)}_"
+                f"{from_date.strftime('%d-%m-%Y')}_{to_date.strftime('%d-%m-%Y')}.pdf")
+    try:
+        log_action(current_user.id, 'admin.report_submission_physician', 'report', None,
+                   f'physician={physician} from={from_date} to={to_date}')
+        db.session.commit()
+    except Exception:
+        current_app.logger.exception('Failed to log report_submission_physician')
+    return send_file(bio, as_attachment=True, download_name=filename, mimetype='application/pdf')
+
+
+def _style_xlsx_header(ws):
+    """Стиль рядка заголовків (як у records.export)."""
+    from openpyxl.styles import Font, PatternFill, Alignment
+    header_fill = PatternFill(start_color='366092', end_color='366092', fill_type='solid')
+    header_font = Font(bold=True, color='FFFFFF')
+    for cell in ws[1]:
+        cell.fill = header_fill
+        cell.font = header_font
+        cell.alignment = Alignment(horizontal='center', vertical='center')
+
+
+def _autosize_xlsx(ws):
+    """Авторозмір колонок (як у records.export)."""
+    from openpyxl.utils import get_column_letter
+    for i, col in enumerate(ws.columns, 1):
+        max_length = 0
+        column = get_column_letter(i)
+        for cell in col:
+            try:
+                if len(str(cell.value)) > max_length:
+                    max_length = len(str(cell.value))
+            except Exception:
+                pass
+        ws.column_dimensions[column].width = min(max_length + 2, 50)
+
+
+@admin_bp.route('/reports/submission/physician.xlsx')
+@role_required('operator', 'editor', 'admin', 'viewer')
+def report_submission_physician_xlsx():
+    """Excel: перелік історій одного лікаря (здано / не здано) за період."""
+    from openpyxl import Workbook
+
+    physician = request.args.get('physician', '').strip()
+    from_date, to_date, query_end, _ = _parse_report_dates()
+
+    if not physician:
+        flash('Не вказано лікаря', 'warning')
+        return redirect(url_for('admin.report_submission_page',
+                                from_date=from_date.isoformat(), to_date=to_date.isoformat()))
+
+    records = _physician_records(physician, from_date, query_end)
+
+    wb = Workbook()
+    ws = wb.active
+    ws.title = 'Здача'
+    ws.append(_SUBMISSION_PHYSICIAN_COLS + ['Здано'])
+    for idx, r in enumerate(records, 1):
+        ws.append([
+            idx,
+            r.date_of_discharge.strftime('%d.%m.%Y') if r.date_of_discharge else '',
+            r.full_name,
+            r.discharge_department or '',
+            r.history or '',
+            r.discharge_status or '',
+            'Так' if r.history_submitted else 'Ні',
+        ])
+    _style_xlsx_header(ws)
+    _autosize_xlsx(ws)
+
+    bio = BytesIO()
+    wb.save(bio)
+    bio.seek(0)
+    filename = (f"submission_{_filename_part(physician)}_"
+                f"{from_date.strftime('%d-%m-%Y')}_{to_date.strftime('%d-%m-%Y')}.xlsx")
+    try:
+        log_action(current_user.id, 'admin.report_submission_physician', 'export', None,
+                   f'physician={physician} from={from_date} to={to_date} count={len(records)}')
+        db.session.commit()
+    except Exception:
+        current_app.logger.exception('Failed to log report_submission_physician xlsx')
+    return send_file(bio, as_attachment=True, download_name=filename,
+                     mimetype='application/vnd.openxmlformats-officedocument.spreadsheetml.sheet')
+
+
+@admin_bp.route('/reports/submission.xlsx')
+@role_required('operator', 'editor', 'admin', 'viewer')
+def report_submission_xlsx():
+    """Excel «по всіх лікарях»: лист «Зведення» + лист «Всі записи»."""
+    from openpyxl import Workbook
+
+    from_date, to_date, query_end, _ = _parse_report_dates()
+
+    submission_by_physician = db.session.query(
+        Record.treating_physician,
+        func.sum(case((Record.history_submitted == True, 1), else_=0)).label('submitted'),
+        func.sum(case((Record.history_submitted == False, 1), else_=0)).label('not_submitted'),
+        func.count(Record.id).label('total'),
+    ).filter(
+        Record.date_of_discharge.isnot(None),
+        Record.date_of_discharge >= from_date,
+        Record.date_of_discharge < query_end,
+        Record.treating_physician.isnot(None),
+        func.trim(Record.treating_physician) != '',
+        func.lower(Record.discharge_department).notin_(_SUBMISSION_EXCL_DEPTS),
+    ).group_by(Record.treating_physician).order_by(func.count(Record.id).desc()).all()
+
+    all_records = Record.query.filter(
+        Record.date_of_discharge.isnot(None),
+        Record.date_of_discharge >= from_date,
+        Record.date_of_discharge < query_end,
+        Record.treating_physician.isnot(None),
+        func.trim(Record.treating_physician) != '',
+        func.lower(Record.discharge_department).notin_(_SUBMISSION_EXCL_DEPTS),
+    ).order_by(
+        func.lower(Record.treating_physician).asc(),
+        Record.history_submitted.asc(),
+        Record.date_of_discharge.desc(),
+    ).all()
+
+    wb = Workbook()
+
+    # Лист 1 — Зведення
+    ws_sum = wb.active
+    ws_sum.title = 'Зведення'
+    ws_sum.append(['Лікар', 'Здано', 'Не здано', 'Всього', '% здачі'])
+    tot_submitted = tot_not = tot_all = 0
+    for row in submission_by_physician:
+        pct = round(row.submitted / row.total * 100) if row.total else 0
+        ws_sum.append([row.treating_physician, row.submitted, row.not_submitted, row.total, f'{pct}%'])
+        tot_submitted += row.submitted
+        tot_not += row.not_submitted
+        tot_all += row.total
+    tot_pct = round(tot_submitted / tot_all * 100) if tot_all else 0
+    ws_sum.append(['Всього', tot_submitted, tot_not, tot_all, f'{tot_pct}%'])
+    _style_xlsx_header(ws_sum)
+    _autosize_xlsx(ws_sum)
+
+    # Лист 2 — Всі записи
+    ws_det = wb.create_sheet('Всі записи')
+    ws_det.append(['№', 'Дата виписки', 'ПІБ', 'Відділення', 'Лікар', '№ історії хвороби', 'Статус виписки', 'Здано'])
+    for idx, r in enumerate(all_records, 1):
+        ws_det.append([
+            idx,
+            r.date_of_discharge.strftime('%d.%m.%Y') if r.date_of_discharge else '',
+            r.full_name,
+            r.discharge_department or '',
+            r.treating_physician,
+            r.history or '',
+            r.discharge_status or '',
+            'Так' if r.history_submitted else 'Ні',
+        ])
+    _style_xlsx_header(ws_det)
+    _autosize_xlsx(ws_det)
+
+    bio = BytesIO()
+    wb.save(bio)
+    bio.seek(0)
+    filename = f"submission_all_{from_date.strftime('%d-%m-%Y')}_{to_date.strftime('%d-%m-%Y')}.xlsx"
+    try:
+        log_action(current_user.id, 'admin.report_submission_all', 'export', None,
+                   f'from={from_date} to={to_date} count={len(all_records)}')
+        db.session.commit()
+    except Exception:
+        current_app.logger.exception('Failed to log report_submission_all xlsx')
+    return send_file(bio, as_attachment=True, download_name=filename,
+                     mimetype='application/vnd.openxmlformats-officedocument.spreadsheetml.sheet')
+
+
+@admin_bp.route('/reports/urgency')
+@role_required('operator', 'editor', 'admin', 'viewer')
+def report_urgency():
+    """PDF: urgency stats per department."""
+    from_date, to_date, query_end, _ = _parse_report_dates()
+
+    urgency_row = db.session.query(
+        func.sum(case((Record.is_urgent == True, 1), else_=0)).label('urgent'),
+        func.sum(case((Record.is_urgent == False, 1), else_=0)).label('planned'),
+        func.sum(case((Record.is_urgent.is_(None), 1), else_=0)).label('unset'),
+    ).filter(
+        Record.date_of_discharge.isnot(None),
+        Record.date_of_discharge >= from_date,
+        Record.date_of_discharge < query_end,
+    ).first()
+
+    urgency_by_dept = db.session.query(
+        Record.discharge_department,
+        func.sum(case((Record.is_urgent == True, 1), else_=0)).label('urgent'),
+        func.sum(case((Record.is_urgent == False, 1), else_=0)).label('planned'),
+        func.sum(case((Record.is_urgent.is_(None), 1), else_=0)).label('unset'),
+        func.count(Record.id).label('total'),
+    ).filter(
+        Record.date_of_discharge.isnot(None),
+        Record.date_of_discharge >= from_date,
+        Record.date_of_discharge < query_end,
+        Record.discharge_department.isnot(None),
+        func.trim(Record.discharge_department) != '',
+        func.lower(Record.discharge_department).notin_(['гінекологічне', 'гінекологія']),
+    ).group_by(Record.discharge_department).order_by(
+        func.sum(case((Record.is_urgent == True, 1), else_=0)).desc()
+    ).all()
+
+    import datetime as _dt
+    kyiv_tz = _dt.timezone(_dt.timedelta(hours=2))
+
+    try:
+        from weasyprint import HTML
+    except ImportError:
+        flash('Для формування PDF потрібен пакет WeasyPrint', 'danger')
+        return redirect(url_for('admin.admin_reports'))
+
+    html_string = render_template(
+        'print_urgency.html',
+        from_date=from_date,
+        to_date=to_date,
+        filter_department='',
+        urgency_urgent=urgency_row.urgent or 0,
+        urgency_planned=urgency_row.planned or 0,
+        urgency_unset=urgency_row.unset or 0,
+        urgency_by_dept=urgency_by_dept,
+        generated_by=current_user.username,
+        generated_at=datetime.now(kyiv_tz),
+    )
+    pdf = HTML(string=html_string).write_pdf()
+    bio = BytesIO(pdf)
+    bio.seek(0)
+    filename = f"urgency_{from_date.strftime('%d-%m-%Y')}_{to_date.strftime('%d-%m-%Y')}.pdf"
+    try:
+        log_action(current_user.id, 'admin.report_urgency', 'report', None,
+                   f'from={from_date} to={to_date}')
+        db.session.commit()
+    except Exception:
+        current_app.logger.exception('Failed to log report_urgency')
+    return send_file(bio, as_attachment=True, download_name=filename, mimetype='application/pdf')
+
 
 
 # Audit Log Route

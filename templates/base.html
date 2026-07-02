@@ -12,11 +12,18 @@
     })();
   </script>
   <title>{% block title %}Flask App{% endblock %}</title>
-  <link rel="preconnect" href="https://fonts.googleapis.com">
-  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-  <link href="https://fonts.googleapis.com/css2?family=Onest:wght@300;400;500;600;700&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
-  <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet" crossorigin="anonymous">
-  <link href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.0/font/bootstrap-icons.css" rel="stylesheet" crossorigin="anonymous">
+  <script>
+    (function () {
+      try {
+        if (localStorage.getItem('theme') === 'dark') {
+          document.documentElement.setAttribute('data-bs-theme', 'dark');
+        }
+      } catch (e) {}
+    })();
+  </script>
+  <link href="{{ url_for('static', filename='vendor/inter.css') }}" rel="stylesheet">
+  <link href="{{ url_for('static', filename='vendor/bootstrap.min.css') }}" rel="stylesheet">
+  <link href="{{ url_for('static', filename='vendor/bootstrap-icons.css') }}" rel="stylesheet">
   <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
   <!-- HTMX & Alpine.js modern frontend stack -->
   <script src="https://unpkg.com/htmx.org@1.9.10" crossorigin="anonymous"></script>
@@ -90,17 +97,61 @@
           </ul>
         </div>
       {% endif %}
-      {% if current_user.has_tab_access('admin_panel') %}
+      {% if current_user.role in ['operator', 'editor', 'admin', 'viewer'] and current_user.role != 'ambulatory' %}
+        {% set reports_active = request.endpoint and request.endpoint.startswith('admin.report') %}
+        <div class="dropdown">
+          <button class="topnav-link dropdown-toggle border-0 bg-transparent{% if reports_active %} active{% endif %}"
+                  type="button" data-bs-toggle="dropdown" aria-expanded="false" title="Звіти">
+            <i class="bi bi-file-earmark-bar-graph"></i><span>Звіти</span>
+          </button>
+          <ul class="dropdown-menu shadow-sm">
+            <li>
+              <a class="dropdown-item{% if request.endpoint == 'admin.report_submission_page' %} active{% endif %}"
+                 href="{{ url_for('admin.report_submission_page') }}">
+                <i class="bi bi-file-earmark-check me-2 text-success"></i>Здача документації
+              </a>
+            </li>
+            <li>
+              <a class="dropdown-item{% if request.endpoint == 'admin.report_urgency_page' %} active{% endif %}"
+                 href="{{ url_for('admin.report_urgency_page') }}">
+                <i class="bi bi-lightning-fill me-2 text-danger"></i>Ургентність
+              </a>
+            </li>
+          </ul>
+        </div>
+      {% endif %}
+      {% if current_user.role == 'admin' %}
         <div class="topnav-divider"></div>
-        <a href="{{ url_for('admin.admin_users') }}" class="topnav-link{% if request.endpoint and 'user' in request.endpoint %} active{% endif %}" title="Користувачі">
-          <i class="bi bi-people"></i><span>Користувачі</span>
-        </a>
-        <a href="{{ url_for('admin.admin_departments') }}" class="topnav-link{% if request.endpoint and 'department' in request.endpoint %} active{% endif %}" title="Відділення">
-          <i class="bi bi-building"></i><span>Відділення</span>
-        </a>
-        <a href="{{ url_for('admin.admin_audit') }}" class="topnav-link{% if request.endpoint == 'admin.admin_audit' %} active{% endif %}" title="Аудит">
-          <i class="bi bi-journal-text"></i><span>Аудит</span>
-        </a>
+        {% set admin_section_active = request.endpoint and request.endpoint.startswith('admin.') and request.endpoint != 'admin.admin_statistics' and not request.endpoint.startswith('admin.report') %}
+        <div class="dropdown">
+          <button class="topnav-link dropdown-toggle border-0 bg-transparent{% if admin_section_active %} active{% endif %}" type="button"
+                  data-bs-toggle="dropdown" aria-expanded="false" title="Налаштування">
+            <i class="bi bi-gear"></i><span>Налаштування</span>
+          </button>
+          <ul class="dropdown-menu shadow-sm">
+            <li>
+              <a class="dropdown-item{% if request.endpoint and 'user' in request.endpoint %} active{% endif %}" href="{{ url_for('admin.admin_users') }}">
+                <i class="bi bi-people me-2"></i>Користувачі
+              </a>
+            </li>
+            <li>
+              <a class="dropdown-item{% if request.endpoint and 'department' in request.endpoint %} active{% endif %}" href="{{ url_for('admin.admin_departments') }}">
+                <i class="bi bi-building me-2"></i>Відділення
+              </a>
+            </li>
+            <li>
+              <a class="dropdown-item{% if request.endpoint and request.endpoint.startswith('admin.admin_statuses') %} active{% endif %}" href="{{ url_for('admin.admin_statuses') }}">
+                <i class="bi bi-tags me-2"></i>Статуси
+              </a>
+            </li>
+            <li><hr class="dropdown-divider"></li>
+            <li>
+              <a class="dropdown-item{% if request.endpoint == 'admin.admin_audit' %} active{% endif %}" href="{{ url_for('admin.admin_audit') }}">
+                <i class="bi bi-journal-text me-2"></i>Аудит
+              </a>
+            </li>
+          </ul>
+        </div>
       {% endif %}
     </div>
 
@@ -119,6 +170,12 @@
           <span class="topnav-user-role">{{ current_user.role }}</span>
         </button>
         <ul class="dropdown-menu dropdown-menu-end shadow-sm">
+          <li>
+            <button class="dropdown-item" type="button" id="themeToggle">
+              <i class="bi bi-moon-stars me-2" id="themeToggleIcon"></i><span id="themeToggleLabel">Темна тема</span>
+            </button>
+          </li>
+          <li><hr class="dropdown-divider"></li>
           <li>
             <button class="dropdown-item" type="button"
                     data-bs-toggle="modal" data-bs-target="#changePasswordModal">
@@ -242,7 +299,7 @@
     </div>
   </div>
 
-  <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js" crossorigin="anonymous"></script>
+  <script src="{{ url_for('static', filename='vendor/bootstrap.bundle.min.js') }}"></script>
   <script>
     // CSRF token helper
     function getCSRFToken() {
@@ -287,35 +344,65 @@
         }
       });
 
-      // Theme Toggle Logic
-      const themeToggleBtn = document.getElementById('theme-toggle');
-      const themeToggleDarkIcon = document.getElementById('theme-toggle-dark-icon');
-      const themeToggleLightIcon = document.getElementById('theme-toggle-light-icon');
-
-      function updateThemeUI(theme) {
-        if (!themeToggleDarkIcon || !themeToggleLightIcon) return;
-        if (theme === 'dark') {
-          themeToggleDarkIcon.classList.add('d-none');
-          themeToggleLightIcon.classList.remove('d-none');
-        } else {
-          themeToggleDarkIcon.classList.remove('d-none');
-          themeToggleLightIcon.classList.add('d-none');
+      // Скрол до рядка з #record-N у hash (після редагування) з підсвіткою
+      if (window.location.hash && /^#record-\d+$/.test(window.location.hash)) {
+        var targetRow = document.querySelector(window.location.hash);
+        if (targetRow) {
+          setTimeout(function() {
+            targetRow.scrollIntoView({ behavior: 'smooth', block: 'center' });
+            targetRow.classList.add('table-row-highlight');
+            setTimeout(function() {
+              targetRow.classList.remove('table-row-highlight');
+            }, 2000);
+          }, 100);
         }
       }
 
-      // Initialize UI based on current theme
-      const currentTheme = document.documentElement.getAttribute('data-theme') || 'light';
-      updateThemeUI(currentTheme);
+      // Автозастосування фільтрів: селекти у формах з класом filter-autosubmit
+      document.querySelectorAll('form.filter-autosubmit select').forEach(function(sel) {
+        sel.addEventListener('change', function() {
+          sel.form.submit();
+        });
+      });
 
+      // Перемикач теми — спільна функція застосування
+      function applyBsTheme(dark) {
+        if (dark) {
+          document.documentElement.setAttribute('data-bs-theme', 'dark');
+        } else {
+          document.documentElement.removeAttribute('data-bs-theme');
+        }
+        try { localStorage.setItem('theme', dark ? 'dark' : 'light'); } catch (e) {}
+        var dn = document.getElementById('theme-toggle-dark-icon');
+        var ln = document.getElementById('theme-toggle-light-icon');
+        if (dn) dn.classList.toggle('d-none', dark);
+        if (ln) ln.classList.toggle('d-none', !dark);
+      }
+      // Ініціалізуємо іконку кнопки navbar
+      applyBsTheme(document.documentElement.getAttribute('data-bs-theme') === 'dark');
+      // Кнопка теми у navbar (#theme-toggle)
+      var themeToggleBtn = document.getElementById('theme-toggle');
       if (themeToggleBtn) {
         themeToggleBtn.addEventListener('click', function() {
-          const activeTheme = document.documentElement.getAttribute('data-theme') === 'dark' ? 'light' : 'dark';
-          document.documentElement.setAttribute('data-theme', activeTheme);
-          localStorage.setItem('theme', activeTheme);
-          updateThemeUI(activeTheme);
-          
-          // Dispatch custom event for real-time components like Chart.js
-          window.dispatchEvent(new CustomEvent('theme-changed', { detail: { theme: activeTheme } }));
+          applyBsTheme(document.documentElement.getAttribute('data-bs-theme') !== 'dark');
+        });
+      }
+
+      // Перемикач теми у меню користувача (#themeToggle)
+      var themeToggle = document.getElementById('themeToggle');
+      if (themeToggle) {
+        var themeLabel = document.getElementById('themeToggleLabel');
+        var themeIcon = document.getElementById('themeToggleIcon');
+        function syncThemeToggle() {
+          var dark = document.documentElement.getAttribute('data-bs-theme') === 'dark';
+          themeLabel.textContent = dark ? 'Світла тема' : 'Темна тема';
+          themeIcon.className = (dark ? 'bi bi-sun' : 'bi bi-moon-stars') + ' me-2';
+        }
+        syncThemeToggle();
+        themeToggle.addEventListener('click', function() {
+          var dark = document.documentElement.getAttribute('data-bs-theme') === 'dark';
+          applyBsTheme(!dark);
+          syncThemeToggle();
         });
       }
     });
@@ -327,6 +414,32 @@
       input.name = 'csrf_token';
       input.value = getCSRFToken();
       form.appendChild(input);
+    }
+
+    // Спільна обгортка fetch для JSON API: розрізняє мережеві збої,
+    // завершену сесію (редірект на логін) і серверні помилки,
+    // щоб користувач бачив реальну причину, а не «помилку з'єднання»
+    async function fetchJSON(url, options) {
+      let response;
+      try {
+        response = await fetch(url, options);
+      } catch (e) {
+        throw new Error("Немає з'єднання з сервером. Перевірте мережу і спробуйте ще раз.");
+      }
+      const contentType = response.headers.get('content-type') || '';
+      if (response.redirected || contentType.includes('text/html')) {
+        throw new Error('Сесію завершено. Оновіть сторінку (F5) і увійдіть знову.');
+      }
+      let data;
+      try {
+        data = await response.json();
+      } catch (e) {
+        throw new Error(`Несподівана відповідь сервера (HTTP ${response.status}). Спробуйте ще раз.`);
+      }
+      if (!response.ok) {
+        throw new Error(data.error || `Помилка сервера (HTTP ${response.status})`);
+      }
+      return data;
     }
   </script>
   <script src="{{ url_for('static', filename='month-picker.js') }}"></script>

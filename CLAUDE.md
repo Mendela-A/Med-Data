@@ -45,6 +45,8 @@ flask backup-db                     # hot SQLite backup to data/backup_YYYYMMDD.
 - SQLite in production: WAL mode + 4 threads, safe for single-instance low-concurrency workload
 - Roles: `operator` / `editor` / `admin` / `viewer`
 - `records.full_name` has no UNIQUE — one patient can have multiple discharge records (intentional)
+- `status_options` — admin-editable status dictionary, scopes: ambulatory / records / nszu. Records keep status as plain text (no FK, same precedent as discharge_department); renaming a status bulk-UPDATEs the corresponding table in the same transaction. `is_system=True` statuses (records: Виписаний/Опрацьовується/Порушені вимоги; nszu: В обробці) cannot be renamed/deleted/deactivated — statistics page and scripts/tg_bot.py depend on their names. Seed exists in BOTH migrations (20260611_*) AND `models.seed_status_options()` (called from init-db — fresh DBs stamp head without running migrations, see entrypoint.sh)
+- CSRF: `WTF_CSRF_TIME_LIMIT = None` (token lives as long as the session) — default 1h expiry broke long data-entry sessions; AJAX CSRF errors return JSON via app-level CSRFError handler
 
 ## Known DB issues (not yet fixed)
 - `records.treating_physician` / `nszu_corrections.doctor` — free text, no physicians table

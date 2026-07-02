@@ -9,10 +9,6 @@
 {% block container_class %}container-fluid px-4{% endblock %}
 
 {% block content %}
-<div class="d-flex justify-content-between align-items-center mb-3">
-  <h1 class="h4 mb-0"><i class="bi bi-bar-chart-line me-2"></i>Статистика</h1>
-</div>
-
 <!-- Date Range Filter -->
 <div class="card mb-3">
   <div class="card-body py-2">
@@ -20,11 +16,11 @@
       <label class="form-label mb-0 me-1">
         <i class="bi bi-calendar-range me-1"></i><strong>Період:</strong>
       </label>
-      <input type="date" class="form-control form-control-sm" id="from_date" name="from_date"
-             value="{{ from_date.isoformat() }}" style="width: auto;">
+      <input type="date" class="form-control form-control-sm w-auto" id="from_date" name="from_date"
+             value="{{ from_date.isoformat() }}">
       <span class="text-muted">—</span>
-      <input type="date" class="form-control form-control-sm" id="to_date" name="to_date"
-             value="{{ to_date.isoformat() }}" style="width: auto;">
+      <input type="date" class="form-control form-control-sm w-auto" id="to_date" name="to_date"
+             value="{{ to_date.isoformat() }}">
       <button type="submit" class="btn btn-primary btn-sm">
         <i class="bi bi-search me-1"></i>Показати
       </button>
@@ -51,7 +47,7 @@
         <div class="card-body">
           <div class="d-flex justify-content-between align-items-start mb-2">
             <div>
-              <h6 class="card-subtitle text-muted mb-1" style="font-size: 0.85rem;">
+              <h6 class="card-subtitle text-muted mb-1 card-subtitle-sm">
                 <i class="bi bi-clipboard-data me-1"></i>Всього записів
               </h6>
               <h3 class="mb-0 text-primary">{{ total_records }}</h3>
@@ -72,10 +68,10 @@
               {% endif %}
             </div>
           </div>
-          <div class="progress" style="height: 4px;">
+          <div class="progress progress-thin">
             <div class="progress-bar bg-primary" role="progressbar" style="width: 100%"></div>
           </div>
-          <small class="text-muted" style="font-size: 0.75rem;">100% від всього</small>
+          <small class="text-muted text-caption">100% від всього</small>
         </div>
       </div>
     </a>
@@ -89,7 +85,7 @@
         <div class="card-body">
           <div class="d-flex justify-content-between align-items-start mb-2">
             <div>
-              <h6 class="card-subtitle text-muted mb-1" style="font-size: 0.85rem;">
+              <h6 class="card-subtitle text-muted mb-1 card-subtitle-sm">
                 <i class="bi bi-hourglass-split me-1"></i>Опрацьовується
               </h6>
               <h3 class="mb-0 text-warning">{{ status_distribution['Опрацьовується'] }}</h3>
@@ -110,11 +106,11 @@
               {% endif %}
             </div>
           </div>
-          <div class="progress" style="height: 4px;">
+          <div class="progress progress-thin">
             <div class="progress-bar bg-warning" role="progressbar"
                  style="width: {{ (status_distribution['Опрацьовується'] / total_records * 100) if total_records > 0 else 0 }}%"></div>
           </div>
-          <small class="text-muted" style="font-size: 0.75rem;">
+          <small class="text-muted text-caption">
             {{ "%.1f"|format((status_distribution['Опрацьовується'] / total_records * 100) if total_records > 0 else 0) }}% від всього
           </small>
         </div>
@@ -130,7 +126,7 @@
         <div class="card-body">
           <div class="d-flex justify-content-between align-items-start mb-2">
             <div>
-              <h6 class="card-subtitle text-muted mb-1" style="font-size: 0.85rem;">
+              <h6 class="card-subtitle text-muted mb-1 card-subtitle-sm">
                 <i class="bi bi-check-circle me-1"></i>Виписаних
               </h6>
               <h3 class="mb-0 text-success">{{ status_distribution['Виписаний'] }}</h3>
@@ -151,11 +147,11 @@
               {% endif %}
             </div>
           </div>
-          <div class="progress" style="height: 4px;">
+          <div class="progress progress-thin">
             <div class="progress-bar bg-success" role="progressbar"
                  style="width: {{ (status_distribution['Виписаний'] / total_records * 100) if total_records > 0 else 0 }}%"></div>
           </div>
-          <small class="text-muted" style="font-size: 0.75rem;">
+          <small class="text-muted text-caption">
             {{ "%.1f"|format((status_distribution['Виписаний'] / total_records * 100) if total_records > 0 else 0) }}% від всього
           </small>
         </div>
@@ -171,10 +167,10 @@
         <div class="card-body">
           <div class="d-flex justify-content-between align-items-start mb-2">
             <div>
-              <h6 class="card-subtitle text-muted mb-1" style="font-size: 0.85rem;">
+              <h6 class="card-subtitle text-muted mb-1 card-subtitle-sm">
                 <i class="bi bi-exclamation-triangle me-1"></i>Порушені вимоги
               </h6>
-              <h3 class="mb-0 text-secondary">{{ status_distribution['Порушені вимоги'] }}</h3>
+              <h3 class="mb-0 text-danger">{{ status_distribution['Порушені вимоги'] }}</h3>
             </div>
             <div class="text-end">
               {% if trends.violations > 0 %}
@@ -192,11 +188,11 @@
               {% endif %}
             </div>
           </div>
-          <div class="progress" style="height: 4px;">
-            <div class="progress-bar bg-secondary" role="progressbar"
+          <div class="progress progress-thin">
+            <div class="progress-bar bg-danger" role="progressbar"
                  style="width: {{ (status_distribution['Порушені вимоги'] / total_records * 100) if total_records > 0 else 0 }}%"></div>
           </div>
-          <small class="text-muted" style="font-size: 0.75rem;">
+          <small class="text-muted text-caption">
             {{ "%.1f"|format((status_distribution['Порушені вимоги'] / total_records * 100) if total_records > 0 else 0) }}% від всього
           </small>
         </div>
@@ -212,10 +208,10 @@
         <div class="card-body">
           <div class="d-flex justify-content-between align-items-start mb-2">
             <div>
-              <h6 class="card-subtitle text-muted mb-1" style="font-size: 0.85rem;">
+              <h6 class="card-subtitle text-muted mb-1 card-subtitle-sm">
                 <i class="bi bi-heartbreak me-1"></i>Померло
               </h6>
-              <h3 class="mb-0 text-danger">{{ status_distribution['Помер'] }}</h3>
+              <h3 class="mb-0 text-body-emphasis">{{ status_distribution['Помер'] }}</h3>
             </div>
             <div class="text-end">
               {% if trends.deceased > 0 %}
@@ -233,11 +229,11 @@
               {% endif %}
             </div>
           </div>
-          <div class="progress" style="height: 4px;">
-            <div class="progress-bar bg-danger" role="progressbar"
+          <div class="progress progress-thin">
+            <div class="progress-bar bg-dark" role="progressbar"
                  style="width: {{ (status_distribution['Помер'] / total_records * 100) if total_records > 0 else 0 }}%"></div>
           </div>
-          <small class="text-muted" style="font-size: 0.75rem;">
+          <small class="text-muted text-caption">
             {{ "%.1f"|format((status_distribution['Помер'] / total_records * 100) if total_records > 0 else 0) }}% від всього
           </small>
         </div>
@@ -251,17 +247,17 @@
       <div class="card-body">
         <div class="d-flex justify-content-between align-items-start mb-2">
           <div>
-            <h6 class="card-subtitle text-muted mb-1" style="font-size: 0.85rem;">
+            <h6 class="card-subtitle text-muted mb-1 card-subtitle-sm">
               <i class="bi bi-clock-history me-1"></i>Сер. ліжко-днів (ALOS)
             </h6>
             <h3 class="mb-0 text-info">{{ global_alos if global_alos is not none else '—' }}</h3>
           </div>
           <span class="badge bg-info-subtle text-info">днів</span>
         </div>
-        <div class="progress" style="height: 4px;">
+        <div class="progress progress-thin">
           <div class="progress-bar bg-info" role="progressbar" style="width: 100%"></div>
         </div>
-        <small class="text-muted" style="font-size: 0.75rem;">середнє на пацієнта</small>
+        <small class="text-muted text-caption">середнє на пацієнта</small>
       </div>
     </div>
   </div>
@@ -372,7 +368,7 @@
                  class="text-decoration-none">
                 <div class="d-flex align-items-center">
                   <span class="badge bg-warning me-2">{{ status_by_dept[dept]['Опрацьовується'] }}</span>
-                  <div class="progress flex-grow-1" style="height: 8px; min-width: 60px;">
+                  <div class="progress flex-grow-1 progress-md">
                     <div class="progress-bar bg-warning" style="width: {{ proc_pct }}%"></div>
                   </div>
                 </div>
@@ -384,7 +380,7 @@
                  class="text-decoration-none">
                 <div class="d-flex align-items-center">
                   <span class="badge bg-success me-2">{{ status_by_dept[dept]['Виписаний'] }}</span>
-                  <div class="progress flex-grow-1" style="height: 8px; min-width: 60px;">
+                  <div class="progress flex-grow-1 progress-md">
                     <div class="progress-bar bg-success" style="width: {{ disch_pct }}%"></div>
                   </div>
                 </div>
@@ -395,9 +391,9 @@
               <a href="{{ url_for('records.index', from_date=from_date.isoformat(), to_date=to_date.isoformat(), discharge_department=dept, discharge_status='Порушені вимоги', from_stats='1') }}"
                  class="text-decoration-none">
                 <div class="d-flex align-items-center">
-                  <span class="badge bg-secondary me-2">{{ status_by_dept[dept]['Порушені вимоги'] }}</span>
-                  <div class="progress flex-grow-1" style="height: 8px; min-width: 60px;">
-                    <div class="progress-bar bg-secondary" style="width: {{ viol_pct }}%"></div>
+                  <span class="badge bg-danger me-2">{{ status_by_dept[dept]['Порушені вимоги'] }}</span>
+                  <div class="progress flex-grow-1 progress-md">
+                    <div class="progress-bar bg-danger" style="width: {{ viol_pct }}%"></div>
                   </div>
                 </div>
               </a>
@@ -407,9 +403,9 @@
               <a href="{{ url_for('records.index', from_date=from_date.isoformat(), to_date=to_date.isoformat(), discharge_department=dept, has_death_date='1', from_stats='1') }}"
                  class="text-decoration-none">
                 <div class="d-flex align-items-center">
-                  <span class="badge bg-danger me-2">{{ status_by_dept[dept]['Помер'] }}</span>
-                  <div class="progress flex-grow-1" style="height: 8px; min-width: 60px;">
-                    <div class="progress-bar bg-danger" style="width: {{ dec_pct }}%"></div>
+                  <span class="badge bg-dark me-2">{{ status_by_dept[dept]['Помер'] }}</span>
+                  <div class="progress flex-grow-1 progress-md">
+                    <div class="progress-bar bg-dark" style="width: {{ dec_pct }}%"></div>
                   </div>
                 </div>
               </a>
@@ -450,14 +446,14 @@
               <a href="{{ url_for('records.index', from_date=from_date.isoformat(), to_date=to_date.isoformat(), discharge_status='Порушені вимоги', from_stats='1') }}"
                  class="text-decoration-none"
                  title="Переглянути всі записи з порушеними вимогами">
-                <span class="badge bg-secondary badge-clickable">{{ status_distribution['Порушені вимоги'] }}</span>
+                <span class="badge bg-danger badge-clickable">{{ status_distribution['Порушені вимоги'] }}</span>
               </a>
             </th>
             <th class="text-center">
               <a href="{{ url_for('records.index', from_date=from_date.isoformat(), to_date=to_date.isoformat(), has_death_date='1', from_stats='1') }}"
                  class="text-decoration-none"
                  title="Переглянути всі записи померлих">
-                <span class="badge bg-danger badge-clickable">{{ status_distribution['Помер'] }}</span>
+                <span class="badge bg-dark badge-clickable">{{ status_distribution['Помер'] }}</span>
               </a>
             </th>
             <th class="text-center">
@@ -471,9 +467,9 @@
       </table>
     </div>
     {% else %}
-    <div class="text-center py-4">
-      <i class="bi bi-building text-muted" style="font-size: 2rem;"></i>
-      <p class="text-muted mt-2 mb-0">Немає даних за обраний період</p>
+    <div class="empty-state">
+      <i class="bi bi-building" aria-hidden="true"></i>
+      <p class="mb-0">Немає даних за обраний період</p>
     </div>
     {% endif %}
   </div>
@@ -580,9 +576,9 @@
       </table>
     </div>
     {% else %}
-    <div class="text-center py-4">
-      <i class="bi bi-tags text-muted" style="font-size: 2rem;"></i>
-      <p class="text-muted mt-2 mb-0">Немає даних за обраний період</p>
+    <div class="empty-state">
+      <i class="bi bi-tags" aria-hidden="true"></i>
+      <p class="mb-0">Немає даних за обраний період</p>
     </div>
     {% endif %}
   </div>
@@ -600,15 +596,21 @@
       <table class="table table-hover table-sm">
         <thead>
           <tr>
-            <th>Дата</th>
-            <th class="text-end">Кількість записів</th>
+            <th style="width: 110px;">Дата</th>
+            <th class="text-end" style="width: 70px;">К-сть</th>
+            <th></th>
           </tr>
         </thead>
         <tbody>
           {% for record in records_per_day %}
           <tr>
-            <td>{{ record.date }}</td>
+            <td class="text-nowrap">{{ record.date }}</td>
             <td class="text-end"><strong>{{ record.count }}</strong></td>
+            <td class="align-middle">
+              <div class="progress" style="height: 10px; min-width: 120px;">
+                <div class="progress-bar bg-primary" style="width: {{ (record.count / max_per_day * 100) if max_per_day > 0 else 0 }}%"></div>
+              </div>
+            </td>
           </tr>
           {% endfor %}
         </tbody>
@@ -616,14 +618,15 @@
           <tr>
             <th>Всього</th>
             <th class="text-end"><strong>{{ records_per_day | sum(attribute='count') }}</strong></th>
+            <th></th>
           </tr>
         </tfoot>
       </table>
     </div>
     {% else %}
-    <div class="text-center py-4">
-      <i class="bi bi-calendar-x text-muted" style="font-size: 2rem;"></i>
-      <p class="text-muted mt-2 mb-0">Немає даних за обраний період</p>
+    <div class="empty-state">
+      <i class="bi bi-calendar-x" aria-hidden="true"></i>
+      <p class="mb-0">Немає даних за обраний період</p>
     </div>
     {% endif %}
   </div>
@@ -646,16 +649,14 @@
     const prevMonthBtn = document.getElementById('prevMonthBtn');
     if (prevMonthBtn) {
       prevMonthBtn.addEventListener('click', function() {
-        const fromInput = document.getElementById('from_date').value;
-        // Use the currently selected from_date as base, not today
-        const base = fromInput ? new Date(fromInput + 'T00:00:00') : new Date();
-        const prev = new Date(base.getFullYear(), base.getMonth() - 1, 1);
+        const fromInput = document.getElementById('from_date');
+        const cur = fromInput.value ? new Date(fromInput.value + 'T00:00:00') : new Date();
+        const prev = new Date(cur.getFullYear(), cur.getMonth() - 1, 1);
         const lastDay = new Date(prev.getFullYear(), prev.getMonth() + 1, 0);
         const pad = n => String(n).padStart(2, '0');
-        const fromStr = `${prev.getFullYear()}-${pad(prev.getMonth()+1)}-01`;
-        const toStr = `${lastDay.getFullYear()}-${pad(lastDay.getMonth()+1)}-${pad(lastDay.getDate())}`;
-        document.getElementById('from_date').value = fromStr;
-        document.getElementById('to_date').value = toStr;
+        fromInput.value = `${prev.getFullYear()}-${pad(prev.getMonth()+1)}-01`;
+        document.getElementById('to_date').value =
+          `${lastDay.getFullYear()}-${pad(lastDay.getMonth()+1)}-${pad(lastDay.getDate())}`;
         document.getElementById('dateRangeForm').submit();
       });
     }

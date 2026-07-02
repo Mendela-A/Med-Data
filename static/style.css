@@ -486,6 +486,14 @@ h1, h2, h3, h4, h5, h6,
   -webkit-overflow-scrolling: touch;
 }
 
+/* Скрол-контейнер для великих таблиць записів: overflow на .table-responsive
+   робить sticky-шапку відносною саме до нього, тому обмежуємо висоту і
+   скролимо всередині — шапка лишається видимою. */
+.records-scroll {
+  max-height: 75vh;
+  overflow-y: auto;
+}
+
 .table {
   border-collapse: separate;
   border-spacing: 0;
@@ -656,6 +664,18 @@ td .badge {
   border-color: #475569;
   color: #334155;
   background-color: rgba(51, 65, 85, 0.06);
+}
+
+.stat-pill-primary {
+  background-color: var(--color-primary);
+  border-color: var(--color-primary);
+  color: #fff;
+}
+
+.stat-pill-secondary {
+  background-color: #64748b;
+  border-color: #64748b;
+  color: #fff;
 }
 
 /* Muted state for zero values */
@@ -1824,31 +1844,86 @@ html[data-theme="dark"] .filter-card {
   border-color: rgba(20, 184, 166, 0.18) !important;
 }
 
-/* ===== Empty State ===== */
-.empty-state {
-  text-align: center;
-  padding: 3.5rem 1rem;
-  color: var(--color-text-muted);
-}
-.empty-state-icon {
-  font-size: 2.75rem;
-  margin-bottom: 0.875rem;
-  opacity: 0.25;
-  display: block;
-  color: var(--color-primary);
-}
-.empty-state-title {
-  font-size: 0.95rem;
-  font-weight: 600;
-  color: var(--color-text);
-  margin-bottom: 0.35rem;
-}
-.empty-state-text {
-  font-size: 0.85rem;
-  margin: 0;
+
+
+/* ============================================================
+   Темна тема (data-bs-theme="dark" на <html>)
+   ============================================================ */
+[data-bs-theme="dark"] {
+  --color-bg-start: #0f172a;
+  --color-bg-end: #0b1120;
+  --color-text: #e2e8f0;
+  --color-text-muted: #94a3b8;
+  --color-border: #334155;
+  --color-primary-light: rgba(45, 212, 191, 0.12);
+  --color-primary-medium: rgba(45, 212, 191, 0.22);
 }
 
-/* ===== Numeric cells (monospace tabular numbers) ===== */
+[data-bs-theme="dark"] .top-navbar {
+  background: rgba(15, 23, 42, 0.88);
+  border-bottom: 1px solid var(--color-border);
+}
+
+[data-bs-theme="dark"] .topnav-brand { color: #2dd4bf; }
+[data-bs-theme="dark"] .topnav-user > i { color: #2dd4bf; }
+[data-bs-theme="dark"] .topnav-user-role { background: rgba(255, 255, 255, 0.08); }
+
+[data-bs-theme="dark"] .container,
+[data-bs-theme="dark"] .container-fluid.px-4 {
+  background: #1e293b;
+}
+
+[data-bs-theme="dark"] .input-group-text { background-color: #1f2937; }
+
+[data-bs-theme="dark"] .table thead th {
+  background-color: #243044;
+  color: var(--color-text);
+}
+
+[data-bs-theme="dark"] .table-striped > tbody > tr:nth-of-type(odd) {
+  background-color: rgba(255, 255, 255, 0.02);
+}
+
+[data-bs-theme="dark"] .login-card,
+[data-bs-theme="dark"] .month-picker-panel {
+  background: #1e293b;
+}
+
+[data-bs-theme="dark"] .table tbody tr.table-urgent td {
+  background-color: rgba(22, 163, 74, 0.16) !important;
+}
+
+[data-bs-theme="dark"] .stat-pill-muted {
+  background-color: #475569 !important;
+  border-color: #475569 !important;
+}
+
+/* Активний пункт у випадайках навігації */
+.dropdown-menu .dropdown-item.active,
+.dropdown-menu .dropdown-item:active {
+  background-color: var(--color-primary);
+  color: #fff;
+}
+
+/* Окремий рівний ряд статусних пілів */
+.stat-pills-row {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 0.5rem;
+}
+
+.stat-pills-row .stat-pill {
+  min-height: 28px;
+}
+
+/* ===== Презентаційні утиліти ===== */
+.text-caption { font-size: 0.75rem; }
+.card-subtitle-sm { font-size: 0.85rem; }
+.progress-thin { height: 4px; }
+.progress-md { height: 8px; min-width: 60px; }
+
+/* Numeric cells (monospace tabular numbers) */
 .cell-num {
   font-family: var(--font-mono);
   font-variant-numeric: tabular-nums;
@@ -1856,7 +1931,18 @@ html[data-theme="dark"] .filter-card {
   letter-spacing: -0.01em;
 }
 
-/* Global tabular nums for table data */
 .table tbody td {
   font-variant-numeric: tabular-nums;
+}
+
+/* Уніфікований «порожній стан» */
+.empty-state {
+  text-align: center;
+  color: var(--color-text-muted);
+  padding: 1.5rem 0;
+}
+.empty-state .bi {
+  font-size: 2rem;
+  display: block;
+  margin-bottom: 0.5rem;
 }

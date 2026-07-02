@@ -60,8 +60,14 @@
 
   <div class="card mb-3">
     <div class="card-body py-3">
-      <h2 class="h6 mb-3"><i class="bi bi-funnel me-2"></i>Фільтри</h2>
-      <form method="get">
+      <h2 class="h6 mb-3">
+        <i class="bi bi-funnel me-2"></i>Фільтри
+        {% set nszu_filters = (1 if selected_status else 0) + (1 if selected_doctor else 0) + (1 if nszu_record_id_q else 0) %}
+        {% if nszu_filters %}
+          <span class="badge bg-primary ms-1" data-bs-toggle="tooltip" data-bs-title="Кількість активних фільтрів — список відфільтровано">{{ nszu_filters }}</span>
+        {% endif %}
+      </h2>
+      <form method="get" class="filter-autosubmit">
         <div class="row g-3 mb-3">
           <div class="col-sm-6 col-md-4 col-xl-2">
             <label class="form-label small mb-1"><i class="bi bi-calendar-month me-1"></i>Місяць</label>
@@ -79,10 +85,12 @@
             <label class="form-label small mb-1"><i class="bi bi-flag me-1"></i>Статус</label>
             <select class="form-select form-select-sm" name="status">
               <option value="">Всі</option>
-              <option value="В обробці" {% if selected_status == 'В обробці' %}selected{% endif %}>В обробці</option>
-              <option value="Опрацьовано" {% if selected_status == 'Опрацьовано' %}selected{% endif %}>Опрацьовано</option>
-              <option value="Оплачено" {% if selected_status == 'Оплачено' %}selected{% endif %}>Оплачено</option>
-              <option value="Не підлягає оплаті" {% if selected_status == 'Не підлягає оплаті' %}selected{% endif %}>Не підлягає оплаті</option>
+              {% for s in statuses %}
+                <option value="{{ s }}" {% if selected_status == s %}selected{% endif %}>{{ s }}</option>
+              {% endfor %}
+              {% if selected_status and selected_status not in statuses %}
+                <option value="{{ selected_status }}" selected>{{ selected_status }}</option>
+              {% endif %}
             </select>
           </div>
 
@@ -148,33 +156,19 @@
         </span>
 
         <div class="d-flex flex-wrap gap-2">
-          {% if status_stats.get('В обробці') %}
-          <span class="stat-pill stat-pill-dark">
-            <i class="bi bi-clock"></i>В обробці: <strong>{{ status_stats['В обробці']['count'] }}</strong>
-            <small class="opacity-75">({{ '{:,.2f}'.format(status_stats['В обробці']['sum']) }} грн)</small>
-          </span>
-          {% endif %}
-
-          {% if status_stats.get('Опрацьовано') %}
-          <span class="stat-pill stat-pill-warning">
-            <i class="bi bi-hourglass-split"></i>Опрацьовано: <strong>{{ status_stats['Опрацьовано']['count'] }}</strong>
-            <small class="opacity-75">({{ '{:,.2f}'.format(status_stats['Опрацьовано']['sum']) }} грн)</small>
-          </span>
-          {% endif %}
-
-          {% if status_stats.get('Оплачено') %}
-          <span class="stat-pill stat-pill-success">
-            <i class="bi bi-check-circle"></i>Оплачено: <strong>{{ status_stats['Оплачено']['count'] }}</strong>
-            <small class="opacity-75">({{ '{:,.2f}'.format(status_stats['Оплачено']['sum']) }} грн)</small>
-          </span>
-          {% endif %}
-
-          {% if status_stats.get('Не підлягає оплаті') %}
-          <span class="stat-pill stat-pill-danger">
-            <i class="bi bi-x-circle"></i>Не підлягає оплаті: <strong>{{ status_stats['Не підлягає оплаті']['count'] }}</strong>
-            <small class="opacity-75">({{ '{:,.2f}'.format(status_stats['Не підлягає оплаті']['sum']) }} грн)</small>
-          </span>
-          {% endif %}
+          {% for s in status_defs if s.show_in_stats and status_stats.get(s.name) %}
+            <span class="stat-pill stat-pill-{{ s.color }}">
+              <i class="bi {{ s.icon }}"></i>{{ s.name }}: <strong>{{ status_stats[s.name]['count'] }}</strong>
+              <small class="opacity-75">({{ '{:,.2f}'.format(status_stats[s.name]['sum']) }} грн)</small>
+            </span>
+          {% endfor %}
+          {# статуси з даних, яких немає в довіднику #}
+          {% for name, st in status_stats.items() if name and name not in status_meta %}
+            <span class="stat-pill stat-pill-secondary" data-bs-toggle="tooltip" data-bs-title="Статус відсутній у довіднику (Адмін → Статуси)">
+              <i class="bi bi-question-circle"></i>{{ name }}: <strong>{{ st['count'] }}</strong>
+              <small class="opacity-75">({{ '{:,.2f}'.format(st['sum']) }} грн)</small>
+            </span>
+          {% endfor %}
         </div>
 
         <div class="ms-auto">
@@ -216,14 +210,9 @@
                   <td class="text-nowrap"><small>{{ c.nszu_record_id }}</small></td>
                   <td class="text-nowrap">{{ c.doctor }}</td>
                   <td class="text-nowrap">
-                    {% if c.status == 'Оплачено' %}
-                      <span class="badge badge-table bg-success">{{ c.status }}</span>
-                    {% elif c.status == 'Опрацьовано' %}
-                      <span class="badge badge-table bg-warning text-dark">{{ c.status }}</span>
-                    {% elif c.status == 'В обробці' %}
-                      <span class="badge badge-table bg-secondary">{{ c.status }}</span>
-                    {% elif c.status == 'Не підлягає оплаті' %}
-                      <span class="badge badge-table bg-danger">{{ c.status }}</span>
+                    {% set meta = status_meta.get(c.status) %}
+                    {% if meta %}
+                      <span class="badge badge-table bg-{{ meta.color }}{% if meta.color == 'warning' %} text-dark{% endif %}">{{ c.status }}</span>
                     {% else %}
                       <span class="badge badge-table bg-secondary">{{ c.status }}</span>
                     {% endif %}
@@ -365,7 +354,7 @@
                 <label class="form-label">Статус</label>
                 <select class="form-select" name="status">
                   {% for s in statuses %}
-                    <option value="{{ s }}" {% if s == 'В обробці' %}selected{% endif %}>{{ s }}</option>
+                    <option value="{{ s }}" {% if s == default_status %}selected{% endif %}>{{ s }}</option>
                   {% endfor %}
                 </select>
               </div>
@@ -435,10 +424,9 @@
                 <label class="form-label">Статус (опціонально)</label>
                 <select class="form-select" name="status" id="export_status">
                   <option value="">Всі</option>
-                  <option value="В обробці">В обробці</option>
-                  <option value="Опрацьовано">Опрацьовано</option>
-                  <option value="Оплачено">Оплачено</option>
-                  <option value="Не підлагає оплаті">Не підлягає оплаті</option>
+                  {% for s in statuses %}
+                    <option value="{{ s }}">{{ s }}</option>
+                  {% endfor %}
                 </select>
               </div>
 
@@ -761,7 +749,7 @@
       saveBtn.innerHTML = '<span class="spinner-border spinner-border-sm me-2"></span>Збереження...';
       saveBtn.disabled = true;
 
-      fetch('{{ url_for("nszu.api_nszu_add") }}', {
+      fetchJSON('{{ url_for("nszu.api_nszu_add") }}', {
         method: 'POST',
         body: formData,
         headers: {
@@ -769,7 +757,6 @@
           'X-CSRFToken': getCSRFToken()
         }
       })
-      .then(response => response.json())
       .then(data => {
         saveBtn.innerHTML = originalText;
         saveBtn.disabled = false;
@@ -779,11 +766,8 @@
           updateCounter();
 
           if (closeAfter) {
-            // Close modal and reload page after short delay
-            setTimeout(function() {
-              bootstrap.Modal.getInstance(modal).hide();
-              location.reload();
-            }, 1000);
+            bootstrap.Modal.getInstance(modal).hide();
+            location.reload();
           } else {
             // Clear form but keep some fields
             clearForm(true);
@@ -795,7 +779,7 @@
       .catch(error => {
         saveBtn.innerHTML = originalText;
         saveBtn.disabled = false;
-        showError('Помилка з\'єднання з сервером');
+        showError(error.message);
         console.error('Error:', error);
       });
     }
@@ -868,7 +852,13 @@
             document.getElementById('edit_date').value = data.date;
             document.getElementById('edit_nszu_record_id').value = data.nszu_record_id;
             document.getElementById('edit_doctor').value = data.doctor;
-            document.getElementById('edit_status').value = data.status;
+            // Деактивований статус може бути відсутнім у селекті —
+            // додаємо опцію, щоб не «загубити» значення при редагуванні
+            const editStatusSelect = document.getElementById('edit_status');
+            if (data.status && !Array.from(editStatusSelect.options).some(o => o.value === data.status)) {
+              editStatusSelect.add(new Option(data.status + ' (неактивний)', data.status));
+            }
+            editStatusSelect.value = data.status;
             document.getElementById('edit_detail').value = data.detail;
             document.getElementById('edit_fakt_summ').value = data.fakt_summ;
             document.getElementById('edit_comment').value = data.comment;

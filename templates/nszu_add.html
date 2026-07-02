@@ -35,7 +35,7 @@
           <label class="form-label">Статус</label>
           <select class="form-select" name="status">
             {% for s in statuses %}
-              <option value="{{ s }}" {% if s == 'В обробці' %}selected{% endif %}>{{ s }}</option>
+              <option value="{{ s }}" {% if s == default_status %}selected{% endif %}>{{ s }}</option>
             {% endfor %}
           </select>
         </div>

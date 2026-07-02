@@ -61,7 +61,8 @@ docker compose run --rm --no-deps --user 0 --entrypoint sh "$SERVICE" -c \
     "chown $DBUSER '$DBPATH' && rm -f '${DBPATH}-wal' '${DBPATH}-shm'"
 
 echo "[5/6] Запускаю сервіси — entrypoint сам застосує 'flask db upgrade' до head..."
-docker compose up -d $SERVICES
+# --wait чекає на healthy (healthcheck web), щоб перевірка нижче не обігнала міграції
+docker compose up -d --wait $SERVICES || docker compose up -d $SERVICES
 
 echo "[6/6] Перевірка..."
 echo "==> Поточна ревізія схеми (має бути '(head)'):"
@@ -74,4 +75,4 @@ if ! printf '%s' "$CURRENT" | grep -q '(head)'; then
     echo "         docker exec $CONTAINER flask db upgrade"
 fi
 echo "==> Лічильники в живій базі:"
-docker exec "$CONTAINER" python -c "import sqlite3; c=sqlite3.connect('$DBPATH'); t=[r[0] for r in c.execute(\"select name from sqlite_master where type='table'\")]; print('  nszu_corrections =', c.execute('select count(*) from nszu_corrections').fetchone()[0] if 'nszu_corrections' in t else 'НЕМАЄ ТАБЛИЦІ'); print('  records          =', c.execute('select count(*) from records').fetchone()[0] if 'records' in t else 'НЕМАЄ ТАБЛИЦІ'); print('  ambulatory_records present:', 'ambulatory_records' in t)"
+docker exec "$CONTAINER" python -c "import sqlite3; c=sqlite3.connect('$DBPATH'); t=[r[0] for r in c.execute(\"select name from sqlite_master where type='table'\")]; print('  nszu_corrections =', c.execute('select count(*) from nszu_corrections').fetchone()[0] if 'nszu_corrections' in t else 'НЕМАЄ ТАБЛИЦІ'); print('  records          =', c.execute('select count(*) from records').fetchone()[0] if 'records' in t else 'НЕМАЄ ТАБЛИЦІ'); print('  ambulatory_records present:', 'ambulatory_records' in t); print('  status_options   =', dict(c.execute('select scope, count(id) from status_options group by scope').fetchall()) if 'status_options' in t else 'НЕМАЄ ТАБЛИЦІ (міграція не пройшла?)')"

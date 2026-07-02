@@ -113,6 +113,8 @@ class Record(db.Model):
         db.Index('idx_record_date_of_discharge', 'date_of_discharge'),
         db.Index('idx_record_full_name', 'full_name'),
         db.Index('idx_record_updated_at', 'updated_at'),
+        db.Index('idx_record_is_urgent', 'is_urgent'),
+        db.Index('idx_record_history_submitted', 'history_submitted'),
     )
 
     id = db.Column(db.Integer, primary_key=True)
@@ -126,6 +128,8 @@ class Record(db.Model):
     discharge_status = db.Column(db.String(200), nullable=True)  # "статус_виписки"
     date_of_death = db.Column(db.Date, nullable=True)  # "дата_смерті"
     comment = db.Column(db.Text, nullable=True)  # "коментар"
+    is_urgent = db.Column(db.Boolean, nullable=True)  # None=не вказано, True=ургентний, False=плановий
+    history_submitted = db.Column(db.Boolean, nullable=False, default=False, server_default='0')  # чи здана документація
     adsj   = db.Column(db.String(200), nullable=True)  # "АДСГ"
     suma   = db.Column(db.Numeric(12, 2), nullable=True)  # "Сума"
     created_by = db.Column(db.Integer, db.ForeignKey('users.id'), nullable=True)
@@ -171,6 +175,88 @@ class Department(db.Model):
 
     def __repr__(self):
         return f"<Department {self.id} {self.name}>"
+
+
+class StatusOption(db.Model):
+    """Довідник статусів, керований адміном. `scope` відокремлює розділи
+    (поки використовується лише 'ambulatory'); записи зберігають назву статусу
+    текстом (без FK) — за прецедентом discharge_department."""
+    __tablename__ = 'status_options'
+    __table_args__ = (
+        db.UniqueConstraint('scope', 'name', name='uq_status_options_scope_name'),
+        db.Index('idx_status_options_scope', 'scope'),
+    )
+
+    id = db.Column(db.Integer, primary_key=True)
+    scope = db.Column(db.String(20), nullable=False, default='ambulatory', server_default='ambulatory')
+    name = db.Column(db.String(200), nullable=False)
+    color = db.Column(db.String(20), nullable=False, default='secondary', server_default='secondary')  # bootstrap variant
+    icon = db.Column(db.String(50), nullable=False, default='bi-circle', server_default='bi-circle')
+    sort_order = db.Column(db.Integer, nullable=False, default=0, server_default='0')
+    is_default = db.Column(db.Boolean, nullable=False, default=False, server_default='0')
+    is_active = db.Column(db.Boolean, nullable=False, default=True, server_default='1')
+    show_in_stats = db.Column(db.Boolean, nullable=False, default=True, server_default='1')
+    # Системний статус: на ньому тримається статистика/телеграм-бот —
+    # не можна перейменувати, видалити чи деактивувати
+    is_system = db.Column(db.Boolean, nullable=False, default=False, server_default='0')
+    created_at = db.Column(db.DateTime, default=lambda: datetime.now(timezone.utc))
+
+    def __repr__(self):
+        return f"<StatusOption {self.id} [{self.scope}] {self.name}>"
+
+
+# Seed-набори мають збігатися з data-seed у міграціях
+# 20260611_add_status_options і 20260611_status_scopes
+DEFAULT_STATUS_OPTIONS = {
+    'ambulatory': [
+        # (name, color, icon, sort_order, is_default, show_in_stats, is_system, is_active)
+        ('Виписаний', 'success', 'bi-check-circle', 10, False, True, False, True),
+        ('Опрацьовується', 'warning', 'bi-clock', 20, True, False, False, True),
+        ('Порушені вимоги', 'danger', 'bi-exclamation-triangle', 30, False, False, False, True),
+        ('Епізод відсутній', 'dark', 'bi-file-earmark-x', 40, False, True, False, True),
+    ],
+    # records: усі три системні — на них тримаються статистика і tg-бот
+    'records': [
+        ('Виписаний', 'success', 'bi-check-circle', 10, False, True, True, True),
+        ('Опрацьовується', 'warning', 'bi-clock', 20, True, True, True, True),
+        ('Порушені вимоги', 'danger', 'bi-exclamation-triangle', 30, False, True, True, True),
+        # легасі: смерть тепер ведеться через date_of_death; статус лишається
+        # в довіднику неактивним, щоб старі записи рендерились і валідувались
+        ('Помер', 'danger', 'bi-heartbreak', 40, False, False, False, False),
+    ],
+    # nszu: 'В обробці' — системний (дефолт моделі NSZUCorrection);
+    # кольори відтворюють історичні бейджі nszu_list
+    'nszu': [
+        ('В обробці', 'secondary', 'bi-clock', 10, True, True, True, True),
+        ('Опрацьовано', 'warning', 'bi-hourglass-split', 20, False, True, False, True),
+        ('Оплачено', 'success', 'bi-check-circle', 30, False, True, False, True),
+        ('Не підлягає оплаті', 'danger', 'bi-x-circle', 40, False, True, False, True),
+    ],
+}
+
+
+def seed_status_options():
+    """Заповнити довідник статусів для кожного порожнього scope.
+    Викликається з init-db (свіжа БД, де міграції з seed не виконуються)."""
+    seeded = False
+    for scope, rows in DEFAULT_STATUS_OPTIONS.items():
+        if StatusOption.query.filter_by(scope=scope).first():
+            continue
+        for name, color, icon, sort_order, is_default, show_in_stats, is_system, is_active in rows:
+            db.session.add(StatusOption(
+                scope=scope, name=name, color=color, icon=icon,
+                sort_order=sort_order, is_default=is_default,
+                show_in_stats=show_in_stats, is_system=is_system,
+                is_active=is_active,
+            ))
+        seeded = True
+    if seeded:
+        db.session.commit()
+    return seeded
+
+
+# Зворотна сумісність зі старою назвою (тести, init-db)
+seed_ambulatory_statuses = seed_status_options
 
 
 class NSZUCorrection(db.Model):

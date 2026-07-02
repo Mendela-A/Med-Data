@@ -1,37 +1,14 @@
 {% extends "base.html" %}
+{% from "_macros.html" import url_with, sort_th with context %}
 {% block title %}Амбулаторна допомога{% endblock %}
 {% block container_class %}container-fluid px-4{% endblock %}
-
-{# Macro for sortable column headers #}
-{% macro sort_th(column, label) %}
-  {% if sort_by == column %}
-    {% if sort_order == 'asc' %}
-      {% set new_order = 'desc' %}
-      {% set icon = 'bi-arrow-up' %}
-    {% else %}
-      {% set new_order = 'asc' %}
-      {% set icon = 'bi-arrow-down' %}
-    {% endif %}
-  {% else %}
-    {% set new_order = 'asc' %}
-    {% set icon = '' %}
-  {% endif %}
-  <th>
-    <a href="{{ url_for('ambulatory.index', month_filter=month_filter_value, all_months='1' if show_all else '', discharge_status=selected_status, doctor=selected_doctor, full_name=full_name_q, journal_number=journal_number_q, diagnosis=diagnosis_q, per_page=pagination.per_page, sort_by=column, sort_order=new_order) }}" class="text-decoration-none text-dark d-flex align-items-center gap-1" style="cursor: pointer;">
-      <span>{{ label }}</span>
-      {% if icon %}
-        <i class="{{ icon }}" style="font-size: 0.8em;"></i>
-      {% endif %}
-    </a>
-  </th>
-{% endmacro %}
 
 {% block content %}
   <!-- Toast container for print notifications -->
   <div id="printToastContainer" class="toast-container position-fixed top-0 end-0 p-3" style="z-index: 9999;"></div>
 
-  <div class="d-flex align-items-center gap-2 mb-3 flex-wrap">
-    <h1 class="h4 mb-0 me-1" style="white-space: nowrap;">
+  <div class="d-flex align-items-center gap-2 mb-2 flex-wrap">
+    <h1 class="h4 mb-0 me-1 text-nowrap">
       {% if show_all %}
         Амбулаторна доп. <span class="text-muted fw-normal">(усі)</span>
       {% elif selected_year and selected_month %}
@@ -40,22 +17,6 @@
         Амбулаторна доп. <span class="text-muted fw-normal">(поточний місяць)</span>
       {% endif %}
     </h1>
-
-    <span class="stat-pill stat-pill-total" data-bs-toggle="tooltip" data-bs-title="Загальна кількість записів (з урахуванням фільтрів)">
-      <i class="bi bi-layers"></i>Всього: <strong>{{ count }}</strong>
-    </span>
-    <span class="stat-pill stat-pill-success{% if count_discharged == 0 %} stat-pill-muted{% endif %}" data-bs-toggle="tooltip" data-bs-title="Записи зі статусом 'Виписаний'">
-      Виписаних: <strong>{{ count_discharged }}</strong>
-      {% if count > 0 %}<span class="stat-pct">({{ "%.0f"|format(count_discharged / count * 100) }}%)</span>{% endif %}
-    </span>
-    <span class="stat-pill stat-pill-danger{% if count_urgent == 0 %} stat-pill-muted{% endif %}" data-bs-toggle="tooltip" data-bs-title="Записи з ургентним станом">
-      <i class="bi bi-exclamation-triangle-fill"></i>Ургентних станів: <strong>{{ count_urgent }}</strong>
-      {% if count > 0 %}<span class="stat-pct">({{ "%.0f"|format(count_urgent / count * 100) }}%)</span>{% endif %}
-    </span>
-    <span class="stat-pill stat-pill-dark{% if count_no_episode == 0 %} stat-pill-muted{% endif %}" data-bs-toggle="tooltip" data-bs-title="Записи зі статусом 'Епізод відсутній'">
-      <i class="bi bi-file-earmark-x"></i>Епізод відсутній: <strong>{{ count_no_episode }}</strong>
-      {% if count > 0 %}<span class="stat-pct">({{ "%.0f"|format(count_no_episode / count * 100) }}%)</span>{% endif %}
-    </span>
 
     {% if current_user.role in ['editor', 'admin', 'viewer'] %}
     <div class="btn-group ms-auto">
@@ -78,10 +39,43 @@
     {% endif %}
   </div>
 
-  <div class="card mb-3 filter-card">
+  <div class="stat-pills-row mb-3">
+    <span class="stat-pill stat-pill-total" data-bs-toggle="tooltip" data-bs-title="Загальна кількість записів (з урахуванням фільтрів)">
+      <i class="bi bi-layers"></i>Всього: <strong>{{ count }}</strong>
+    </span>
+    {% for s in status_defs if s.show_in_stats %}
+      {% set c = status_counts.get(s.name, 0) %}
+      <span class="stat-pill stat-pill-{{ s.color }}{% if c == 0 %} stat-pill-muted{% endif %}" data-bs-toggle="tooltip" data-bs-title="Записи зі статусом '{{ s.name }}'">
+        <i class="bi {{ s.icon }}"></i>{{ s.name }}: <strong>{{ c }}</strong>
+        {% if count > 0 %}<span class="stat-pct">({{ "%.0f"|format(c / count * 100) }}%)</span>{% endif %}
+      </span>
+    {% endfor %}
+    <span class="stat-pill stat-pill-danger{% if count_urgent == 0 %} stat-pill-muted{% endif %}" data-bs-toggle="tooltip" data-bs-title="Записи з позначкою ургентного стану — незалежно від статусу, тому перетинаються зі статусними лічильниками">
+      <i class="bi bi-exclamation-triangle-fill"></i>Ургентних станів: <strong>{{ count_urgent }}</strong>
+      {% if count > 0 %}<span class="stat-pct">({{ "%.0f"|format(count_urgent / count * 100) }}%)</span>{% endif %}
+    </span>
+    {% if other_count %}
+      <span class="stat-pill stat-pill-secondary" data-bs-toggle="tooltip" data-bs-title="Записи зі статусами, яких немає в довіднику (Адмін → Статуси)">
+        <i class="bi bi-question-circle"></i>Інше: <strong>{{ other_count }}</strong>
+        {% if count > 0 %}<span class="stat-pct">({{ "%.0f"|format(other_count / count * 100) }}%)</span>{% endif %}
+      </span>
+    {% endif %}
+    <button type="button" class="btn btn-sm btn-link text-muted p-0" data-bs-toggle="popover" data-bs-placement="bottom" data-bs-html="true"
+            data-bs-title="<i class='bi bi-info-circle me-1'></i>Як рахується статистика?"
+            data-bs-content="<ul class='mb-0 ps-3'><li><strong>Статусні лічильники</strong> — кожен запис рахується рівно в одному (сума = Всього)</li><li><strong>Ургентних станів</strong> — окрема позначка, не статус: такі записи входять і у статусні лічильники</li><li>Відсотки округлені до цілого, тому їх сума може давати 99–101%</li></ul>">
+      <i class="bi bi-question-circle"></i>
+    </button>
+  </div>
+
+  <div class="card mb-3">
     <div class="card-body py-3">
-      <h5 class="card-title mb-3">Фільтри</h5>
-      <form method="get">
+      <h5 class="card-title mb-3">
+        Фільтри
+        {% if active_filters_count %}
+          <span class="badge bg-primary ms-1" data-bs-toggle="tooltip" data-bs-title="Кількість активних фільтрів — список відфільтровано">{{ active_filters_count }}</span>
+        {% endif %}
+      </h5>
+      <form method="get" class="filter-autosubmit">
         <div class="row g-3 mb-3">
           <div class="col-sm-6 col-md-4 col-xl-2">
             <label class="form-label small mb-1"><i class="bi bi-calendar-month me-1"></i>Місяць</label>
@@ -99,10 +93,13 @@
             <label class="form-label small mb-1"><i class="bi bi-flag me-1"></i>Статус виписки</label>
             <select class="form-select form-select-sm" name="discharge_status">
               <option value="">Всі</option>
-              <option value="Виписаний" {% if selected_status == 'Виписаний' %}selected{% endif %}>Виписаний</option>
-              <option value="Опрацьовується" {% if selected_status == 'Опрацьовується' %}selected{% endif %}>Опрацьовується</option>
-              <option value="Порушені вимоги" {% if selected_status == 'Порушені вимоги' %}selected{% endif %}>Порушені вимоги</option>
-              <option value="Епізод відсутній" {% if selected_status == 'Епізод відсутній' %}selected{% endif %}>Епізод відсутній</option>
+              {% set active_names = status_defs | map(attribute='name') | list %}
+              {% for s in status_defs %}
+                <option value="{{ s.name }}" {% if selected_status == s.name %}selected{% endif %}>{{ s.name }}</option>
+              {% endfor %}
+              {% if selected_status and selected_status not in active_names %}
+                <option value="{{ selected_status }}" selected>{{ selected_status }}</option>
+              {% endif %}
             </select>
           </div>
 
@@ -147,7 +144,7 @@
           </div>
           <div class="d-flex align-items-center gap-2 ms-auto">
             <label class="form-label small mb-0"><i class="bi bi-list-ol me-1"></i>На сторінку:</label>
-            <select class="form-select form-select-sm" name="per_page" style="width: auto;">
+            <select class="form-select form-select-sm w-auto" name="per_page">
               <option value="25" {% if pagination.per_page == 25 %}selected{% endif %}>25</option>
               <option value="50" {% if pagination.per_page == 50 %}selected{% endif %}>50</option>
               <option value="100" {% if pagination.per_page == 100 %}selected{% endif %}>100</option>
@@ -162,17 +159,17 @@
   {% if records %}
     <div class="card">
       <div class="card-body p-0">
-        <div class="table-responsive">
+        <div class="table-responsive records-scroll">
           <table class="table table-hover mb-0 records-table">
             <thead>
               <tr>
-                {{ sort_th('date', 'Дата') }}
-                {{ sort_th('journal_number', 'Номер у журналі') }}
-                {{ sort_th('full_name', 'П.І.П (повністю)') }}
-                {{ sort_th('birth_date', 'Дата народження') }}
-                {{ sort_th('doctor', 'Лікар') }}
-                {{ sort_th('diagnosis', 'Діагноз') }}
-                {{ sort_th('discharge_status', 'Статус') }}
+                {{ sort_th('ambulatory.index', 'date', 'Дата') }}
+                {{ sort_th('ambulatory.index', 'journal_number', 'Номер у журналі') }}
+                {{ sort_th('ambulatory.index', 'full_name', 'П.І.П (повністю)') }}
+                {{ sort_th('ambulatory.index', 'birth_date', 'Дата народження') }}
+                {{ sort_th('ambulatory.index', 'doctor', 'Лікар') }}
+                {{ sort_th('ambulatory.index', 'diagnosis', 'Діагноз') }}
+                {{ sort_th('ambulatory.index', 'discharge_status', 'Статус') }}
                 <th>Коментар</th>
                 {% if current_user.role in ['editor', 'admin'] %}
                   <th>Змінив</th>
@@ -191,16 +188,12 @@
                   <td><span class="text-secondary"><i class="bi bi-person me-1"></i>{{ r.doctor }}</span></td>
                   <td><span class="text-break">{{ r.diagnosis }}</span></td>
                   <td>
-                    {% if r.discharge_status == 'Виписаний' %}
-                      <span class="badge bg-success-subtle text-success px-2 py-1"><i class="bi bi-check-circle me-1"></i>Виписаний</span>
-                    {% elif r.discharge_status == 'Опрацьовується' %}
-                      <span class="badge bg-warning-subtle text-warning px-2 py-1"><i class="bi bi-clock me-1"></i>Опрацьовується</span>
-                    {% elif r.discharge_status == 'Порушені вимоги' %}
-                      <span class="badge bg-danger-subtle text-danger px-2 py-1"><i class="bi bi-exclamation-triangle me-1"></i>Порушені вимоги</span>
-                    {% elif r.discharge_status == 'Епізод відсутній' %}
-                      <span class="badge bg-secondary-subtle text-secondary px-2 py-1"><i class="bi bi-file-earmark-x me-1"></i>Епізод відсутній</span>
+                    {% set sname = r.discharge_status or default_status %}
+                    {% set meta = status_meta.get(sname) %}
+                    {% if meta %}
+                      <span class="badge bg-{{ meta.color }}-subtle text-{{ meta.color }} px-2 py-1"><i class="bi {{ meta.icon }} me-1"></i>{{ sname }}</span>
                     {% else %}
-                      <span class="badge bg-warning-subtle text-warning px-2 py-1"><i class="bi bi-clock me-1"></i>{{ r.discharge_status or 'Опрацьовується' }}</span>
+                      <span class="badge bg-secondary-subtle text-secondary px-2 py-1"><i class="bi bi-question-circle me-1"></i>{{ sname }}</span>
                     {% endif %}
                   </td>
                   <td><small class="text-muted">{{ r.comment or '' }}</small></td>
@@ -260,19 +253,19 @@
       <nav class="mt-3">
         <ul class="pagination pagination-sm justify-content-center">
           <li class="page-item {% if not pagination.has_prev %}disabled{% endif %}">
-            <a class="page-link" href="{{ url_for('ambulatory.index', page=pagination.prev_num, month_filter=month_filter_value, all_months='1' if show_all else '', discharge_status=selected_status, doctor=selected_doctor, full_name=full_name_q, journal_number=journal_number_q, diagnosis=diagnosis_q, per_page=pagination.per_page, sort_by=sort_by, sort_order=sort_order) }}">&laquo; Попередня</a>
+            <a class="page-link" href="{{ url_with('ambulatory.index', page=pagination.prev_num) }}">&laquo; Попередня</a>
           </li>
           {% for p in pagination.iter_pages(left_edge=2, left_current=2, right_current=3, right_edge=2) %}
             {% if p %}
               <li class="page-item {% if p == pagination.page %}active{% endif %}">
-                <a class="page-link" href="{{ url_for('ambulatory.index', page=p, month_filter=month_filter_value, all_months='1' if show_all else '', discharge_status=selected_status, doctor=selected_doctor, full_name=full_name_q, journal_number=journal_number_q, diagnosis=diagnosis_q, per_page=pagination.per_page, sort_by=sort_by, sort_order=sort_order) }}">{{ p }}</a>
+                <a class="page-link" href="{{ url_with('ambulatory.index', page=p) }}">{{ p }}</a>
               </li>
             {% else %}
               <li class="page-item disabled"><span class="page-link">...</span></li>
             {% endif %}
           {% endfor %}
           <li class="page-item {% if not pagination.has_next %}disabled{% endif %}">
-            <a class="page-link" href="{{ url_for('ambulatory.index', page=pagination.next_num, month_filter=month_filter_value, all_months='1' if show_all else '', discharge_status=selected_status, doctor=selected_doctor, full_name=full_name_q, journal_number=journal_number_q, diagnosis=diagnosis_q, per_page=pagination.per_page, sort_by=sort_by, sort_order=sort_order) }}">Наступна &raquo;</a>
+            <a class="page-link" href="{{ url_with('ambulatory.index', page=pagination.next_num) }}">Наступна &raquo;</a>
           </li>
         </ul>
       </nav>
@@ -413,10 +406,9 @@
                 <label for="edit_discharge_status" class="form-label">Статус виписки</label>
                 <select class="form-select" id="edit_discharge_status" name="discharge_status" required>
                   <option value="">Оберіть статус...</option>
-                  <option value="Виписаний">Виписаний</option>
-                  <option value="Опрацьовується">Опрацьовується</option>
-                  <option value="Порушені вимоги">Порушені вимоги</option>
-                  <option value="Епізод відсутній">Епізод відсутній</option>
+                  {% for s in status_defs %}
+                    <option value="{{ s.name }}">{{ s.name }}</option>
+                  {% endfor %}
                 </select>
               </div>
               <div class="col-12">
@@ -506,36 +498,29 @@
   </div>
   {% endif %}
 
-  <!-- Hidden Quick Actions Forms -->
-  <form id="quickExportForm" method="post" action="{{ url_for('ambulatory.export') }}" class="d-none">
-    <input type="hidden" name="export_mode" value="month">
-    <input type="hidden" name="month_filter" value="{{ month_filter_value }}">
-    <input type="hidden" name="discharge_status" value="{{ selected_status }}">
-    <input type="hidden" name="doctor" value="{{ selected_doctor }}">
-    <input type="hidden" name="full_name" value="{{ full_name_q }}">
-    <input type="hidden" name="journal_number" value="{{ journal_number_q }}">
-    <input type="hidden" name="diagnosis" value="{{ diagnosis_q }}">
-  </form>
-
-  <form id="quickPrintForm" method="post" action="{{ url_for('ambulatory.print_records') }}" class="d-none">
-    <input type="hidden" name="from_date" id="qp_from_date">
-    <input type="hidden" name="to_date" id="qp_to_date">
-    <input type="hidden" name="discharge_status" value="{{ selected_status }}">
-    <input type="hidden" name="doctor" value="{{ selected_doctor }}">
-    <input type="hidden" name="full_name" value="{{ full_name_q }}">
-    <input type="hidden" name="journal_number" value="{{ journal_number_q }}">
-    <input type="hidden" name="diagnosis" value="{{ diagnosis_q }}">
-  </form>
 {% endblock %}
 
 {% block scripts %}
+{% if current_user.role in ['editor', 'admin', 'viewer'] %}
+<script>
+  window.RecordsExportConfig = {
+    exportUrl: "{{ url_for('ambulatory.export') }}",
+    printUrl: "{{ url_for('ambulatory.print_records') }}",
+    filterFields: ['discharge_status', 'doctor', 'full_name', 'journal_number', 'diagnosis']
+  };
+</script>
+<script src="{{ url_for('static', filename='records-export.js') }}"></script>
+{% endif %}
 <script>
   // Tooltips, Instant Search and Keyboard Shortcuts
   document.addEventListener('DOMContentLoaded', function() {
-    // 1. Tooltips initialization
+    // 1. Tooltips and popovers initialization
     const tooltipTriggerList = [].slice.call(document.querySelectorAll('[data-bs-toggle="tooltip"]'));
     tooltipTriggerList.map(function(el) {
       return new bootstrap.Tooltip(el, { trigger: 'hover' });
+    });
+    document.querySelectorAll('[data-bs-toggle="popover"]').forEach(function(el) {
+      new bootstrap.Popover(el);
     });
 
     // 2. Real-time client-side search (Instant Filter)
@@ -616,60 +601,7 @@
   });
 
   {% if current_user.role in ['editor', 'admin', 'viewer'] %}
-  // Quick Export
-  function quickExportRecords() {
-    document.getElementById('quickExportForm').submit();
-  }
-
-  // Quick Print (current month range)
-  function printRecords() {
-    // Generate dates based on selected month/year
-    const monthVal = "{{ month_filter_value }}";
-    let fromStr, toStr;
-    if (monthVal) {
-      const parts = monthVal.split('-');
-      const y = parseInt(parts[0]), m = parseInt(parts[1]);
-      fromStr = `${y}-${String(m).padStart(2,'0')}-01`;
-      const lastDay = new Date(y, m, 0).getDate();
-      toStr = `${y}-${String(m).padStart(2,'0')}-${String(lastDay).padStart(2,'0')}`;
-    } else {
-      const d = new Date();
-      const y = d.getFullYear(), m = d.getMonth() + 1;
-      fromStr = `${y}-${String(m).padStart(2,'0')}-01`;
-      const lastDay = new Date(y, m, 0).getDate();
-      toStr = `${y}-${String(m).padStart(2,'0')}-${String(lastDay).padStart(2,'0')}`;
-    }
-    
-    document.getElementById('qp_from_date').value = fromStr;
-    document.getElementById('qp_to_date').value = toStr;
-    document.getElementById('quickPrintForm').submit();
-
-    // Show dynamic print toast
-    showPrintToast();
-  }
-
-  function showPrintToast() {
-    const container = document.getElementById('printToastContainer');
-    if (!container) return;
-    const toast = document.createElement('div');
-    toast.className = 'toast align-items-center text-bg-primary border-0 show';
-    toast.setAttribute('role', 'alert');
-    toast.setAttribute('aria-live', 'assertive');
-    toast.setAttribute('aria-atomic', 'true');
-    toast.innerHTML = `
-      <div class="d-flex">
-        <div class="toast-body">
-          <i class="bi bi-printer me-2"></i>Генерується PDF для друку... Будь ласка, зачекайте.
-        </div>
-        <button type="button" class="btn-close btn-close-white me-2 m-auto" data-bs-dismiss="toast" aria-label="Close"></button>
-      </div>
-    `;
-    container.appendChild(toast);
-    setTimeout(() => {
-      toast.classList.remove('show');
-      setTimeout(() => toast.remove(), 500);
-    }, 4000);
-  }
+  // quickExportRecords / printRecords / showPrintToast — у static/records-export.js
 
   // Handle Export Modal Toggle Range
   const rangeRadio = document.getElementById('export_mode_range');
@@ -692,7 +624,7 @@
     form.submit();
     form.action = oldAction; // restore
     bootstrap.Modal.getInstance(document.getElementById('exportRecordsModal')).hide();
-    showPrintToast();
+    showPrintToast('Формування PDF документу...', 'info');
   }
   {% endif %}
 
@@ -767,14 +699,14 @@
       saveBtn.innerHTML = '<span class="spinner-border spinner-border-sm me-2"></span>Збереження...';
       saveBtn.disabled = true;
 
-      fetch("{{ url_for('ambulatory.api_add_record') }}", {
+      fetchJSON("{{ url_for('ambulatory.api_add_record') }}", {
         method: 'POST',
         body: formData,
         headers: {
-          'X-Requested-With': 'XMLHttpRequest'
+          'X-Requested-With': 'XMLHttpRequest',
+          'X-CSRFToken': getCSRFToken()
         }
       })
-      .then(response => response.json())
       .then(data => {
         saveBtn.innerHTML = originalText;
         saveBtn.disabled = false;
@@ -791,11 +723,8 @@
           counterDiv.style.display = 'block';
 
           if (closeAfter) {
-            // Close modal and reload page after short delay
-            setTimeout(function() {
-              bootstrap.Modal.getInstance(modal).hide();
-              location.reload();
-            }, 1000);
+            bootstrap.Modal.getInstance(modal).hide();
+            location.reload();
           } else {
             // Preserve fields if option checked
             const prevJournalNum = document.getElementById('modal_journal_number').value;
@@ -837,7 +766,7 @@
         saveBtn.innerHTML = originalText;
         saveBtn.disabled = false;
         console.error('Error:', error);
-        errorMessage.textContent = 'Виникла помилка з\'єднання. Спробуйте пізніше.';
+        errorMessage.textContent = error.message;
         errorAlert.style.display = 'block';
         errorAlert.classList.add('show');
         errorAlert.classList.remove('d-none');
@@ -906,7 +835,14 @@
       document.getElementById('edit_birth_date').value = btn.getAttribute('data-birth-date');
       document.getElementById('edit_full_name').value = btn.getAttribute('data-full-name');
       document.getElementById('edit_doctor').value = btn.getAttribute('data-doctor');
-      document.getElementById('edit_discharge_status').value = btn.getAttribute('data-discharge-status');
+      // Статус запису може бути деактивованим у довіднику і відсутнім у
+      // селекті — додаємо його опцію, щоб редагування не "губило" значення
+      const statusSelect = document.getElementById('edit_discharge_status');
+      const statusValue = btn.getAttribute('data-discharge-status');
+      if (statusValue && !Array.from(statusSelect.options).some(o => o.value === statusValue)) {
+        statusSelect.add(new Option(statusValue + ' (неактивний)', statusValue));
+      }
+      statusSelect.value = statusValue;
       document.getElementById('edit_diagnosis').value = btn.getAttribute('data-diagnosis');
       document.getElementById('edit_comment').value = btn.getAttribute('data-comment');
       document.getElementById('edit_is_urgent').checked = btn.getAttribute('data-is-urgent') === 'true';
@@ -938,21 +874,22 @@
       saveEditBtn.innerHTML = '<span class="spinner-border spinner-border-sm me-2"></span>Збереження...';
       saveEditBtn.disabled = true;
       
-      fetch(`/ambulatory/api/${recordId}/edit`, {
+      fetchJSON(`/ambulatory/api/${recordId}/edit`, {
         method: 'POST',
         body: formData,
         headers: {
-          'X-Requested-With': 'XMLHttpRequest'
+          'X-Requested-With': 'XMLHttpRequest',
+          'X-CSRFToken': getCSRFToken()
         }
       })
-      .then(response => response.json())
       .then(data => {
         saveEditBtn.innerHTML = originalText;
         saveEditBtn.disabled = false;
-        
+
         if (data.success) {
-          // Success! Close modal and reload page to reflect changes
+          // Повертаємось до відредагованого рядка з підсвіткою
           editModal.hide();
+          location.hash = '#record-' + recordId;
           location.reload();
         } else {
           editErrorMessage.textContent = data.error || 'Помилка при збереженні запису';
@@ -965,7 +902,7 @@
         saveEditBtn.innerHTML = originalText;
         saveEditBtn.disabled = false;
         console.error('Error:', error);
-        editErrorMessage.textContent = 'Виникла помилка з\'єднання. Спробуйте пізніше.';
+        editErrorMessage.textContent = error.message;
         editErrorAlert.style.display = 'block';
         editErrorAlert.classList.remove('d-none');
         editErrorAlert.classList.add('show');

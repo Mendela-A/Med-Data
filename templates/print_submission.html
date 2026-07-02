@@ -1,0 +1,152 @@
+<!DOCTYPE html>
+<html lang="uk">
+<head>
+    <meta charset="UTF-8">
+    <title>Звіт: Здача документації</title>
+    <style>
+        @page {
+            size: A4 portrait;
+            margin: 1.2cm 1cm;
+            @bottom-right {
+                content: "Стор. " counter(page) " з " counter(pages);
+                font-size: 8pt;
+                color: #666;
+            }
+        }
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        body { font-family: 'DejaVu Sans', Arial, sans-serif; font-size: 10pt; line-height: 1.3; color: #333; }
+
+        .header {
+            position: relative; text-align: center; margin-bottom: 10px;
+            padding-bottom: 8px; padding-left: 80px;
+            border-bottom: 2px solid #0f766e; min-height: 60px;
+        }
+        .header .logo { position: absolute; left: 0; top: 0; height: 55px; width: auto; }
+        .header h1 { font-size: 15pt; margin-bottom: 4px; color: #0f766e; }
+        .header .subtitle { font-size: 10pt; color: #666; }
+
+        .info-block {
+            display: flex; justify-content: space-between; margin-bottom: 12px;
+            font-size: 8pt; padding: 6px; background-color: #f8f9fa; border-radius: 4px;
+        }
+        .info-label { font-weight: bold; color: #555; }
+
+        .summary-cards {
+            display: flex; gap: 10px; margin-bottom: 14px;
+        }
+        .summary-card {
+            flex: 1; padding: 8px 10px; border-radius: 4px; text-align: center; font-size: 9pt;
+        }
+        .card-submitted  { background: #d1e7dd; border-left: 4px solid #198754; }
+        .card-notsubmit  { background: #fff3cd; border-left: 4px solid #ffc107; }
+        .card-total      { background: #e9ecef; border-left: 4px solid #6c757d; }
+        .card-value { font-size: 20pt; font-weight: bold; line-height: 1.1; }
+        .card-label { font-size: 7.5pt; color: #555; margin-top: 2px; }
+        .card-pct   { font-size: 7pt; color: #777; }
+
+        table { width: 100%; border-collapse: collapse; margin-bottom: 10px; font-size: 9pt; }
+        thead { background-color: #0f766e; color: white; }
+        th { padding: 6px 5px; text-align: left; font-weight: bold; border: 1px solid #0f766e; }
+        td { padding: 5px 5px; border: 1px solid #ddd; vertical-align: middle; }
+        tbody tr:nth-child(even) { background-color: #f8f9fa; }
+
+        .progress-bar-wrap { width: 80px; height: 7px; background: #dee2e6; border-radius: 3px; display: inline-block; vertical-align: middle; }
+        .progress-bar-fill { height: 100%; border-radius: 3px; background: #198754; }
+
+        .badge { display: inline-block; padding: 1px 5px; border-radius: 3px; font-size: 8pt; font-weight: bold; }
+        .badge-success { background: #198754; color: #fff; }
+        .badge-warning { background: #ffc107; color: #212529; }
+
+        tfoot tr { background: #e9f5f3 !important; font-weight: bold; }
+
+        .footer { margin-top: 15px; padding-top: 8px; border-top: 1px solid #ddd; font-size: 7.5pt; color: #888; text-align: center; }
+        tr { page-break-inside: avoid; }
+        thead { display: table-header-group; }
+    </style>
+</head>
+<body>
+    <div class="header">
+        <img src="file:///app/static/pic/logo.png" alt="Logo" class="logo">
+        <h1>Звіт: Здача документації</h1>
+        <div class="subtitle">Сервіс виписок</div>
+    </div>
+
+    <div class="info-block">
+        <div>
+            <div><span class="info-label">Період:</span> {{ from_date.strftime('%d.%m.%Y') }} — {{ to_date.strftime('%d.%m.%Y') }}</div>
+            {% if filter_physician %}
+            <div><span class="info-label">Лікар:</span> {{ filter_physician }}</div>
+            {% endif %}
+        </div>
+        <div style="text-align: right;">
+            <div><span class="info-label">Сформував:</span> {{ generated_by }}</div>
+            <div><span class="info-label">Дата:</span> {{ generated_at.strftime('%d.%m.%Y %H:%M') }}</div>
+        </div>
+    </div>
+
+    {% set sub_total = submission_submitted + submission_not_submitted %}
+    <div class="summary-cards">
+        <div class="summary-card card-submitted">
+            <div class="card-value" style="color:#198754;">{{ submission_submitted }}</div>
+            <div class="card-label">Здано</div>
+            {% if sub_total > 0 %}<div class="card-pct">{{ "%.0f"|format(submission_submitted / sub_total * 100) }}%</div>{% endif %}
+        </div>
+        <div class="summary-card card-notsubmit">
+            <div class="card-value" style="color:#856404;">{{ submission_not_submitted }}</div>
+            <div class="card-label">Не здано</div>
+            {% if sub_total > 0 %}<div class="card-pct">{{ "%.0f"|format(submission_not_submitted / sub_total * 100) }}%</div>{% endif %}
+        </div>
+        <div class="summary-card card-total">
+            <div class="card-value">{{ sub_total }}</div>
+            <div class="card-label">Всього</div>
+        </div>
+    </div>
+
+    {% if submission_by_physician %}
+    <table>
+        <thead>
+            <tr>
+                <th>№</th>
+                <th>Лікар</th>
+                <th style="text-align:center;">Здано</th>
+                <th style="text-align:center;">Не здано</th>
+                <th style="text-align:center;">Всього</th>
+                <th style="text-align:center;">% здачі</th>
+                <th>Прогрес</th>
+            </tr>
+        </thead>
+        <tbody>
+            {% for row in submission_by_physician %}
+            <tr>
+                <td>{{ loop.index }}</td>
+                <td>{{ row.treating_physician }}</td>
+                <td style="text-align:center;"><span class="badge badge-success">{{ row.submitted }}</span></td>
+                <td style="text-align:center;"><span class="badge badge-warning">{{ row.not_submitted }}</span></td>
+                <td style="text-align:center;">{{ row.total }}</td>
+                <td style="text-align:center;">{{ "%.0f"|format(row.submitted / row.total * 100) if row.total > 0 else 0 }}%</td>
+                <td>
+                    <div class="progress-bar-wrap">
+                        <div class="progress-bar-fill" style="width: {{ (row.submitted / row.total * 100) if row.total > 0 else 0 }}%;"></div>
+                    </div>
+                </td>
+            </tr>
+            {% endfor %}
+        </tbody>
+        <tfoot>
+            <tr>
+                <td colspan="2"><strong>Всього</strong></td>
+                <td style="text-align:center;">{{ submission_submitted }}</td>
+                <td style="text-align:center;">{{ submission_not_submitted }}</td>
+                <td style="text-align:center;">{{ sub_total }}</td>
+                <td style="text-align:center;">{{ "%.0f"|format(submission_submitted / sub_total * 100) if sub_total > 0 else 0 }}%</td>
+                <td></td>
+            </tr>
+        </tfoot>
+    </table>
+    {% endif %}
+
+    <div class="footer">
+        Документ сформовано автоматично системою "Сервіс виписок"
+    </div>
+</body>
+</html>
