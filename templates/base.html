@@ -25,9 +25,8 @@
   <link href="{{ url_for('static', filename='vendor/bootstrap.min.css') }}" rel="stylesheet">
   <link href="{{ url_for('static', filename='vendor/bootstrap-icons.css') }}" rel="stylesheet">
   <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
-  <!-- HTMX & Alpine.js modern frontend stack -->
+  <!-- HTMX frontend stack -->
   <script src="https://unpkg.com/htmx.org@1.9.10" crossorigin="anonymous"></script>
-  <script defer src="https://cdn.jsdelivr.net/npm/alpinejs@3.x.x/dist/cdn.min.js" crossorigin="anonymous"></script>
 </head>
 <body class="{% if current_user.is_authenticated %}has-topnav{% endif %}">
   <a href="#main-content" class="visually-hidden-focusable">Перейти до основного вмісту</a>
