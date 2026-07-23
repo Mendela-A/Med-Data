@@ -21,9 +21,9 @@
           <input class="form-control" name="password" type="password" autocomplete="new-password" placeholder="Залиште порожнім, якщо не змінюєте">
         </div>
 
-        <div class="mb-3" x-data="tabPermissions('{{ user.role }}')">
+        <div class="mb-3">
           <label class="form-label">Роль</label>
-          <select class="form-select" name="role" required x-model="selectedRole" @change="onRoleChange()">
+          <select class="form-select" name="role" id="roleSelect" required>
             <option value="operator" {% if user.role == 'operator' %}selected{% endif %}>operator</option>
             <option value="editor" {% if user.role == 'editor' %}selected{% endif %}>editor</option>
             <option value="admin" {% if user.role == 'admin' %}selected{% endif %}>admin</option>
@@ -45,19 +45,14 @@
             </p>
             <div class="row g-2">
               {% for key, label in tabs.items() %}
-                {% set in_role = key in default_role_tabs.get(user.role, []) %}
-                {% set has_extra = user.extra_permissions and key in user.extra_permissions %}
                 <div class="col-12 col-sm-6">
-                  <div class="form-check" :class="isInRole('{{ key }}') ? 'text-muted' : ''">
+                  <div class="form-check" id="check_{{ key }}">
                     <input class="form-check-input" type="checkbox"
-                           name="tab_{{ key }}" id="tab_{{ key }}"
-                           :disabled="isInRole('{{ key }}')"
-                           :checked="isInRole('{{ key }}') || extraChecked.includes('{{ key }}')"
-                           @change="onTabChange('{{ key }}', $event.target.checked)">
+                           name="tab_{{ key }}" id="tab_{{ key }}" data-tab-key="{{ key }}">
                     <label class="form-check-label" for="tab_{{ key }}" style="font-size: .875rem;">
                       {{ label }}
-                      <span x-show="isInRole('{{ key }}')" class="badge ms-1" style="font-size:.65rem; background: var(--color-secondary); color:#fff;">роль</span>
-                      <span x-show="!isInRole('{{ key }}') && extraChecked.includes('{{ key }}')" class="badge ms-1" style="font-size:.65rem; background: var(--color-success); color:#fff;">+доступ</span>
+                      <span id="badge_role_{{ key }}" class="badge ms-1 d-none" style="font-size:.65rem; background: var(--color-secondary); color:#fff;">роль</span>
+                      <span id="badge_extra_{{ key }}" class="badge ms-1 d-none" style="font-size:.65rem; background: var(--color-success); color:#fff;">+доступ</span>
                     </label>
                   </div>
                 </div>
@@ -78,27 +73,32 @@
 {% block scripts %}
 <script>
 const ROLE_TABS = {{ default_role_tabs | tojson }};
-const EXTRA_PERMS = {{ (user.extra_permissions or []) | tojson }};
+const extraChecked = new Set({{ (user.extra_permissions or []) | tojson }});
 
-function tabPermissions(initialRole) {
-  return {
-    selectedRole: initialRole,
-    extraChecked: [...EXTRA_PERMS],
-    isInRole(tab) {
-      const roleTabs = ROLE_TABS[this.selectedRole] || [];
-      return roleTabs.includes(tab);
-    },
-    onRoleChange() {
-      // extraChecked stays; isInRole() re-evaluates via x-bind
-    },
-    onTabChange(tab, checked) {
-      if (checked) {
-        if (!this.extraChecked.includes(tab)) this.extraChecked.push(tab);
-      } else {
-        this.extraChecked = this.extraChecked.filter(t => t !== tab);
-      }
-    }
-  };
+const roleSelect = document.getElementById('roleSelect');
+const tabCheckboxes = document.querySelectorAll('[data-tab-key]');
+
+function updateTabUI() {
+  const roleTabs = ROLE_TABS[roleSelect.value] || [];
+  tabCheckboxes.forEach(function(cb) {
+    const key = cb.dataset.tabKey;
+    const inRole = roleTabs.includes(key);
+    cb.disabled = inRole;
+    cb.checked = inRole || extraChecked.has(key);
+    document.getElementById('badge_role_' + key).classList.toggle('d-none', !inRole);
+    document.getElementById('badge_extra_' + key).classList.toggle('d-none', inRole || !extraChecked.has(key));
+    document.getElementById('check_' + key).classList.toggle('text-muted', inRole);
+  });
 }
+
+roleSelect.addEventListener('change', updateTabUI);
+tabCheckboxes.forEach(function(cb) {
+  cb.addEventListener('change', function() {
+    const key = cb.dataset.tabKey;
+    if (cb.checked) extraChecked.add(key); else extraChecked.delete(key);
+    updateTabUI();
+  });
+});
+updateTabUI();
 </script>
 {% endblock %}
