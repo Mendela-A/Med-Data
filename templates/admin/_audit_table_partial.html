@@ -3,7 +3,7 @@
   <div class="card shadow-sm border-0">
     <div class="card-body p-0">
       <div class="table-responsive">
-        <table class="table table-hover align-middle mb-0" x-data="{ expandedRow: null }">
+        <table class="table table-hover align-middle mb-0">
           <thead class="table-light text-muted uppercase font-monospace" style="font-size: 0.75rem;">
             <tr>
               <th style="width: 45px;"></th>
@@ -17,13 +17,11 @@
           </thead>
           <tbody>
             {% for log in logs %}
-              <tr class="audit-row" 
-                  :class="expandedRow === {{ log.id }} ? 'table-light' : ''"
+              <tr class="audit-row"
                   style="cursor: pointer;"
-                  @click="expandedRow = (expandedRow === {{ log.id }} ? null : {{ log.id }})">
+                  onclick="toggleAuditDetail({{ log.id }}, this)">
                 <td class="text-center text-muted">
-                  <i class="bi fs-6 transition-all" 
-                     :class="expandedRow === {{ log.id }} ? 'bi-chevron-up text-primary' : 'bi-chevron-down'"></i>
+                  <i class="bi bi-chevron-down audit-chevron fs-6 transition-all"></i>
                 </td>
                 <td class="text-nowrap font-monospace text-muted" style="font-size: 0.85rem;">
                   {{ log.created_at.strftime('%d.%m.%Y %H:%M:%S') if log.created_at else '' }}
@@ -79,8 +77,8 @@
                   {{ log.details or '—' }}
                 </td>
               </tr>
-              {# Detailed Row (expands via Alpine.js) #}
-              <tr x-show="expandedRow === {{ log.id }}" x-cloak x-transition class="table-light">
+              {# Detailed Row (expands via vanilla JS, see toggleAuditDetail below) #}
+              <tr id="audit-detail-{{ log.id }}" class="table-light" style="display: none;">
                 <td></td>
                 <td colspan="6" class="p-3 border-top-0">
                   <div class="bg-white p-3 rounded shadow-sm border border-light">
@@ -182,4 +180,18 @@
   <div class="text-center text-muted mt-2" style="font-size: 0.8rem;">
     Показано {{ logs|length }} з {{ pagination.total }} записів
   </div>
+
+  <script>
+  function toggleAuditDetail(logId, rowEl) {
+    var detail = document.getElementById('audit-detail-' + logId);
+    if (!detail) return;
+    var wasOpen = detail.style.display !== 'none';
+    detail.style.display = wasOpen ? 'none' : '';
+    rowEl.classList.toggle('table-light', !wasOpen);
+    var chevron = rowEl.querySelector('.audit-chevron');
+    chevron.classList.toggle('bi-chevron-up', !wasOpen);
+    chevron.classList.toggle('bi-chevron-down', wasOpen);
+    chevron.classList.toggle('text-primary', !wasOpen);
+  }
+  </script>
 </div>
