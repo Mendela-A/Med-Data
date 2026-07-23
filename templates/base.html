@@ -97,7 +97,7 @@
           </ul>
         </div>
       {% endif %}
-      {% if current_user.role in ['operator', 'editor', 'admin', 'viewer'] and current_user.role != 'ambulatory' %}
+      {% if current_user.has_tab_access('reports') %}
         {% set reports_active = request.endpoint and request.endpoint.startswith('admin.report') %}
         <div class="dropdown">
           <button class="topnav-link dropdown-toggle border-0 bg-transparent{% if reports_active %} active{% endif %}"

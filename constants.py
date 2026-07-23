@@ -40,15 +40,16 @@ TABS = {
     'nszu':           'НСЗУ',
     'statistics':     'Статистика',
     'statisty':       'Форми 007/016',
+    'reports':        'Звіти',
     'print_settings': 'Налаштування друку',
     'admin_panel':    'Адмін-панель',
 }
 
 DEFAULT_ROLE_TABS = {
     'ambulatory': ['ambulatory'],
-    'operator':   ['records', 'ambulatory'],
-    'editor':     ['records', 'ambulatory', 'nszu'],
-    'viewer':     ['records', 'ambulatory', 'nszu', 'statistics', 'statisty'],
+    'operator':   ['records', 'ambulatory', 'reports'],
+    'editor':     ['records', 'ambulatory', 'nszu', 'reports'],
+    'viewer':     ['records', 'ambulatory', 'nszu', 'statistics', 'statisty', 'reports'],
     'admin':      list(TABS.keys()),
 }
 
@@ -59,6 +60,7 @@ PERM_EFFECTIVE_ROLE = {
     'statistics':     'viewer',
     'records':        'operator',
     'ambulatory':     'operator',
+    'reports':        'operator',
     'print_settings': 'admin',
     'admin_panel':    'admin',
 }
