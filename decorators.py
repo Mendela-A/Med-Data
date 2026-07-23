@@ -2,8 +2,21 @@
 Custom decorators for role-based access control
 """
 from functools import wraps
-from flask import redirect, url_for, flash
+from flask import redirect, url_for, flash, request
 from flask_login import current_user
+
+
+def _fallback_redirect(user):
+    """Redirect target that avoids bouncing back into a tab the user just lost."""
+    if user.has_tab_access('records'):
+        return url_for('records.index')
+    if user.has_tab_access('ambulatory'):
+        return url_for('ambulatory.index')
+    if user.has_tab_access('nszu'):
+        return url_for('nszu.nszu_list')
+    if user.has_tab_access('statisty'):
+        return url_for('statisty.form007')
+    return url_for('auth.logout')
 
 
 def role_required(*roles):
@@ -27,6 +40,17 @@ def role_required(*roles):
             if not current_user.is_authenticated:
                 return redirect(url_for('auth.login'))
             user_role = getattr(current_user, 'role', None)
+
+            # An explicitly revoked tab always wins, even for a role that would
+            # otherwise pass the check below (admin is exempt, same as has_tab_access).
+            if user_role != 'admin':
+                from constants import resolve_tab_key
+                tab_key = resolve_tab_key(request.endpoint)
+                revoked = getattr(current_user, 'revoked_permissions', None) or []
+                if tab_key and tab_key in revoked:
+                    flash('Доступ заборонено', 'danger')
+                    return redirect(_fallback_redirect(current_user))
+
             # admin has all rights (unless roles explicitly exclude it)
             allowed_roles = list(roles)
             if 'admin' not in allowed_roles and user_role == 'admin':

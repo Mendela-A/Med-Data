@@ -65,6 +65,39 @@ PERM_EFFECTIVE_ROLE = {
     'admin_panel':    'admin',
 }
 
+# Admin-blueprint view functions that belong to the "admin_panel" tab
+# (user/department/status/audit management — everything not covered by a more specific tab below).
+_ADMIN_PANEL_VIEWS = {
+    'admin_users', 'admin_create_user', 'admin_edit_user', 'admin_delete_user',
+    'admin_departments', 'admin_create_department', 'admin_edit_department', 'admin_delete_department',
+    'admin_statuses', 'admin_create_status', 'admin_update_status',
+    'admin_set_default_status', 'admin_toggle_status', 'admin_delete_status',
+    'admin_audit',
+}
+
+
+def resolve_tab_key(endpoint):
+    """Map a Flask endpoint (e.g. 'records.index') to its access-control tab key.
+
+    Returns None for endpoints that aren't gated by a tab (e.g. auth.*), so
+    @role_required callers outside the tab system are left untouched.
+    """
+    if not endpoint or '.' not in endpoint:
+        return None
+    bp, _, view = endpoint.partition('.')
+    if bp in ('records', 'ambulatory', 'nszu'):
+        return bp
+    if bp == 'statisty':
+        return 'print_settings' if view == 'print_settings_edit' else 'statisty'
+    if bp == 'admin':
+        if view == 'admin_statistics':
+            return 'statistics'
+        if 'report' in view:
+            return 'reports'
+        if view in _ADMIN_PANEL_VIEWS:
+            return 'admin_panel'
+    return None
+
 # Ukrainian month names
 UKRAINIAN_MONTHS = {
     1: 'Січень', 2: 'Лютий', 3: 'Березень', 4: 'Квітень',

@@ -4,7 +4,7 @@ Records (Dashboard) routes - main application routes for medical records
 """
 
 from flask import render_template, redirect, url_for, flash, request, current_app, send_file, jsonify
-from flask_login import login_required, current_user
+from flask_login import current_user
 from datetime import datetime, timezone, timedelta
 from io import BytesIO
 from sqlalchemy.orm import joinedload
@@ -24,9 +24,10 @@ from . import records_bp
 
 # Routes
 @records_bp.route('/')
-@login_required
+@role_required('operator', 'editor', 'viewer', 'ambulatory')
 def index():
-    # Redirect ambulatory role to ambulatory index
+    # Redirect ambulatory role to ambulatory index (kept here, ahead of the
+    # decorator's generic deny path, so this stays a silent redirect, not a "access denied" flash)
     if current_user.role == 'ambulatory':
         return redirect(url_for('ambulatory.index'))
 

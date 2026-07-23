@@ -74,6 +74,7 @@ class User(UserMixin, db.Model):
     password_hash = db.Column(db.String(128), nullable=False)
     role = db.Column(db.String(20), nullable=False, default='operator')  # operator/editor/admin/viewer
     extra_permissions = db.Column(db.JSON, nullable=True, default=None)  # additional tab keys beyond role
+    revoked_permissions = db.Column(db.JSON, nullable=True, default=None)  # role-default tab keys revoked for this user
 
     records = db.relationship('Record', foreign_keys='Record.created_by', backref='creator', lazy=True)
 
@@ -87,6 +88,8 @@ class User(UserMixin, db.Model):
         """Returns True if this user can see the given navigation tab."""
         if self.role == 'admin':
             return True
+        if tab in (self.revoked_permissions or []):
+            return False
         from constants import DEFAULT_ROLE_TABS
         base = DEFAULT_ROLE_TABS.get(self.role, [])
         extra = self.extra_permissions or []
@@ -99,7 +102,8 @@ class User(UserMixin, db.Model):
             return list(TABS.keys())
         base = DEFAULT_ROLE_TABS.get(self.role, [])
         extra = self.extra_permissions or []
-        return list(set(base + extra))
+        revoked = self.revoked_permissions or []
+        return [t for t in set(base + extra) if t not in revoked]
 
     def __repr__(self):
         return f"<User {self.username}>"

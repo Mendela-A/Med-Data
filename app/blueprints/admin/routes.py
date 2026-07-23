@@ -95,13 +95,19 @@ def admin_edit_user(user_id):
         if role in VALID_ROLES:
             u.role = role
 
-        # Update extra_permissions (tabs beyond role defaults)
+        # Update extra_permissions (tabs beyond role defaults) and revoked_permissions
+        # (role-default tabs explicitly unchecked for this user)
         base_tabs = DEFAULT_ROLE_TABS.get(role, [])
-        extra = [t for t in TABS if t not in base_tabs and request.form.get(f'tab_{t}')]
+        checked_tabs = {t for t in TABS if request.form.get(f'tab_{t}')}
+        extra = [t for t in TABS if t not in base_tabs and t in checked_tabs]
+        revoked = [t for t in TABS if t in base_tabs and t not in checked_tabs]
         u.extra_permissions = extra if extra else None
+        u.revoked_permissions = revoked if revoked else None
 
         try:
             details = f'username={old_username}->{username}, role={role}'
+            if revoked:
+                details += f', revoked_tabs={revoked}'
             if extra:
                 details += f', extra_tabs={extra}'
             if password:

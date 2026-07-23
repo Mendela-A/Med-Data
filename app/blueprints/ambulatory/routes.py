@@ -4,7 +4,7 @@ Ambulatory routes - handles CRUD operations, filters, Excel exports, and PDF gen
 """
 
 from flask import render_template, redirect, url_for, flash, request, current_app, send_file, jsonify
-from flask_login import login_required, current_user
+from flask_login import current_user
 from datetime import datetime, timezone, timedelta
 from io import BytesIO
 from sqlalchemy.orm import joinedload
@@ -22,7 +22,7 @@ from . import ambulatory_bp
 
 
 @ambulatory_bp.route('/')
-@login_required
+@role_required('ambulatory', 'operator', 'editor', 'viewer')
 def index():
     show_all = request.args.get('all_months', '').lower() in ('1', 'true', 'yes')
     from_d, to_d, selected_year, selected_month = parse_month_range(request.args)
