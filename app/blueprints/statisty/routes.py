@@ -1273,7 +1273,11 @@ def form016_departments_export():
 @statisty_bp.route('/print-settings', methods=['GET', 'POST'])
 @role_required('admin')
 def print_settings_edit():
-    ps = _get_print_settings()
+    ps = db.session.get(PrintSettings, 1)
+    if ps is None:
+        ps = PrintSettings(id=1)
+        db.session.add(ps)
+        db.session.commit()
     if request.method == 'POST':
         ps.ministry       = request.form.get('ministry', '').strip()
         ps.org_name       = request.form.get('org_name', '').strip()
