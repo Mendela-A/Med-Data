@@ -490,17 +490,27 @@
   </div>
   <div class="card-body p-0">
     <div class="table-responsive">
-      <table class="table table-hover table-sm mb-0">
+      <table class="table table-hover table-sm mb-0" id="bedStatsTable">
         <thead>
           <tr>
-            <th>Відділення</th>
-            <th class="text-center">Сер. ліжок</th>
-            <th class="text-center">Сер. зайнято</th>
-            <th style="min-width: 160px;">Зайнятість %</th>
-            <th class="text-center">Поступило</th>
+            <th class="sortable-header" data-column="name" data-type="text" title="Натисніть для сортування">
+              Відділення <i class="bi bi-chevron-expand sort-icon"></i>
+            </th>
+            <th class="sortable-header text-center" data-column="avg_beds" data-type="number" title="Натисніть для сортування">
+              Сер. ліжок <i class="bi bi-chevron-expand sort-icon"></i>
+            </th>
+            <th class="sortable-header text-center" data-column="avg_occupied" data-type="number" title="Натисніть для сортування">
+              Сер. зайнято <i class="bi bi-chevron-expand sort-icon"></i>
+            </th>
+            <th class="sortable-header" data-column="occupancy_pct" data-type="number" style="min-width: 160px;" title="Натисніть для сортування">
+              Зайнятість % <i class="bi bi-chevron-expand sort-icon"></i>
+            </th>
+            <th class="sortable-header text-center" data-column="admitted" data-type="number" title="Натисніть для сортування">
+              Поступило <i class="bi bi-chevron-expand sort-icon"></i>
+            </th>
           </tr>
         </thead>
-        <tbody>
+        <tbody id="bedStatsBody">
           {% for d in bed_stats %}
           <tr>
             <td class="fw-semibold">{{ d.name }}</td>
@@ -842,6 +852,67 @@
 
       // Apply initial sort
       sortAdsjTable('group', 'asc');
+    }
+
+    // Bed occupancy table sorting
+    const bedTable = document.getElementById('bedStatsTable');
+    const bedTableBody = document.getElementById('bedStatsBody');
+
+    if (bedTable && bedTableBody) {
+      let bedSort = { column: 'name', order: 'asc' };
+
+      function getBedCellValue(row, column) {
+        switch (column) {
+          case 'name':
+            return row.cells[0].textContent.trim();
+          case 'avg_beds':
+            return parseInt(row.cells[1].textContent.trim()) || 0;
+          case 'avg_occupied':
+            return parseInt(row.cells[2].textContent.trim()) || 0;
+          case 'occupancy_pct':
+            return parseInt(row.cells[3].textContent.trim()) || 0;
+          case 'admitted':
+            return parseInt(row.cells[4].textContent.trim()) || 0;
+          default:
+            return row.cells[0].textContent.trim();
+        }
+      }
+
+      function sortBedTable(column, order) {
+        const rows = Array.from(bedTableBody.querySelectorAll('tr'));
+        rows.sort((a, b) => {
+          const aVal = getBedCellValue(a, column);
+          const bVal = getBedCellValue(b, column);
+          const cmp = typeof aVal === 'string' ? aVal.localeCompare(bVal, 'uk') : aVal - bVal;
+          return order === 'asc' ? cmp : -cmp;
+        });
+        rows.forEach(row => bedTableBody.appendChild(row));
+
+        bedTable.querySelectorAll('.sortable-header').forEach(h => {
+          h.classList.remove('sorted-asc', 'sorted-desc');
+          if (h.dataset.column === column) {
+            h.classList.add(order === 'asc' ? 'sorted-asc' : 'sorted-desc');
+          }
+        });
+
+        bedSort = { column, order };
+      }
+
+      bedTable.querySelectorAll('.sortable-header').forEach(header => {
+        header.addEventListener('click', function() {
+          const column = this.dataset.column;
+          let order = 'desc';
+          if (bedSort.column === column) {
+            order = bedSort.order === 'asc' ? 'desc' : 'asc';
+          } else if (column === 'name') {
+            order = 'asc';
+          }
+          sortBedTable(column, order);
+        });
+      });
+
+      // Apply initial sort (matches server-side default order)
+      sortBedTable('name', 'asc');
     }
   });
 </script>
