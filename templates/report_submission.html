@@ -100,9 +100,15 @@
     {% endif %}
 
     {% if submission_by_physician %}
-    <h6 class="text-muted mb-2"><i class="bi bi-person-badge me-1"></i>По лікарях</h6>
+    <div class="d-flex align-items-center justify-content-between mb-2 flex-wrap gap-2">
+      <div class="input-group input-group-sm physician-search-group" style="max-width: 260px;">
+        <span class="input-group-text"><i class="bi bi-search"></i></span>
+        <input type="text" class="form-control" id="physicianSearchInput" placeholder="Пошук лікаря..." autocomplete="off">
+      </div>
+      <h6 class="text-muted mb-0"><i class="bi bi-person-badge me-1"></i>По лікарях</h6>
+    </div>
     <div class="table-responsive">
-      <table class="table table-sm table-hover align-middle">
+      <table class="table table-sm table-hover align-middle" id="physicianTable">
         <thead class="table-light">
           <tr>
             <th>Лікар</th>
@@ -115,7 +121,7 @@
         </thead>
         <tbody>
           {% for row in submission_by_physician %}
-          <tr>
+          <tr data-physician-name="{{ row.treating_physician|lower }}">
             <td><a href="{{ url_for('admin.report_submission_physician', physician=row.treating_physician, from_date=from_date.isoformat(), to_date=to_date.isoformat()) }}">{{ row.treating_physician }}</a></td>
             <td class="text-center"><span class="badge bg-success">{{ row.submitted }}</span></td>
             <td class="text-center"><span class="badge bg-warning text-dark">{{ row.not_submitted }}</span></td>
@@ -144,6 +150,9 @@
           </tr>
         </tfoot>
       </table>
+      <p class="text-muted small mb-0 py-2 d-none" id="physicianNoResults">
+        <i class="bi bi-info-circle me-1"></i>Лікаря не знайдено
+      </p>
     </div>
     {% else %}
     <p class="text-muted small mb-0"><i class="bi bi-info-circle me-1"></i>Немає даних за обраний період</p>
@@ -155,6 +164,22 @@
 
 {% block scripts %}
 <script>
+  const physicianSearchInput = document.getElementById('physicianSearchInput');
+  if (physicianSearchInput) {
+    const rows = document.querySelectorAll('#physicianTable tbody tr[data-physician-name]');
+    const noResults = document.getElementById('physicianNoResults');
+    physicianSearchInput.addEventListener('input', function() {
+      const q = this.value.trim().toLowerCase();
+      let visibleCount = 0;
+      rows.forEach(function(row) {
+        const match = row.dataset.physicianName.includes(q);
+        row.classList.toggle('d-none', !match);
+        if (match) visibleCount++;
+      });
+      noResults.classList.toggle('d-none', visibleCount !== 0);
+    });
+  }
+
   const prevMonthBtn = document.getElementById('prevMonthBtn');
   if (prevMonthBtn) {
     prevMonthBtn.addEventListener('click', function() {
