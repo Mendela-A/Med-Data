@@ -177,6 +177,23 @@ def test_admin_edit_without_state_fields_does_not_wipe_urgency(app, client):
         assert updated.history_submitted is True
 
 
+# --- Скрол-контейнер таблиці ---
+
+def test_table_has_scroll_container(app, client):
+    """Обгортка таблиці має клас records-scroll.
+
+    Без нього немає обмеженого по висоті контейнера, sticky-шапці нема до чого
+    «липнути», і замість прокрутки самої таблиці гортається вся сторінка.
+    """
+    with app.app_context():
+        u = ensure_user('adm_scroll', role='admin')
+        make_record(u.id)
+        login(client, 'adm_scroll')
+
+        html = get_index(client).get_data(as_text=True)
+        assert 'table-responsive records-scroll' in html
+
+
 # --- Кнопка «Статус» для оператора ---
 
 def test_operator_sees_status_button(app, client):
