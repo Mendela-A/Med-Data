@@ -205,15 +205,18 @@ def test_dashboard_filter_not_submitted(app, client):
     with app.app_context():
         u = ensure_user('op5', role='operator')
         ensure_department()
-        make_record(u.id, history_submitted=False)
-        make_record(u.id, history_submitted=True)
+        not_submitted = make_record(u.id, history_submitted=False)
+        submitted = make_record(u.id, history_submitted=True)
         login(client, 'op5')
 
         resp = client.get('/', query_string={
             'all_months': '1', 'history_submitted': '0'
         })
         assert resp.status_code == 200
-        # Only 1 unsubmitted in results (pagination shows count)
+        # Обидва записи мають однакове ПІБ — розрізняємо за id рядка таблиці
+        txt = resp.get_data(as_text=True)
+        assert f'id="record-{not_submitted.id}"' in txt
+        assert f'id="record-{submitted.id}"' not in txt
 
 
 def test_dashboard_filter_submitted(app, client):
@@ -221,14 +224,17 @@ def test_dashboard_filter_submitted(app, client):
     with app.app_context():
         u = ensure_user('op6', role='operator')
         ensure_department()
-        make_record(u.id, history_submitted=False)
-        make_record(u.id, history_submitted=True)
+        not_submitted = make_record(u.id, history_submitted=False)
+        submitted = make_record(u.id, history_submitted=True)
         login(client, 'op6')
 
         resp = client.get('/', query_string={
             'all_months': '1', 'history_submitted': '1'
         })
         assert resp.status_code == 200
+        txt = resp.get_data(as_text=True)
+        assert f'id="record-{submitted.id}"' in txt
+        assert f'id="record-{not_submitted.id}"' not in txt
 
 
 # --- Statistics page ---

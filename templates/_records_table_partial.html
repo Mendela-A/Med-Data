@@ -13,8 +13,8 @@
     {% set icon = '' %}
   {% endif %}
   <th>
-    <a href="{{ url_for('records.index', month_filter=month_filter_value, all_months='1' if show_all else '', discharge_status=selected_status, treating_physician=selected_physician, discharge_department=selected_department, history=history_q, full_name=full_name_q, has_death_date='1' if has_death_date else '', per_page=pagination.per_page, sort_by=column, sort_order=new_order) }}"
-       hx-get="{{ url_for('records.index', month_filter=month_filter_value, all_months='1' if show_all else '', discharge_status=selected_status, treating_physician=selected_physician, discharge_department=selected_department, history=history_q, full_name=full_name_q, has_death_date='1' if has_death_date else '', per_page=pagination.per_page, sort_by=column, sort_order=new_order) }}"
+    <a href="{{ url_for('records.index', month_filter=month_filter_value, all_months='1' if show_all else '', discharge_status=selected_status, treating_physician=selected_physician, discharge_department=selected_department, history=history_q, full_name=full_name_q, has_death_date='1' if has_death_date else '', history_submitted=filter_history_submitted, per_page=pagination.per_page, sort_by=column, sort_order=new_order) }}"
+       hx-get="{{ url_for('records.index', month_filter=month_filter_value, all_months='1' if show_all else '', discharge_status=selected_status, treating_physician=selected_physician, discharge_department=selected_department, history=history_q, full_name=full_name_q, has_death_date='1' if has_death_date else '', history_submitted=filter_history_submitted, per_page=pagination.per_page, sort_by=column, sort_order=new_order) }}"
        hx-target="#records-table-container"
        hx-push-url="true"
        class="text-decoration-none text-dark d-flex align-items-center gap-1" style="cursor: pointer;">
@@ -51,11 +51,16 @@
               {{ sort_th('history', 'Історія') }}
               {{ sort_th('k_days', 'Днів') }}
               {{ sort_th('discharge_status', 'Статус') }}
+              <th title="Ургентний / Плановий">Стан</th>
+              <th title="Чи здана документація">Здача</th>
               {{ sort_th('date_of_death', 'Дата смерті') }}
               <th>Коментар</th>
               {% if current_user.role in ['editor', 'admin', 'viewer'] %}
                 <th>АДСГ</th>
                 <th>Сума</th>
+              {% endif %}
+              {% if current_user.role == 'operator' %}
+                <th>Дія</th>
               {% endif %}
               {% if current_user.role in ['editor', 'admin'] %}
                 <th>Змінив</th>
@@ -82,18 +87,34 @@
                   {% endif %}
                 </td>
                 <td>
-                  {% if r.discharge_status == 'Виписаний' %}
-                    <span class="badge badge-table bg-success">{{ r.discharge_status }}</span>
-                  {% elif r.discharge_status == 'Помер' %}
-                    <span class="badge badge-table bg-danger">{{ r.discharge_status }}</span>
-                  {% elif r.discharge_status == 'Опрацьовується' %}
-                    <span class="badge badge-table bg-warning text-dark">{{ r.discharge_status }}</span>
-                  {% elif r.discharge_status == 'Порушені вимоги' %}
-                    <span class="badge badge-table bg-danger">{{ r.discharge_status }}</span>
-                  {% elif r.discharge_status %}
-                    <span class="badge badge-table bg-secondary">{{ r.discharge_status }}</span>
+                  {% if r.discharge_status %}
+                    {% set meta = status_meta.get(r.discharge_status) %}
+                    {% if meta %}
+                      <span class="badge badge-table bg-{{ meta.color }}{% if meta.color == 'warning' %} text-dark{% endif %}">{{ r.discharge_status }}</span>
+                    {% elif r.discharge_status == 'Помер' %}
+                      {# історичний статус зі старих даних, не в довіднику #}
+                      <span class="badge badge-table bg-danger">{{ r.discharge_status }}</span>
+                    {% else %}
+                      <span class="badge badge-table bg-secondary">{{ r.discharge_status }}</span>
+                    {% endif %}
                   {% else %}
                     —
+                  {% endif %}
+                </td>
+                <td>
+                  {% if r.is_urgent == true %}
+                    <span class="badge badge-table bg-danger">Ург.</span>
+                  {% elif r.is_urgent == false %}
+                    <span class="badge badge-table bg-info text-dark">План.</span>
+                  {% else %}
+                    <span class="text-muted">—</span>
+                  {% endif %}
+                </td>
+                <td>
+                  {% if r.history_submitted %}
+                    <span class="badge badge-table bg-success"><i class="bi bi-check-lg"></i></span>
+                  {% else %}
+                    <span class="badge badge-table bg-secondary"><i class="bi bi-dash"></i></span>
                   {% endif %}
                 </td>
                 <td>
@@ -105,6 +126,23 @@
                 {% if current_user.role in ['editor', 'admin', 'viewer'] %}
                   <td>{{ r.adsj or '' }}</td>
                   <td>{{ r.suma | format_suma }}</td>
+                {% endif %}
+                {% if current_user.role == 'operator' %}
+                  <td class="action-cell">
+                    <div class="action-buttons-container">
+                      <button
+                        class="btn btn-xs btn-outline-secondary update-status-btn"
+                        data-bs-toggle="modal"
+                        data-bs-target="#updateStatusModal"
+                        data-record-id="{{ r.id }}"
+                        data-full-name="{{ r.full_name }}"
+                        data-is-urgent="{{ 'urgent' if r.is_urgent == true else ('planned' if r.is_urgent == false else '') }}"
+                        data-history-submitted="{{ '1' if r.history_submitted else '0' }}"
+                        title="Змінити статус">
+                        <i class="bi bi-toggle-on"></i>Статус
+                      </button>
+                    </div>
+                  </td>
                 {% endif %}
                 {% if current_user.role in ['editor', 'admin'] %}
                   <td>{{ r.updater.username if r.updater else (r.creator.username if r.creator else r.updated_by or r.created_by) }}</td>
@@ -127,6 +165,8 @@
                         data-comment="{{ r.comment or '' }}"
                         data-adsj="{{ r.adsj or '' }}"
                         data-suma="{{ r.suma if r.suma is not none else '' }}"
+                        data-is-urgent="{{ 'urgent' if r.is_urgent == true else ('planned' if r.is_urgent == false else '') }}"
+                        data-history-submitted="{{ '1' if r.history_submitted else '0' }}"
                         title="Редагувати">
                         <i class="bi bi-pencil"></i>Змінити
                       </button>
@@ -161,8 +201,8 @@
       <!-- Previous button -->
       <li class="page-item {% if not pagination.has_prev %}disabled{% endif %}">
         <a class="page-link"
-           href="{{ url_for('records.index', page=pagination.prev_num, discharge_status=selected_status, treating_physician=selected_physician, discharge_department=selected_department, history=history_q, full_name=full_name_q, month_filter=month_filter_value, all_months='1' if show_all else '', has_death_date='1' if has_death_date else '') }}"
-           hx-get="{{ url_for('records.index', page=pagination.prev_num, discharge_status=selected_status, treating_physician=selected_physician, discharge_department=selected_department, history=history_q, full_name=full_name_q, month_filter=month_filter_value, all_months='1' if show_all else '', has_death_date='1' if has_death_date else '') }}"
+           href="{{ url_for('records.index', page=pagination.prev_num, discharge_status=selected_status, treating_physician=selected_physician, discharge_department=selected_department, history=history_q, full_name=full_name_q, month_filter=month_filter_value, all_months='1' if show_all else '', has_death_date='1' if has_death_date else '', history_submitted=filter_history_submitted) }}"
+           hx-get="{{ url_for('records.index', page=pagination.prev_num, discharge_status=selected_status, treating_physician=selected_physician, discharge_department=selected_department, history=history_q, full_name=full_name_q, month_filter=month_filter_value, all_months='1' if show_all else '', has_death_date='1' if has_death_date else '', history_submitted=filter_history_submitted) }}"
            hx-target="#records-table-container"
            hx-push-url="true"
            {% if not pagination.has_prev %}tabindex="-1" aria-disabled="true"{% endif %}>
@@ -177,8 +217,8 @@
       {% if start_page > 1 %}
         <li class="page-item">
           <a class="page-link"
-             href="{{ url_for('records.index', page=1, discharge_status=selected_status, treating_physician=selected_physician, discharge_department=selected_department, history=history_q, full_name=full_name_q, month_filter=month_filter_value, all_months='1' if show_all else '', has_death_date='1' if has_death_date else '') }}"
-             hx-get="{{ url_for('records.index', page=1, discharge_status=selected_status, treating_physician=selected_physician, discharge_department=selected_department, history=history_q, full_name=full_name_q, month_filter=month_filter_value, all_months='1' if show_all else '', has_death_date='1' if has_death_date else '') }}"
+             href="{{ url_for('records.index', page=1, discharge_status=selected_status, treating_physician=selected_physician, discharge_department=selected_department, history=history_q, full_name=full_name_q, month_filter=month_filter_value, all_months='1' if show_all else '', has_death_date='1' if has_death_date else '', history_submitted=filter_history_submitted) }}"
+             hx-get="{{ url_for('records.index', page=1, discharge_status=selected_status, treating_physician=selected_physician, discharge_department=selected_department, history=history_q, full_name=full_name_q, month_filter=month_filter_value, all_months='1' if show_all else '', has_death_date='1' if has_death_date else '', history_submitted=filter_history_submitted) }}"
              hx-target="#records-table-container"
              hx-push-url="true">1</a>
         </li>
@@ -190,8 +230,8 @@
       {% for page_num in range(start_page, end_page + 1) %}
         <li class="page-item {% if page_num == pagination.page %}active{% endif %}">
           <a class="page-link"
-             href="{{ url_for('records.index', page=page_num, discharge_status=selected_status, treating_physician=selected_physician, discharge_department=selected_department, history=history_q, full_name=full_name_q, month_filter=month_filter_value, all_months='1' if show_all else '', has_death_date='1' if has_death_date else '') }}"
-             hx-get="{{ url_for('records.index', page=page_num, discharge_status=selected_status, treating_physician=selected_physician, discharge_department=selected_department, history=history_q, full_name=full_name_q, month_filter=month_filter_value, all_months='1' if show_all else '', has_death_date='1' if has_death_date else '') }}"
+             href="{{ url_for('records.index', page=page_num, discharge_status=selected_status, treating_physician=selected_physician, discharge_department=selected_department, history=history_q, full_name=full_name_q, month_filter=month_filter_value, all_months='1' if show_all else '', has_death_date='1' if has_death_date else '', history_submitted=filter_history_submitted) }}"
+             hx-get="{{ url_for('records.index', page=page_num, discharge_status=selected_status, treating_physician=selected_physician, discharge_department=selected_department, history=history_q, full_name=full_name_q, month_filter=month_filter_value, all_months='1' if show_all else '', has_death_date='1' if has_death_date else '', history_submitted=filter_history_submitted) }}"
              hx-target="#records-table-container"
              hx-push-url="true">
             {{ page_num }}
@@ -205,8 +245,8 @@
         {% endif %}
         <li class="page-item">
           <a class="page-link"
-             href="{{ url_for('records.index', page=pagination.pages, discharge_status=selected_status, treating_physician=selected_physician, discharge_department=selected_department, history=history_q, full_name=full_name_q, month_filter=month_filter_value, all_months='1' if show_all else '', has_death_date='1' if has_death_date else '') }}"
-             hx-get="{{ url_for('records.index', page=pagination.pages, discharge_status=selected_status, treating_physician=selected_physician, discharge_department=selected_department, history=history_q, full_name=full_name_q, month_filter=month_filter_value, all_months='1' if show_all else '', has_death_date='1' if has_death_date else '') }}"
+             href="{{ url_for('records.index', page=pagination.pages, discharge_status=selected_status, treating_physician=selected_physician, discharge_department=selected_department, history=history_q, full_name=full_name_q, month_filter=month_filter_value, all_months='1' if show_all else '', has_death_date='1' if has_death_date else '', history_submitted=filter_history_submitted) }}"
+             hx-get="{{ url_for('records.index', page=pagination.pages, discharge_status=selected_status, treating_physician=selected_physician, discharge_department=selected_department, history=history_q, full_name=full_name_q, month_filter=month_filter_value, all_months='1' if show_all else '', has_death_date='1' if has_death_date else '', history_submitted=filter_history_submitted) }}"
              hx-target="#records-table-container"
              hx-push-url="true">{{ pagination.pages }}</a>
         </li>
@@ -215,8 +255,8 @@
       <!-- Next button -->
       <li class="page-item {% if not pagination.has_next %}disabled{% endif %}">
         <a class="page-link"
-           href="{{ url_for('records.index', page=pagination.next_num, discharge_status=selected_status, treating_physician=selected_physician, discharge_department=selected_department, history=history_q, full_name=full_name_q, month_filter=month_filter_value, all_months='1' if show_all else '', has_death_date='1' if has_death_date else '') }}"
-           hx-get="{{ url_for('records.index', page=pagination.next_num, discharge_status=selected_status, treating_physician=selected_physician, discharge_department=selected_department, history=history_q, full_name=full_name_q, month_filter=month_filter_value, all_months='1' if show_all else '', has_death_date='1' if has_death_date else '') }}"
+           href="{{ url_for('records.index', page=pagination.next_num, discharge_status=selected_status, treating_physician=selected_physician, discharge_department=selected_department, history=history_q, full_name=full_name_q, month_filter=month_filter_value, all_months='1' if show_all else '', has_death_date='1' if has_death_date else '', history_submitted=filter_history_submitted) }}"
+           hx-get="{{ url_for('records.index', page=pagination.next_num, discharge_status=selected_status, treating_physician=selected_physician, discharge_department=selected_department, history=history_q, full_name=full_name_q, month_filter=month_filter_value, all_months='1' if show_all else '', has_death_date='1' if has_death_date else '', history_submitted=filter_history_submitted) }}"
            hx-target="#records-table-container"
            hx-push-url="true"
            {% if not pagination.has_next %}tabindex="-1" aria-disabled="true"{% endif %}>

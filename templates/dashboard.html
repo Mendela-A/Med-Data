@@ -941,7 +941,9 @@
       document.getElementById('edit_adsj').value = adsj;
       document.getElementById('edit_suma').value = suma;
       // is_urgent radio (operator/admin) or read-only display
-      const urgentVal = isUrgent || 'planned';
+      // '' — стан не вказано (is_urgent IS NULL): жодне радіо не обране,
+      // форма не надішле is_urgent і validate_record_form збереже NULL
+      const urgentVal = isUrgent || '';
       const urgentRadios = document.querySelectorAll('#editRecordForm input[name="is_urgent"][type="radio"]');
       if (urgentRadios.length) {
         urgentRadios.forEach(r => { r.checked = r.value === urgentVal; });
