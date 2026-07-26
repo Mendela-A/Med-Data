@@ -234,29 +234,33 @@ def test_dashboard_filter_submitted(app, client):
 # --- Statistics page ---
 
 def test_reports_page_accessible_for_admin(app, client):
-    """Reports page /admin/reports is accessible for admin role and shows both sections."""
+    """Reports pages (submission + urgency) are accessible for admin role."""
     with app.app_context():
         ensure_user('adm', role='admin')
         login(client, 'adm')
 
-        resp = client.get('/admin/reports', query_string={
+        resp = client.get('/admin/reports/submission-page', query_string={
             'from_date': FROM_DATE, 'to_date': TO_DATE
         })
         assert resp.status_code == 200
-        txt = resp.get_data(as_text=True)
-        assert 'Здача документації' in txt
-        assert 'Ургентність' in txt
+        assert 'Здача документації' in resp.get_data(as_text=True)
+
+        resp = client.get('/admin/reports/urgency-page', query_string={
+            'from_date': FROM_DATE, 'to_date': TO_DATE
+        })
+        assert resp.status_code == 200
+        assert 'Ургентність' in resp.get_data(as_text=True)
 
 
 def test_reports_page_accessible_for_operator(app, client):
-    """Reports page /admin/reports is accessible for operator role."""
+    """Reports page /admin/reports (redirects to submission-page) is accessible for operator role."""
     with app.app_context():
         ensure_user('adm2', role='operator')
         login(client, 'adm2')
 
         resp = client.get('/admin/reports', query_string={
             'from_date': FROM_DATE, 'to_date': TO_DATE
-        })
+        }, follow_redirects=True)
         assert resp.status_code == 200
         txt = resp.get_data(as_text=True)
         assert 'Звіти' in txt
@@ -279,14 +283,14 @@ def test_statistics_urgency_by_dept(app, client):
 
 
 def test_reports_page_shows_physician_breakdown(app, client):
-    """Reports page shows physician breakdown for submission data."""
+    """Submission report shows physician breakdown for submission data."""
     with app.app_context():
         u = ensure_user('adm4', role='admin')
         ensure_department()
         make_record(u.id, history_submitted=False, physician='Лікар Тест')
         login(client, 'adm4')
 
-        resp = client.get('/admin/reports', query_string={
+        resp = client.get('/admin/reports/submission-page', query_string={
             'from_date': FROM_DATE, 'to_date': TO_DATE
         })
         assert resp.status_code == 200
