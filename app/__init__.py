@@ -4,6 +4,8 @@ Flask application factory для створення екземплярів до�
 Використовується для легшого тестування та масштабування.
 """
 
+import os
+
 from flask import Flask, jsonify, request, flash, redirect, url_for
 
 
@@ -226,5 +228,27 @@ def create_app(config_class=None):
         return value
 
     app.jinja_env.filters['nz'] = _nz
+
+    # Кеш-бастинг статики: nginx віддає /static/ з `expires 1d`, тож без версії
+    # в URL зміни CSS/JS доходили до користувачів лише через добу або Ctrl+F5.
+    # url_defaults спрацьовує на кожен url_for('static', ...), тому шаблони
+    # правити не треба. mtime кешуємо — у проді файли не змінюються між
+    # рестартами, а в дебазі перечитуємо, щоб не заважати розробці.
+    _static_versions = {}
+
+    @app.url_defaults
+    def _add_static_version(endpoint, values):
+        if endpoint != 'static' or 'filename' not in values:
+            return
+        filename = values['filename']
+        version = _static_versions.get(filename)
+        if version is None or app.debug:
+            try:
+                version = int(os.stat(os.path.join(app.static_folder, filename)).st_mtime)
+            except OSError:
+                # Файла немає (або недоступний) — лишаємо URL без версії
+                return
+            _static_versions[filename] = version
+        values['v'] = version
 
     return app
