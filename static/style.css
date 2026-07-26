@@ -1160,15 +1160,29 @@ html[data-theme="dark"] .stat-pill-muted {
 /* ===== Statistics cards ===== */
 .stat-card-link {
   display: block;
+  /* Без height картка в посиланні не розтягується до висоти рядка, тоді як
+     ALOS (прямий нащадок .col з h-100) розтягується — і виглядала вищою. */
+  height: 100%;
   transition: transform 0.2s ease;
 }
 
 
 
 .stat-card {
-  cursor: pointer;
   transition: box-shadow 0.2s ease, border-color 0.2s ease;
   border: 1px solid var(--color-border);
+}
+
+/* Руку-курсор лише клікабельним карткам: ALOS не обгорнута посиланням і
+   раніше виглядала клікабельною, але на клік не реагувала. */
+.stat-card-link .stat-card {
+  cursor: pointer;
+}
+
+/* Заголовки різної довжини переносяться на другий рядок і зсувають число
+   вниз — резервуємо два рядки, щоб числа стояли на одній лінії. */
+.stat-card .card-subtitle-sm {
+  min-height: 2.4em;
 }
 
 .stat-card-link:hover .stat-card {
