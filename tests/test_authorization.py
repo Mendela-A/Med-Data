@@ -1,12 +1,12 @@
 """
 Tests for write-operation authorization matrix.
 Verifies that roles with insufficient privileges cannot perform write operations,
-and that the viewer→form007_edit bug is caught.
+and that Form 007 editing follows the "Форми 007/016" tab grant.
 """
 import pytest
 from datetime import date
 from app import create_app
-from models import db, User, Record, Department, NSZUCorrection, AmbulatoryRecord
+from models import db, User, Record, Department, NSZUCorrection, AmbulatoryRecord, DailyReport
 
 
 class TestConfig:
@@ -208,35 +208,41 @@ class TestEditorCannotAccessAdmin:
 
 
 # ---------------------------------------------------------------------------
-# Potential bug: viewer on form007_edit (write route)
+# form007_edit — access follows the "Форми 007/016" tab, not the admin role
 # ---------------------------------------------------------------------------
 
-class TestViewerForm007EditBug:
-    def test_viewer_blocked_from_form007_edit_post(self, app, client):
-        """
-        form007_edit uses @role_required('admin', 'viewer') but is a write route.
-        viewer should NOT be able to write DailyReport data.
-        This test documents the expected behavior — viewer should be blocked.
-        If this test FAILS, there is a real authorization bug.
-        """
+class TestForm007EditFollowsStatistyTab:
+    """Statisticians are `viewer`s: the tab that shows Form 007 also lets them fill it in."""
+
+    def test_viewer_can_write_form007(self, app, client):
         with app.app_context():
             d = Department(name='Хірургічне')
             db.session.add(d)
             db.session.commit()
+            dept_id = d.id
 
             make_user('viewer_form007', 'viewer')
             login(client, 'viewer_form007')
 
             rv = client.post('/statisty/form007/2026-05-01/edit',
-                             data={f'row_{d.id}_beds_total': '30'},
+                             data={f'beds_total_{dept_id}': '30'},
                              follow_redirects=True)
-            # viewer should NOT be able to write — expect redirect/403/flash
-            # If this assertion fails, viewer can write Form 007 — that's the bug
-            html = rv.get_data(as_text=True)
-            assert 'Доступ заборонено' in html, (
-                "BUG: viewer can write to form007_edit! "
-                "Decorator @role_required('admin','viewer') incorrectly allows viewer on write route."
-            )
+            assert 'Доступ заборонено' not in rv.get_data(as_text=True)
+
+            saved = DailyReport.query.filter_by(report_date=date(2026, 5, 1),
+                                                department_id=dept_id).first()
+            assert saved is not None and saved.beds_total == 30
+
+    def test_viewer_with_statisty_revoked_is_blocked(self, app, client):
+        with app.app_context():
+            u = make_user('viewer_norev', 'viewer')
+            u.revoked_permissions = ['statisty']
+            db.session.commit()
+            login(client, 'viewer_norev')
+
+            rv = client.post('/statisty/form007/2026-05-01/edit',
+                             data={}, follow_redirects=True)
+            assert 'Доступ заборонено' in rv.get_data(as_text=True)
 
 
 # ---------------------------------------------------------------------------

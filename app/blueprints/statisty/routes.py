@@ -516,7 +516,7 @@ def form007_dept_month_print(department_id):
 # ---- Form 007 edit (single day, all departments) ---------------------------
 
 @statisty_bp.route('/form007/<report_date_str>/edit', methods=['GET', 'POST'])
-@role_required('admin')
+@role_required('admin', 'viewer')
 def form007_edit(report_date_str):
     try:
         report_date = date.fromisoformat(report_date_str)
