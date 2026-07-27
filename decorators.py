@@ -41,11 +41,12 @@ def role_required(*roles):
                 return redirect(url_for('auth.login'))
             user_role = getattr(current_user, 'role', None)
 
+            from constants import resolve_tab_key
+            tab_key = resolve_tab_key(request.endpoint)
+
             # An explicitly revoked tab always wins, even for a role that would
             # otherwise pass the check below (admin is exempt, same as has_tab_access).
             if user_role != 'admin':
-                from constants import resolve_tab_key
-                tab_key = resolve_tab_key(request.endpoint)
                 revoked = getattr(current_user, 'revoked_permissions', None) or []
                 if tab_key and tab_key in revoked:
                     flash('Доступ заборонено', 'danger')
@@ -56,17 +57,17 @@ def role_required(*roles):
             if 'admin' not in allowed_roles and user_role == 'admin':
                 allowed_roles.append('admin')
             if user_role not in allowed_roles:
-                # Check extra_permissions: if any perm grants an effective role that's in allowed_roles
+                # Check extra_permissions, but only the one matching THIS endpoint's tab.
+                # Scanning every granted perm would let a perm mapped to a high effective
+                # role (e.g. print_settings -> admin) unlock unrelated routes of that role.
                 from constants import PERM_EFFECTIVE_ROLE
                 extra = getattr(current_user, 'extra_permissions', None) or []
-                for perm in extra:
-                    eff = PERM_EFFECTIVE_ROLE.get(perm)
+                if tab_key and tab_key in extra:
+                    eff = PERM_EFFECTIVE_ROLE.get(tab_key)
                     if eff and eff in allowed_roles:
                         return f(*args, **kwargs)
                 flash('Доступ заборонено', 'danger')
-                if user_role == 'ambulatory':
-                    return redirect(url_for('ambulatory.index'))
-                return redirect(url_for('records.index'))
+                return redirect(_fallback_redirect(current_user))
             return f(*args, **kwargs)
         return decorated_function
     return decorator

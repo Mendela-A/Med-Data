@@ -8,8 +8,9 @@ Covers:
 - Navbar HTML visibility controlled by has_tab_access()
 """
 import pytest
+from datetime import date
 from app import create_app
-from models import db, User
+from models import db, User, Department, DailyReport
 from constants import DEFAULT_ROLE_TABS, TABS
 
 
@@ -180,10 +181,64 @@ class TestRouteAccessWithExtraPermissions:
         """Even with all possible extra permissions, non-admin can't reach admin routes."""
         with app.app_context():
             make_user('op_all', 'operator',
-                      extra_permissions=['nszu', 'statisty', 'statistics', 'records', 'ambulatory'])
+                      extra_permissions=['nszu', 'statisty', 'statistics', 'records',
+                                         'ambulatory', 'reports', 'print_settings'])
             login(client, 'op_all')
             rv = client.get('/admin/users', follow_redirects=True)
             assert 'Доступ заборонено' in rv.get_data(as_text=True)
+
+    def test_print_settings_perm_does_not_unlock_admin_panel(self, app, client):
+        """print_settings maps to effective role 'admin' — it must unlock only its own route.
+
+        Regression: the decorator used to scan every granted perm, so this checkbox
+        opened /admin/users, /admin/audit and the rest of the admin panel.
+        """
+        with app.app_context():
+            make_user('op_ps', 'operator', extra_permissions=['print_settings'])
+            login(client, 'op_ps')
+
+            assert client.get('/statisty/print-settings').status_code == 200
+
+            for admin_url in ('/admin/users', '/admin/audit', '/admin/departments'):
+                rv = client.get(admin_url, follow_redirects=True)
+                assert 'Доступ заборонено' in rv.get_data(as_text=True), \
+                    f"print_settings must not unlock {admin_url}"
+
+    def test_operator_with_statisty_extra_can_write_form007(self, app, client):
+        """The "Форми 007/016" checkbox grants both viewing and filling in Form 007."""
+        with app.app_context():
+            d = Department(name='Хірургічне')
+            db.session.add(d)
+            db.session.commit()
+            dept_id = d.id
+
+            make_user('op_stat_w', 'operator', extra_permissions=['statisty'])
+            login(client, 'op_stat_w')
+
+            rv = client.post('/statisty/form007/2026-05-01/edit',
+                             data={f'beds_total_{dept_id}': '42'},
+                             follow_redirects=True)
+            assert 'Доступ заборонено' not in rv.get_data(as_text=True)
+
+            saved = DailyReport.query.filter_by(report_date=date(2026, 5, 1),
+                                                department_id=dept_id).first()
+            assert saved is not None and saved.beds_total == 42
+
+    def test_operator_without_statisty_cannot_write_form007(self, app, client):
+        with app.app_context():
+            d = Department(name='Терапевтичне')
+            db.session.add(d)
+            db.session.commit()
+            dept_id = d.id
+
+            make_user('op_nostat_w', 'operator')
+            login(client, 'op_nostat_w')
+
+            rv = client.post('/statisty/form007/2026-05-01/edit',
+                             data={f'beds_total_{dept_id}': '42'},
+                             follow_redirects=True)
+            assert 'Доступ заборонено' in rv.get_data(as_text=True)
+            assert DailyReport.query.filter_by(report_date=date(2026, 5, 1)).first() is None
 
     def test_viewer_with_extra_statistics_can_access_stats(self, app, client):
         """Viewer already has statistics access by role — extra_permissions is redundant but harmless."""
