@@ -133,7 +133,7 @@
         {% endif %}
         <td class="text-center">{{ row.beds_total | nz }}</td>
         <td class="text-center excel-computed">{{ row.beds_average | nz }}</td>
-        <td class="text-center">{{ row.patients_start | nz if not row.is_totals else '' }}</td>
+        <td class="text-center">{{ row.patients_start | nz }}</td>
         <td class="text-center fw-bold">{{ row.admitted_total | nz }}</td>
         <td class="text-center">{{ row.admitted_rural | nz }}</td>
         <td class="text-center">{{ row.admitted_children | nz }}</td>

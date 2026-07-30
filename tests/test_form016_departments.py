@@ -1,4 +1,5 @@
 import pytest
+import re
 import datetime
 from app import create_app
 from models import db, User, Department, DailyReport
@@ -94,7 +95,13 @@ def test_form016_departments_calculations_and_views(app, client):
         
         # Verify grand totals
         assert "Разом" in html
-        
+
+        # Графа 3 у рядку «Разом» — сума переписів відділень на початок періоду (10 + 8)
+        totals_html = html.split('>Разом<')[1]
+        totals_cells = re.findall(r'<td[^>]*>\s*(.*?)\s*</td>', totals_html, re.S)
+        # 0=Номер рядка, 1=гр.1 ліжка, 2=гр.2 середньомісячні, 3=гр.3 хворі на початок
+        assert totals_cells[3] == '18'
+
         # 2. Verify PDF Print View (may return 302 redirect if WeasyPrint is not installed)
         rv_print = client.get('/statisty/form016_departments/print', query_string={'from_date': '2026-04'})
         assert rv_print.status_code in (200, 302)

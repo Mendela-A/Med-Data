@@ -329,7 +329,6 @@ def _get_form016_departments_data(from_date, to_date):
 
     totals = {
         'dept_name': 'Разом', 'row_no': '', 'is_totals': True,
-        'patients_start': '',  # excluded from totals row per form spec
         **grand,
     }
     table.append(totals)
@@ -919,7 +918,7 @@ def form016_export():
             col_a_val,
             row['beds_total'] if row['beds_total'] is not None else '',
             row['beds_average'] if row['beds_average'] is not None else '',
-            row['patients_start'] if (row['patients_start'] is not None and not is_totals_row) else '',
+            row['patients_start'] if row['patients_start'] is not None else '',
             row['admitted_total'],
             row['admitted_rural'],
             row['admitted_children'],

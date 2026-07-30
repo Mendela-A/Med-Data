@@ -193,7 +193,7 @@ tr.totals-row td {
       <td style="font-size: 6.5pt; color: #555; font-weight: bold;">{{ row.row_no if row.row_no is not none else '' }}</td>
       <td>{{ row.beds_total | nz }}</td>
       <td style="{% if not row.is_totals %}background: #fffbeb;{% endif %}">{{ row.beds_average | nz }}</td>
-      <td>{{ row.patients_start | nz if not row.is_totals else '' }}</td>
+      <td>{{ row.patients_start | nz }}</td>
       <td style="font-weight: bold;">{{ row.admitted_total | nz }}</td>
       <td>{{ row.admitted_rural | nz }}</td>
       <td>{{ row.admitted_children | nz }}</td>
