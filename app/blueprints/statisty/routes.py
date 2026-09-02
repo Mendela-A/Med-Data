@@ -315,10 +315,10 @@ def _get_form016_departments_data(from_date, to_date):
         agg = _sum_daily_stats(daily_stats)
 
         if agg is None:
-            row = {'dept_name': dept.name, 'row_no': dept.row_no, 'is_totals': False}
+            row = {'dept_name': dept.bed_profile_name or dept.name, 'row_no': dept.row_no, 'is_totals': False}
             row.update(_ZERO)
         else:
-            row = {'dept_name': dept.name, 'row_no': dept.row_no, 'is_totals': False, **agg}
+            row = {'dept_name': dept.bed_profile_name or dept.name, 'row_no': dept.row_no, 'is_totals': False, **agg}
             for k in ('beds_total', 'beds_average', 'patients_start', 'admitted_total',
                       'admitted_rural', 'admitted_children', 'admitted_children_rural',
                       'transferred_in', 'transferred_out', 'discharged_total',

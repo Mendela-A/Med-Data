@@ -2,7 +2,7 @@
 <html lang="uk">
 <head>
 <meta charset="UTF-8">
-<title>Форма 016/о (по відділеннях) — {{ period_label }}</title>
+<title>Форма 016/о — {{ period_label }}</title>
 <style>
 @page {
     size: A4 landscape;
@@ -112,12 +112,11 @@ tr.totals-row td {
   </div>
   <div class="header-right">
     МЕДИЧНА ДОКУМЕНТАЦІЯ<br>
-    <strong>{{ ps.form016_form_no }} (по відділеннях)</strong><br>
+    <strong>{{ ps.form016_form_no }}</strong><br>
     <span style="font-size: 6pt; color: #555;">{{ ps.form016_decree }}</span>
   </div>
   <div class="header-center">
     <h1>{{ ps.form016_title }}</h1>
-    <div style="font-size: 8pt; font-weight: bold; margin-top: 2px;">ПО ВІДДІЛЕННЯХ СТАЦІОНАРУ</div>
     <div style="font-size: 7.5pt; margin-top: 3px;">
       за <strong>{{ from_date.year }}</strong> р. — період: <strong>{{ period_label }}</strong>
     </div>
@@ -148,7 +147,7 @@ tr.totals-row td {
   </colgroup>
   <thead>
     <tr>
-      <th rowspan="4">Найменування відділень</th>
+      <th rowspan="4">Назва профілю ліжка</th>
       <th rowspan="4" style="font-size: 5.5pt;">Номер рядка</th>
       <th rowspan="4">Число ліжок кошторису на кінець періоду</th>
       <th rowspan="4">Середньомісячних ліжок</th>
