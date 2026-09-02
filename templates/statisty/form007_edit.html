@@ -67,7 +67,10 @@
           {% set r = existing.get(dept.id) %}
           {% set prev_r = prev_reports.get(dept.id) if prev_reports else none %}
           <tr>
-            <td class="fw-semibold">{{ dept.bed_profile_name or dept.name }}</td>
+            <td class="fw-semibold">{{ dept.bed_profile_name or dept.name }}
+              <input type="hidden" name="_baseline_{{ dept.id }}"
+                     value="{{ r.updated_at.isoformat() if (r and r.updated_at) else '' }}">
+              <input type="hidden" name="_dirty_{{ dept.id }}" value="1" disabled data-dirty-flag></td>
             <td class="text-center text-muted">{{ dept.row_no or '' }}</td>
 
             {# col3 — beds_total #}
@@ -207,9 +210,12 @@ document.addEventListener('DOMContentLoaded', function() {
         this.select();
       });
 
-      // Recalculate on any input change
+      // Recalculate on any input change; mark the row dirty so the server saves
+      // only the departments this operator actually edited.
       input.addEventListener('input', function() {
         calculateRow(tr);
+        const flag = tr.querySelector('input[data-dirty-flag]');
+        if (flag) flag.disabled = false;
       });
 
       // Spreadsheet arrows and Enter navigation
@@ -256,4 +262,10 @@ document.addEventListener('DOMContentLoaded', function() {
   });
 });
 </script>
+
+<div id="f007-live"
+     data-mode="banner"
+     data-revision="{{ revision }}"
+     data-revision-url="{{ url_for('statisty.form007_revision', range_str=report_date.isoformat()) }}"></div>
+<script src="{{ url_for('static', filename='form007-live.js') }}"></script>
 {% endblock %}

@@ -150,4 +150,10 @@
     </tfoot>
   </table>
 </div>
+
+<div id="f007-live"
+     data-mode="reload"
+     data-revision="{{ revision }}"
+     data-revision-url="{{ url_for('statisty.form007_revision', range_str=report_date.isoformat()) }}"></div>
+<script src="{{ url_for('static', filename='form007-live.js') }}"></script>
 {% endblock %}

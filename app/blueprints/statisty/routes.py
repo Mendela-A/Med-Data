@@ -4,10 +4,21 @@ from datetime import date, timedelta, datetime
 import calendar
 from io import BytesIO
 
+from sqlalchemy import func
+
 from app.extensions import db
 from models import Department, DailyReport, PrintSettings, log_action
 from decorators import role_required
 from . import statisty_bp
+
+# Editable integer columns of a Form 007 daily report row (col14 patients_end is
+# computed from these, so it is not in the list).
+_FORM007_FIELDS = (
+    'beds_total', 'beds_renovation', 'patients_start', 'admitted_total',
+    'admitted_rural', 'admitted_children', 'admitted_children_rural',
+    'transferred_in', 'transferred_out', 'discharged_total', 'discharged_to_other',
+    'deaths', 'patients_end_rural', 'mothers_with_children', 'free_male', 'free_female',
+)
 
 # Combined department display names for merged dept groups (hardcoded IDs per hospital config)
 _COMBINED_DEPT_NAMES = {
@@ -381,6 +392,7 @@ def form007():
         from_date=first_day,
         to_date=last_day,
         period_label=_period_label(first_day, last_day),
+        revision=_form007_revision_token(first_day, last_day),
     )
 
 
@@ -427,6 +439,7 @@ def form007_day(report_date_str):
         report_date=report_date,
         totals=totals,
         depts=depts,
+        revision=_form007_revision_token(report_date, report_date),
     )
 
 
@@ -529,47 +542,75 @@ def form007_edit(report_date_str):
     }
 
     if request.method == 'POST':
+        # JS marks each edited row with _dirty_<id>. If any flag is present we
+        # trust it and only touch those departments; if none is present (JS off /
+        # stale cache) we fall back to processing every department.
+        use_dirty = any(k.startswith('_dirty_') for k in request.form)
+
+        saved, conflicts = [], []
         for dept in depts:
-            r = existing.get(dept.id)
-            if r is None:
-                r = DailyReport(report_date=report_date, department_id=dept.id,
-                                 created_by=current_user.id)
-                db.session.add(r)
+            if use_dirty and f'_dirty_{dept.id}' not in request.form:
+                continue
 
             def _int(field):
                 v = request.form.get(f'{field}_{dept.id}', '').strip()
                 return int(v) if v else None
 
-            r.beds_total            = _int('beds_total')
-            r.beds_renovation       = _int('beds_renovation')
-            r.patients_start        = _int('patients_start')
-            r.admitted_total        = _int('admitted_total')
-            r.admitted_rural        = _int('admitted_rural')
-            r.admitted_children     = _int('admitted_children')
-            r.admitted_children_rural = _int('admitted_children_rural')
-            r.transferred_in        = _int('transferred_in')
-            r.transferred_out       = _int('transferred_out')
-            r.discharged_total      = _int('discharged_total')
-            r.discharged_to_other   = _int('discharged_to_other')
-            r.deaths                = _int('deaths')
-            r.patients_end_rural    = _int('patients_end_rural')
-            r.mothers_with_children = _int('mothers_with_children')
-            r.free_male             = _int('free_male')
-            r.free_female           = _int('free_female')
-            r.updated_by            = current_user.id
+            r = existing.get(dept.id)
+            values = {f: _int(f) for f in _FORM007_FIELDS}
+            has_input = any(v is not None for v in values.values())
+
+            # No-op guard: don't create empty rows and don't bump updated_at (which
+            # would give other operators a spurious conflict) when nothing changed.
+            if r is not None:
+                if all(getattr(r, f) == values[f] for f in _FORM007_FIELDS):
+                    continue
+            elif not has_input:
+                continue
+
+            # Per-row optimistic lock: the form carries the row's updated_at as it
+            # was when the page loaded. If it no longer matches, another operator
+            # saved this department in the meantime — skip it instead of silently
+            # overwriting their data.
+            baseline = request.form.get(f'_baseline_{dept.id}', '')
+            current_token = r.updated_at.isoformat() if (r and r.updated_at) else ''
+            if baseline != current_token:
+                conflicts.append(dept)
+                continue
+
+            if r is None:
+                r = DailyReport(report_date=report_date, department_id=dept.id,
+                                 created_by=current_user.id)
+                db.session.add(r)
+
+            for f in _FORM007_FIELDS:
+                setattr(r, f, values[f])
+            r.updated_by = current_user.id
 
             # Recompute col14
             r.patients_end = r.compute_patients_end()
+            saved.append(dept)
 
         log_action(
             current_user.id,
             'daily_report.update',
             'daily_report',
             None,
-            f"date={report_date_str}, depts={', '.join([d.name for d in depts])}"
+            f"date={report_date_str}, saved={', '.join(d.name for d in saved) or '—'}"
+            + (f"; conflicts={', '.join(d.name for d in conflicts)}" if conflicts else "")
         )
         db.session.commit()
-        flash(f"Форму 007 за {report_date.strftime('%d.%m.%Y')} збережено.", 'success')
+
+        if conflicts:
+            names = ', '.join(d.bed_profile_name or d.name for d in conflicts)
+            flash(
+                f"Форму 007 за {report_date.strftime('%d.%m.%Y')} збережено частково. "
+                f"Не збережено — щойно змінив інший оператор: {names}. "
+                f"Сторінка оновлена, внесіть зміни до цих відділень ще раз.",
+                'warning',
+            )
+        else:
+            flash(f"Форму 007 за {report_date.strftime('%d.%m.%Y')} збережено.", 'success')
         return redirect(url_for('statisty.form007_edit', report_date_str=report_date_str))
 
     # GET: Pre-populate fallbacks
@@ -585,8 +626,45 @@ def form007_edit(report_date_str):
         existing=existing,
         prev_reports=prev_reports,
         report_date=report_date,
+        revision=_form007_revision_token(report_date, report_date),
     )
 
+
+def _form007_revision_token(first_day, last_day):
+    """Fingerprint of Form 007 data in a date range: '<row count>:<max updated_at>'.
+
+    Bumps whenever any operator inserts/updates a DailyReport in the range, so the
+    Form 007 pages can poll it and refresh / warn when data changed under them.
+    """
+    count, max_updated = db.session.query(
+        func.count(DailyReport.id),
+        func.max(DailyReport.updated_at),
+    ).filter(
+        DailyReport.report_date >= first_day,
+        DailyReport.report_date <= last_day,
+    ).one()
+    return f"{count or 0}:{max_updated.isoformat() if max_updated else '0'}"
+
+
+@statisty_bp.route('/form007/<range_str>/revision')
+@role_required('admin', 'viewer')
+def form007_revision(range_str):
+    """Lightweight polling endpoint used by the Form 007 pages for live refresh.
+
+    `range_str` is 'YYYY-MM-DD' (single day — edit / day views) or 'YYYY-MM'
+    (whole month — month overview). Returns {'range', 'revision'}.
+    """
+    try:
+        if len(range_str) == 7:
+            year, month = (int(x) for x in range_str.split('-'))
+            first_day = date(year, month, 1)
+            last_day = date(year, month, calendar.monthrange(year, month)[1])
+        else:
+            first_day = last_day = date.fromisoformat(range_str)
+    except (ValueError, TypeError):
+        abort(404)
+
+    return {'range': range_str, 'revision': _form007_revision_token(first_day, last_day)}
 
 
 # ---- Form 007 print (PDF) ---------------------------------------------------
