@@ -779,15 +779,23 @@ html[data-theme="dark"] .stat-pill-muted {
   white-space: nowrap;
 }
 
-/* Короткий бейдж (іконка «Здача», «Ург.»/«План.» у «Стан»): 80px min-width із `td .badge` тут зайвий */
-td .badge.badge-icon {
-  min-width: 36px;
-}
-
-/* Стовпці з коротким вмістом (Днів, Статус, Стан, Здача) — ширина по вмісту, вільне місце іде іншим */
+/* Вузькі стовпці (Днів, Статус, Стан, Здача): ширина по вмісту, вміст по центру,
+   бейджі на всю ширину стовпця — однакові за розміром у кожному рядку */
 .table.records-table th.col-narrow {
   width: 1%;
   white-space: nowrap;
+}
+.table.records-table th.col-narrow > a {
+  justify-content: center;
+}
+.table.records-table th.col-narrow,
+.table.records-table td.col-narrow {
+  text-align: center;
+}
+.table.records-table td.col-narrow .badge {
+  display: block;
+  width: 100%;
+  min-width: 0;
 }
 
 
