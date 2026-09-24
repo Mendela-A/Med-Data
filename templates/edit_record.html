@@ -72,6 +72,14 @@
           <textarea class="form-control" name="comment" rows="2">{{ r.comment or '' }}</textarea>
         </div>
         <div class="col-auto">
+          <label class="form-label">ID пацієнта (ЕСОЗ)</label>
+          <input type="text" class="form-control font-monospace" name="patient_ehealth_id"
+                 value="{{ r.patient_ehealth_id or '' }}" maxlength="36" size="38" autocomplete="off"
+                 pattern="[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12}"
+                 placeholder="d9a421c8-8efc-11f1-b457-765e37fe0f90"
+                 title="36 символів у форматі xxxxxxxx-xxxx-xxxx-xxxx-xxxxxxxxxxxx">
+        </div>
+        <div class="col-auto">
           <label class="form-label">АДСГ</label>
           <input type="text" class="form-control" name="adsj" value="{{ r.adsj or '' }}" maxlength="200">
         </div>

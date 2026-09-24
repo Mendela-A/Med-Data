@@ -119,6 +119,7 @@ class Record(db.Model):
         db.Index('idx_record_updated_at', 'updated_at'),
         db.Index('idx_record_is_urgent', 'is_urgent'),
         db.Index('idx_record_history_submitted', 'history_submitted'),
+        db.Index('uq_record_patient_ehealth_id', 'patient_ehealth_id', unique=True),
     )
 
     id = db.Column(db.Integer, primary_key=True)
@@ -136,6 +137,8 @@ class Record(db.Model):
     history_submitted = db.Column(db.Boolean, nullable=False, default=False, server_default='0')  # чи здана документація
     adsj   = db.Column(db.String(200), nullable=True)  # "АДСГ"
     suma   = db.Column(db.Numeric(12, 2), nullable=True)  # "Сума"
+    # "ID пацієнта (ЕСОЗ)" — UUID, вводиться вручну admin/editor; унікальний на запис
+    patient_ehealth_id = db.Column(db.String(36), nullable=True)
     created_by = db.Column(db.Integer, db.ForeignKey('users.id'), nullable=True)
     created_at = db.Column(db.DateTime, default=lambda: datetime.now(timezone.utc))
     updated_by = db.Column(db.Integer, db.ForeignKey('users.id'), nullable=True)

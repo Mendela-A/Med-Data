@@ -1,5 +1,5 @@
 {# Macro for sortable column headers #}
-{% macro sort_th(column, label) %}
+{% macro sort_th(column, label, cls='') %}
   {% if sort_by == column %}
     {% if sort_order == 'asc' %}
       {% set new_order = 'desc' %}
@@ -12,7 +12,7 @@
     {% set new_order = 'asc' %}
     {% set icon = '' %}
   {% endif %}
-  <th>
+  <th{% if cls %} class="{{ cls }}"{% endif %}>
     <a href="{{ url_for('records.index', month_filter=month_filter_value, all_months='1' if show_all else '', discharge_status=selected_status, treating_physician=selected_physician, discharge_department=selected_department, history=history_q, full_name=full_name_q, has_death_date='1' if has_death_date else '', history_submitted=filter_history_submitted, per_page=pagination.per_page, sort_by=column, sort_order=new_order) }}"
        hx-get="{{ url_for('records.index', month_filter=month_filter_value, all_months='1' if show_all else '', discharge_status=selected_status, treating_physician=selected_physician, discharge_department=selected_department, history=history_q, full_name=full_name_q, has_death_date='1' if has_death_date else '', history_submitted=filter_history_submitted, per_page=pagination.per_page, sort_by=column, sort_order=new_order) }}"
        hx-target="#records-table-container"
@@ -49,22 +49,16 @@
               {{ sort_th('discharge_department', 'Відділення') }}
               {{ sort_th('treating_physician', 'Лікар') }}
               {{ sort_th('history', 'Історія') }}
-              {{ sort_th('k_days', 'Днів') }}
-              {{ sort_th('discharge_status', 'Статус') }}
-              <th title="Ургентний / Плановий">Стан</th>
-              <th title="Чи здана документація">Здача</th>
+              {{ sort_th('k_days', 'Днів', 'col-narrow') }}
+              {{ sort_th('discharge_status', 'Статус', 'col-narrow') }}
+              <th class="col-narrow" title="Ургентний / Плановий">Стан</th>
+              <th class="col-narrow" title="Чи здана документація">Здача</th>
               {{ sort_th('date_of_death', 'Дата смерті') }}
               <th>Коментар</th>
-              {% if current_user.role in ['editor', 'admin', 'viewer'] %}
-                <th>АДСГ</th>
-                <th>Сума</th>
-              {% endif %}
               {% if current_user.role == 'operator' %}
                 <th>Дія</th>
               {% endif %}
               {% if current_user.role in ['editor', 'admin'] %}
-                <th>Змінив</th>
-                <th>Змінено</th>
                 <th>Дія</th>
               {% endif %}
             </tr>
@@ -103,18 +97,18 @@
                 </td>
                 <td>
                   {% if r.is_urgent == true %}
-                    <span class="badge badge-table bg-danger">Ург.</span>
+                    <span class="badge badge-table badge-icon bg-danger" title="Ургентний">Ург.</span>
                   {% elif r.is_urgent == false %}
-                    <span class="badge badge-table bg-info text-dark">План.</span>
+                    <span class="badge badge-table badge-icon bg-info text-dark" title="Плановий">План.</span>
                   {% else %}
                     <span class="text-muted">—</span>
                   {% endif %}
                 </td>
                 <td>
                   {% if r.history_submitted %}
-                    <span class="badge badge-table bg-success"><i class="bi bi-check-lg"></i></span>
+                    <span class="badge badge-table badge-icon bg-success" title="Здано"><i class="bi bi-check-lg"></i></span>
                   {% else %}
-                    <span class="badge badge-table bg-secondary"><i class="bi bi-dash"></i></span>
+                    <span class="badge badge-table badge-icon bg-secondary" title="Не здано"><i class="bi bi-dash"></i></span>
                   {% endif %}
                 </td>
                 <td>
@@ -123,10 +117,6 @@
                   {% endif %}
                 </td>
                 <td>{{ r.comment or '' }}</td>
-                {% if current_user.role in ['editor', 'admin', 'viewer'] %}
-                  <td>{{ r.adsj or '' }}</td>
-                  <td>{{ r.suma | format_suma }}</td>
-                {% endif %}
                 {% if current_user.role == 'operator' %}
                   <td class="action-cell">
                     <div class="action-buttons-container">
@@ -145,8 +135,6 @@
                   </td>
                 {% endif %}
                 {% if current_user.role in ['editor', 'admin'] %}
-                  <td>{{ r.updater.username if r.updater else (r.creator.username if r.creator else r.updated_by or r.created_by) }}</td>
-                  <td>{{ r.updated_at.strftime('%d.%m.%Y %H:%M') if r.updated_at else (r.created_at.strftime('%d.%m.%Y %H:%M') if r.created_at else '') }}</td>
                   <td class="action-cell">
                     <div class="action-buttons-container">
                       <button
@@ -165,6 +153,7 @@
                         data-comment="{{ r.comment or '' }}"
                         data-adsj="{{ r.adsj or '' }}"
                         data-suma="{{ r.suma if r.suma is not none else '' }}"
+                        data-patient-ehealth-id="{{ r.patient_ehealth_id or '' }}"
                         data-is-urgent="{{ 'urgent' if r.is_urgent == true else ('planned' if r.is_urgent == false else '') }}"
                         data-history-submitted="{{ '1' if r.history_submitted else '0' }}"
                         title="Редагувати">

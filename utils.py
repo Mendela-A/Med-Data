@@ -1,6 +1,7 @@
 """
 Utility functions for the application.
 """
+import uuid
 from datetime import datetime, date
 from typing import Optional, Tuple
 from urllib.parse import urlparse
@@ -85,6 +86,21 @@ def parse_month_range(args, now=None):
     return start, end, year, month
 
 
+def normalize_ehealth_id(value: str) -> Optional[str]:
+    """Canonical lowercase UUID ('d9a421c8-8efc-11f1-...') or None if not a UUID.
+
+    Only the hyphenated 36-char form is accepted — a stray character pasted by
+    hand must not silently turn into a different, valid-looking ID.
+    """
+    value = value.strip()
+    if len(value) != 36:
+        return None
+    try:
+        return str(uuid.UUID(value))
+    except ValueError:
+        return None
+
+
 def validate_record_form(form_data: dict, require_status_and_dept: bool = False) -> tuple:
     """
     Validate record form data shared across add/edit routes.
@@ -108,6 +124,7 @@ def validate_record_form(form_data: dict, require_status_and_dept: bool = False)
     comment = form_data.get('comment', '').strip()
     adsj = form_data.get('adsj', '').strip() if require_status_and_dept else ''
     suma_str = form_data.get('suma', '').strip() if require_status_and_dept else ''
+    ehealth_str = form_data.get('patient_ehealth_id', '').strip() if require_status_and_dept else ''
     is_urgent_str = form_data.get('is_urgent', '').strip()
     history_submitted = form_data.get('history_submitted') == '1'
 
@@ -142,6 +159,13 @@ def validate_record_form(form_data: dict, require_status_and_dept: bool = False)
 
     suma = parse_numeric(suma_str) if suma_str else None
 
+    patient_ehealth_id = None
+    if ehealth_str:
+        patient_ehealth_id = normalize_ehealth_id(ehealth_str)
+        if patient_ehealth_id is None:
+            return None, ('ID пацієнта (ЕСОЗ) має бути у форматі '
+                          'xxxxxxxx-xxxx-xxxx-xxxx-xxxxxxxxxxxx (36 символів)')
+
     is_urgent = True if is_urgent_str == 'urgent' else (False if is_urgent_str == 'planned' else None)
 
     return {
@@ -156,6 +180,7 @@ def validate_record_form(form_data: dict, require_status_and_dept: bool = False)
         'comment': comment or None,
         'adsj': adsj or None,
         'suma': suma,
+        'patient_ehealth_id': patient_ehealth_id,
         'is_urgent': is_urgent,
         'history_submitted': history_submitted,
     }, None

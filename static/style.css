@@ -779,6 +779,17 @@ html[data-theme="dark"] .stat-pill-muted {
   white-space: nowrap;
 }
 
+/* Короткий бейдж (іконка «Здача», «Ург.»/«План.» у «Стан»): 80px min-width із `td .badge` тут зайвий */
+td .badge.badge-icon {
+  min-width: 36px;
+}
+
+/* Стовпці з коротким вмістом (Днів, Статус, Стан, Здача) — ширина по вмісту, вільне місце іде іншим */
+.table.records-table th.col-narrow {
+  width: 1%;
+  white-space: nowrap;
+}
+
 
 /* NSZU detail/comment columns — grab remaining space */
 .nszu-col-detail {

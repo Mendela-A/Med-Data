@@ -7,8 +7,7 @@ from flask import render_template, redirect, url_for, flash, request, current_ap
 from flask_login import current_user
 from datetime import datetime, timezone, timedelta
 from io import BytesIO
-from sqlalchemy.orm import joinedload
-from sqlalchemy import func, case
+from sqlalchemy import func, case, or_
 
 from app.extensions import db
 from models import Record, User, Department, log_action
@@ -20,6 +19,15 @@ from utils import (parse_date, parse_integer, parse_numeric, clear_dropdown_cach
                    parse_month_range, parse_export_date_range, autosize_columns, clamp_per_page)
 from constants import STATUS_DISCHARGED, STATUS_PROCESSING, STATUS_VIOLATIONS, KYIV_TZ
 from . import records_bp
+
+
+def _full_name_or_ehealth_condition(query):
+    """Search by ПІБ; admin/editor (who see the ЕСОЗ ID) also match by ID пацієнта."""
+    pattern = f'%{escape_like(query)}%'
+    cond = Record.full_name.ilike(pattern, escape='\\')
+    if current_user.role in ('editor', 'admin'):
+        cond = or_(cond, Record.patient_ehealth_id.ilike(pattern, escape='\\'))
+    return cond
 
 
 # Routes
@@ -38,7 +46,7 @@ def index():
     show_all = request.args.get('all_months', '').lower() in ('1', 'true', 'yes')
     from_d, to_d, selected_year, selected_month = parse_month_range(request.args)
 
-    q = Record.query.options(joinedload(Record.creator), joinedload(Record.updater))
+    q = Record.query
     date_conditions = []
     if not show_all:
         q = q.filter(
@@ -66,7 +74,7 @@ def index():
     if history_q:
         conditions.append(Record.history.like(f'%{escape_like(history_q)}%', escape='\\'))
     if full_name_q:
-        conditions.append(Record.full_name.ilike(f'%{escape_like(full_name_q)}%', escape='\\'))
+        conditions.append(_full_name_or_ehealth_condition(full_name_q))
     if has_death_date:
         conditions.append(Record.date_of_death != None)
     if filter_history_submitted == '1':
@@ -258,7 +266,7 @@ def export():
     if history_q:
         conditions.append(Record.history.like(f'%{escape_like(history_q)}%', escape='\\'))
     if full_name_q:
-        conditions.append(Record.full_name.ilike(f'%{escape_like(full_name_q)}%', escape='\\'))
+        conditions.append(_full_name_or_ehealth_condition(full_name_q))
 
     q = Record.query.filter(*conditions)
     records = q.order_by(Record.date_of_discharge.desc()).all()
@@ -281,7 +289,7 @@ def export():
     if use_write_only:
         headers = ['ID', 'Дата виписки', 'ПІБ', 'Відділення', 'Лікар', 'Історія хвороби', 'К днів', 'Статус виписки']
     else:
-        headers = ['ID', 'Дата виписки', 'ПІБ', 'Відділення', 'Лікар', 'Історія хвороби', 'К днів', 'Статус виписки', 'АДСЖ', 'Сума', 'Дата смерті', 'Коментар', 'Створено', 'Оновлено', 'Автор', 'Редактор']
+        headers = ['ID', 'Дата виписки', 'ПІБ', 'Відділення', 'Лікар', 'Історія хвороби', 'К днів', 'Статус виписки', 'АДСЖ', 'Сума', 'ID пацієнта (ЕСОЗ)', 'Дата смерті', 'Коментар', 'Створено', 'Оновлено', 'Автор', 'Редактор']
 
     ws.append(headers)
 
@@ -318,6 +326,7 @@ def export():
                 r.discharge_status or '',
                 r.adsj or '',
                 f"{int(r.suma):,}".replace(",", " ") if r.suma is not None else '',
+                r.patient_ehealth_id or '',
                 r.date_of_death.strftime('%d.%m.%Y') if r.date_of_death else '',
                 r.comment or '',
                 r.created_at.strftime('%d.%m.%Y %H:%M') if r.created_at else '',
@@ -395,7 +404,7 @@ def print_records():
     if history_q:
         conditions.append(Record.history.like(f'%{escape_like(history_q)}%', escape='\\'))
     if full_name_q:
-        conditions.append(Record.full_name.ilike(f'%{escape_like(full_name_q)}%', escape='\\'))
+        conditions.append(_full_name_or_ehealth_condition(full_name_q))
 
     q = Record.query.filter(*conditions)
     records = q.order_by(Record.date_of_discharge.desc()).all()
@@ -575,6 +584,18 @@ def api_update_record_status(record_id):
         return jsonify({'success': False, 'error': 'Помилка при оновленні статусу'}), 500
 
 
+def _ehealth_id_conflict(ehealth_id, record_id):
+    """Error message if another record already has this ЕСОЗ patient ID, else None."""
+    if not ehealth_id:
+        return None
+    other = Record.query.filter(Record.patient_ehealth_id == ehealth_id,
+                                Record.id != record_id).first()
+    if other:
+        return (f'ID пацієнта (ЕСОЗ) {ehealth_id} вже вказано в записі '
+                f'#{other.id} ({other.full_name})')
+    return None
+
+
 @records_bp.route('/api/records/<int:record_id>/edit', methods=['POST'])
 @role_required('editor')
 def api_edit_record(record_id):
@@ -584,6 +605,9 @@ def api_edit_record(record_id):
     r = db.get_or_404(Record, record_id)
 
     data, error = validate_record_form(request.form, require_status_and_dept=True)
+    if error:
+        return jsonify({'success': False, 'error': error}), 400
+    error = _ehealth_id_conflict(data['patient_ehealth_id'], r.id)
     if error:
         return jsonify({'success': False, 'error': error}), 400
 
@@ -598,6 +622,7 @@ def api_edit_record(record_id):
     r.comment = data['comment']
     r.adsj = data['adsj']
     r.suma = data['suma']
+    r.patient_ehealth_id = data['patient_ehealth_id']
     if current_user.role in ('operator', 'admin'):
         r.is_urgent = data['is_urgent']
         r.history_submitted = data['history_submitted']
@@ -637,6 +662,10 @@ def edit_record(record_id):
         if error:
             flash(error, 'warning')
             return redirect(url_for('records.edit_record', record_id=record_id))
+        error = _ehealth_id_conflict(data['patient_ehealth_id'], r.id)
+        if error:
+            flash(error, 'warning')
+            return redirect(url_for('records.edit_record', record_id=record_id))
 
         r.date_of_discharge = data['date_of_discharge']
         r.full_name = data['full_name']
@@ -649,6 +678,7 @@ def edit_record(record_id):
         r.comment = data['comment']
         r.adsj = data['adsj']
         r.suma = data['suma']
+        r.patient_ehealth_id = data['patient_ehealth_id']
         if current_user.role in ('operator', 'admin'):
             r.is_urgent = data['is_urgent']
             r.history_submitted = data['history_submitted']

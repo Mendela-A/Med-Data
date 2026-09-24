@@ -136,7 +136,7 @@
 
           <div class="filter-field">
             <label class="form-label small mb-1"><i class="bi bi-person-lines-fill me-1"></i>ПІБ</label>
-            <input class="form-control form-control-sm" name="full_name" placeholder="Пошук за ПІБ" value="{{ full_name_q }}"
+            <input class="form-control form-control-sm" name="full_name" placeholder="{{ 'Пошук за ПІБ або ID ЕСОЗ' if current_user.role in ['editor', 'admin'] else 'Пошук за ПІБ' }}" value="{{ full_name_q }}"
                    hx-get="{{ url_for('records.index') }}"
                    hx-trigger="keyup delay:200ms, search"
                    hx-target="#records-table-container"
@@ -474,6 +474,14 @@
                 <textarea class="form-control" id="edit_comment" name="comment" rows="2"></textarea>
               </div>
 
+              <div class="col-12">
+                <label for="edit_patient_ehealth_id" class="form-label">ID пацієнта (ЕСОЗ)</label>
+                <input type="text" class="form-control font-monospace" id="edit_patient_ehealth_id" name="patient_ehealth_id"
+                       maxlength="36" pattern="[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12}" autocomplete="off"
+                       placeholder="d9a421c8-8efc-11f1-b457-765e37fe0f90"
+                       title="36 символів у форматі xxxxxxxx-xxxx-xxxx-xxxx-xxxxxxxxxxxx">
+              </div>
+
               <div class="col-md-6">
                 <label for="edit_adsj" class="form-label">АДСГ</label>
                 <input type="text" class="form-control" id="edit_adsj" name="adsj" maxlength="200">
@@ -594,7 +602,7 @@
 
               <div class="col-md-6">
                 <label class="form-label">ПІБ (опціонально)</label>
-                <input class="form-control" name="full_name" id="export_full_name" placeholder="Пошук за ПІБ">
+                <input class="form-control" name="full_name" id="export_full_name" placeholder="{{ 'Пошук за ПІБ або ID ЕСОЗ' if current_user.role in ['editor', 'admin'] else 'Пошук за ПІБ' }}">
               </div>
             </div>
           </div>
@@ -918,6 +926,7 @@
       const comment = editBtn.dataset.comment;
       const adsj = editBtn.dataset.adsj;
       const suma = editBtn.dataset.suma;
+      const patientEhealthId = editBtn.dataset.patientEhealthId;
       const isUrgent = editBtn.dataset.isUrgent;
       const historySubmitted = editBtn.dataset.historySubmitted;
 
@@ -940,6 +949,7 @@
       document.getElementById('edit_comment').value = comment;
       document.getElementById('edit_adsj').value = adsj;
       document.getElementById('edit_suma').value = suma;
+      document.getElementById('edit_patient_ehealth_id').value = patientEhealthId;
       // is_urgent radio (operator/admin) or read-only display
       // '' — стан не вказано (is_urgent IS NULL): жодне радіо не обране,
       // форма не надішле is_urgent і validate_record_form збереже NULL

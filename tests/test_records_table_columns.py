@@ -84,6 +84,9 @@ def test_columns_rendered_for_admin(app, client):
         html = get_index(client).get_data(as_text=True)
         assert 'Стан</th>' in html
         assert 'Здача</th>' in html
+        # Приховані з таблиці (лишаються у формі редагування та Excel)
+        for hidden in ('АДСГ</th>', 'Сума</th>', 'Змінив</th>', 'Змінено</th>'):
+            assert hidden not in html
 
 
 def test_urgent_badge_rendered(app, client):
