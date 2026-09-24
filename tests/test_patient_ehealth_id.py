@@ -200,3 +200,19 @@ def test_export_has_ehealth_column(app, client):
         headers = [c.value for c in ws[1]]
         col = headers.index('ID пацієнта (ЕСОЗ)')
         assert ws.cell(row=2, column=col + 1).value == EID
+
+
+@pytest.mark.parametrize('role,visible', [('editor', True), ('admin', True),
+                                          ('operator', False), ('viewer', False)])
+def test_record_info_column_and_modal(app, client, role, visible):
+    """Стовпець «Інфо» (значок у кожному рядку) і модалка — лише для admin/editor."""
+    with app.app_context():
+        u = ensure_user(role, role)
+        make_record(u.id, 'З ідентифікатором', ehealth_id=EID)
+        make_record(u.id, 'Без ідентифікатора')
+        login(client, role)
+        html = client.get('/', query_string={'all_months': '1'}).get_data(as_text=True)
+        assert ('Інфо</th>' in html) is visible
+        assert ('id="recordInfoModal"' in html) is visible
+        # значок у кожному рядку — і з ID ЕСОЗ, і без нього
+        assert html.count('record-info-btn"') == (2 if visible else 0)

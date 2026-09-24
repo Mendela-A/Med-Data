@@ -798,6 +798,11 @@ html[data-theme="dark"] .stat-pill-muted {
   min-width: 0;
 }
 
+.record-info-btn {
+  font-size: 1.1rem;
+  line-height: 1;
+}
+
 
 /* NSZU detail/comment columns — grab remaining space */
 .nszu-col-detail {

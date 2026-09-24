@@ -667,6 +667,33 @@
   </div>
   {% endif %}
 
+{% if current_user.role in ['editor', 'admin'] %}
+<!-- Record Info Modal (editor/admin) — розширені дані за ID ЕСОЗ, поки заглушка -->
+<div class="modal fade" id="recordInfoModal" tabindex="-1" aria-labelledby="recordInfoModalLabel" aria-hidden="true">
+  <div class="modal-dialog modal-dialog-centered">
+    <div class="modal-content">
+      <div class="modal-header">
+        <h5 class="modal-title" id="recordInfoModalLabel"><i class="bi bi-info-circle me-2"></i>Розширена інформація</h5>
+        <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+      </div>
+      <div class="modal-body">
+        <div class="mb-3 small">
+          <span class="text-muted">ID пацієнта (ЕСОЗ):</span>
+          <code id="recordInfoEhealthId"></code>
+          <span id="recordInfoEhealthIdMissing" class="text-muted fst-italic">не вказано</span>
+        </div>
+        <div class="text-center text-muted py-4 border rounded bg-light">
+          <i class="bi bi-tools fs-2 d-block mb-2"></i>
+          Розширені дані — у розробці
+        </div>
+      </div>
+      <div class="modal-footer">
+        <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Закрити</button>
+      </div>
+    </div>
+  </div>
+</div>
+{% endif %}
 {% endblock %}
 
 {% block scripts %}
@@ -1125,6 +1152,25 @@
   });
 </script>
 
+{% endif %}
+
+{% if current_user.role in ['editor', 'admin'] %}
+<script>
+  // Record Info Modal (editor/admin)
+  (function() {
+    if (!document.getElementById('recordInfoModal')) return;
+    document.addEventListener('click', function(e) {
+      const btn = e.target.closest('.record-info-btn');
+      if (!btn) return;
+      const ehealthId = btn.dataset.patientEhealthId || '';
+      document.getElementById('recordInfoModalLabel').textContent =
+        `Запис #${btn.dataset.recordId} — ${btn.dataset.fullName}`;
+      document.getElementById('recordInfoEhealthId').textContent = ehealthId;
+      document.getElementById('recordInfoEhealthId').hidden = !ehealthId;
+      document.getElementById('recordInfoEhealthIdMissing').hidden = !!ehealthId;
+    });
+  })();
+</script>
 {% endif %}
 
 {% if current_user.role == 'operator' %}
