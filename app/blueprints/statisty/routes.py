@@ -111,7 +111,12 @@ def _parse_date_range(default_to_year=False):
             pass
     if to_str:
         try:
-            to_date = date.fromisoformat(to_str if len(to_str) > 7 else to_str + '-01')
+            if len(to_str) > 7:
+                to_date = date.fromisoformat(to_str)
+            else:
+                # 'YYYY-MM' (month input) — the range ends on the month's last day
+                to_date = date.fromisoformat(to_str + '-01')
+                to_date = to_date.replace(day=calendar.monthrange(to_date.year, to_date.month)[1])
         except ValueError:
             pass
     if from_date is None:
@@ -135,6 +140,13 @@ def _period_label(from_date, to_date):
         return f"{UKRAINIAN_MONTHS[from_date.month]} {from_date.year}"
     if from_date == date(from_date.year, 1, 1) and to_date == date(from_date.year, 12, 31):
         return f"{from_date.year} рік"
+    to_last_day = calendar.monthrange(to_date.year, to_date.month)[1]
+    if from_date.day == 1 and to_date.day == to_last_day:
+        # Several whole months: "Березень – Травень 2026"
+        if from_date.year == to_date.year:
+            return f"{UKRAINIAN_MONTHS[from_date.month]} – {UKRAINIAN_MONTHS[to_date.month]} {to_date.year}"
+        return (f"{UKRAINIAN_MONTHS[from_date.month]} {from_date.year} – "
+                f"{UKRAINIAN_MONTHS[to_date.month]} {to_date.year}")
     return f"{from_date.strftime('%d.%m.%Y')} – {to_date.strftime('%d.%m.%Y')}"
 
 
@@ -188,7 +200,8 @@ def _get_form016_data(from_date, to_date, department_ids=None):
     from constants import UKRAINIAN_MONTHS
     year = from_date.year
 
-    # Load departments + full-year reports in 2 queries (not ~36)
+    # Load departments + the range's reports in 2 queries (not ~36).
+    # The range is widened to whole months (the table rows are months).
     if department_ids:
         depts = Department.query.filter(Department.id.in_(department_ids)).all()
     else:
@@ -199,8 +212,9 @@ def _get_form016_data(from_date, to_date, department_ids=None):
         return [], {}, 'daily_report', 0
 
     all_reports = DailyReport.query.filter(
-        DailyReport.report_date >= date(year, 1, 1),
-        DailyReport.report_date <= date(year, 12, 31),
+        DailyReport.report_date >= date(year, from_date.month, 1),
+        DailyReport.report_date <= date(year, to_date.month,
+                                        calendar.monthrange(year, to_date.month)[1]),
         DailyReport.department_id.in_(dept_ids),
     ).all()
 
@@ -252,38 +266,26 @@ def _get_form016_data(from_date, to_date, department_ids=None):
         row.update(data if data else _ZERO)
         return row
 
+    # Rows for the selected month range; a quarter / half-year subtotal is shown
+    # only when that whole span lies inside the range.
+    start_month, end_month = from_date.month, to_date.month
+    quarter_labels = {3: 'За I квартал', 6: 'За II квартал', 9: 'За III квартал', 12: 'За IV квартал'}
+
     table = []
-    selected_month = to_date.month
-
-    for m in range(1, min(selected_month, 3) + 1):
+    for m in range(start_month, end_month + 1):
         table.append(_month_row(m))
-    if selected_month >= 3:
-        table.append(_subtotal_row('За I квартал', 1, 3))
+        if m in quarter_labels and m - 2 >= start_month:
+            table.append(_subtotal_row(quarter_labels[m], m - 2, m))
+            if m == 6 and start_month == 1:
+                table.append(_subtotal_row('За півріччя', 1, 6))
 
-    if selected_month >= 4:
-        for m in range(4, min(selected_month, 6) + 1):
-            table.append(_month_row(m))
-        if selected_month >= 6:
-            table.append(_subtotal_row('За II квартал', 4, 6))
-            table.append(_subtotal_row('За півріччя', 1, 6))
-
-    if selected_month >= 7:
-        for m in range(7, min(selected_month, 9) + 1):
-            table.append(_month_row(m))
-        if selected_month >= 9:
-            table.append(_subtotal_row('За III квартал', 7, 9))
-
-    if selected_month >= 10:
-        for m in range(10, min(selected_month, 12) + 1):
-            table.append(_month_row(m))
-        if selected_month >= 12:
-            table.append(_subtotal_row('За IV квартал', 10, 12))
-
-    if selected_month == 12:
+    if start_month == 1 and end_month == 12:
         totals_row = _subtotal_row('За рік', 1, 12)
     else:
-        totals_row = _subtotal_row(
-            f"Всього за період (січень–{UKRAINIAN_MONTHS[selected_month].lower()})", 1, selected_month)
+        months_label = UKRAINIAN_MONTHS[start_month].lower()
+        if end_month != start_month:
+            months_label += f"–{UKRAINIAN_MONTHS[end_month].lower()}"
+        totals_row = _subtotal_row(f"Всього за період ({months_label})", start_month, end_month)
     table.append(totals_row)
 
     return table, totals_row, 'daily_report', dr_count
@@ -749,10 +751,30 @@ def _parse_department_ids(department_id_str):
 
 # ---- Form 016 ---------------------------------------------------------------
 
+def _parse_form016_range():
+    """Month range for Form 016: whole months within one calendar year.
+
+    Returns (from_date, to_date, clamped) — clamped is True when a range spanning
+    years was cut at December of from_date's year (the form is annual, with
+    quarter subtotals).
+    """
+    from_date, to_date = _parse_date_range(default_to_year=True)
+    from_date = from_date.replace(day=1)
+    clamped = to_date.year != from_date.year
+    if clamped:
+        to_date = date(from_date.year, 12, 31)
+    else:
+        to_date = to_date.replace(day=calendar.monthrange(to_date.year, to_date.month)[1])
+    return from_date, to_date, clamped
+
+
 @statisty_bp.route('/form016')
 @role_required('admin', 'viewer')
 def form016():
-    from_date, to_date = _parse_date_range(default_to_year=True)
+    from_date, to_date, clamped = _parse_form016_range()
+    if clamped:
+        flash(f'Форма 016 будується в межах одного року — період обмежено до грудня {from_date.year}.',
+              'warning')
 
     department_id_str = request.args.get('department_id', '').strip()
     department_ids, selected_dept = _parse_department_ids(department_id_str)
@@ -781,7 +803,7 @@ def form016():
 @statisty_bp.route('/form016/print')
 @role_required('admin', 'viewer')
 def form016_print():
-    from_date, to_date = _parse_date_range(default_to_year=True)
+    from_date, to_date, _ = _parse_form016_range()
     department_id_str = request.args.get('department_id', '').strip()
     department_ids, selected_dept = _parse_department_ids(department_id_str)
 
@@ -811,7 +833,7 @@ def form016_print():
     bio = BytesIO(pdf)
     bio.seek(0)
     dept_slug = f"_{selected_dept.name[:20].replace(' ', '_')}" if selected_dept else ''
-    filename = f"forma016{dept_slug}_{from_date.year}.pdf"
+    filename = f"forma016{dept_slug}_{from_date:%Y-%m}_{to_date:%Y-%m}.pdf"
     return send_file(bio, as_attachment=False,
                      download_name=filename, mimetype='application/pdf')
 
@@ -824,7 +846,7 @@ def form016_export():
     from openpyxl import Workbook
     from openpyxl.styles import Font, Alignment, PatternFill, Border, Side
 
-    from_date, to_date = _parse_date_range(default_to_year=True)
+    from_date, to_date, _ = _parse_form016_range()
 
     department_id_str = request.args.get('department_id', '').strip()
     department_ids, selected_dept = _parse_department_ids(department_id_str)

@@ -44,9 +44,14 @@
     </select>
   </div>
   <div class="col-auto">
-    <label class="form-label mb-1 small">Місяць</label>
+    <label class="form-label mb-1 small">З місяця</label>
     <input type="month" name="from_date" class="form-control form-control-sm"
-           value="{% if request.args.get('from_date') %}{{ from_date.strftime('%Y-%m') }}{% endif %}">
+           value="{{ from_date.strftime('%Y-%m') }}" required>
+  </div>
+  <div class="col-auto">
+    <label class="form-label mb-1 small">По місяць</label>
+    <input type="month" name="to_date" class="form-control form-control-sm"
+           value="{{ to_date.strftime('%Y-%m') }}" required>
   </div>
   <div class="col-auto">
     <button type="submit" class="btn btn-primary btn-sm">

@@ -4,7 +4,7 @@ from app import create_app
 from models import db, User, Department, DailyReport
 
 DATE = datetime.date(2026, 4, 1)
-FROM_DATE = "2026-12-01"
+FROM_DATE = "2026-01-01"
 TO_DATE = "2026-12-31"
 
 
@@ -286,3 +286,71 @@ def test_form016_annual_view_default(app, client):
         assert '30.0' not in html
         assert 'class="text-center excel-computed">30</td>' in html
 
+
+
+def _add_report(dept, user, day, **fields):
+    db.session.add(DailyReport(report_date=day, department_id=dept.id,
+                               created_by=user.id, **fields))
+
+
+def test_form016_month_range(app, client):
+    """A March–May range shows only those months and totals only their data."""
+    with app.app_context():
+        u = ensure_user('admin')
+        dept = ensure_department()
+        _add_report(dept, u, datetime.date(2026, 2, 10), beds_total=30, admitted_total=100)
+        _add_report(dept, u, datetime.date(2026, 3, 5), beds_total=30, admitted_total=4)
+        _add_report(dept, u, datetime.date(2026, 5, 20), beds_total=30, admitted_total=6)
+        _add_report(dept, u, datetime.date(2026, 6, 1), beds_total=30, admitted_total=200)
+        db.session.commit()
+
+        login(client)
+        response = client.get('/statisty/form016',
+                              query_string={'from_date': '2026-03', 'to_date': '2026-05'})
+        assert response.status_code == 200
+        html = response.get_data(as_text=True)
+
+        assert 'Березень' in html and 'Квітень' in html and 'Травень' in html
+        assert 'Лютий' not in html and 'Червень' not in html
+        assert 'За I квартал' not in html and 'За II квартал' not in html
+        assert 'Всього за період (березень–травень)' in html
+        assert 'Березень – Травень 2026' in html  # period label
+        assert '(2 записів за' in html            # only reports within the range
+        assert '<td class="text-center fw-bold">10</td>' in html  # 4 + 6 admitted
+
+
+def test_form016_quarter_subtotal_needs_whole_quarter(app, client):
+    with app.app_context():
+        ensure_user('admin')
+        ensure_department()
+        login(client)
+        html = client.get('/statisty/form016',
+                          query_string={'from_date': '2026-04', 'to_date': '2026-06'}).get_data(as_text=True)
+        assert 'За II квартал' in html
+        assert 'За півріччя' not in html
+        assert 'Всього за період (квітень–червень)' in html
+
+
+def test_form016_to_month_means_end_of_month(app, client):
+    with app.app_context():
+        u = ensure_user('admin')
+        dept = ensure_department()
+        _add_report(dept, u, datetime.date(2026, 5, 31), beds_total=30, admitted_total=7)
+        db.session.commit()
+        login(client)
+        html = client.get('/statisty/form016',
+                          query_string={'from_date': '2026-05', 'to_date': '2026-05'}).get_data(as_text=True)
+        assert 'Всього за період (травень)' in html
+        assert '(1 записів за Травень 2026)' in html
+
+
+def test_form016_range_across_years_is_clamped(app, client):
+    with app.app_context():
+        ensure_user('admin')
+        ensure_department()
+        login(client)
+        html = client.get('/statisty/form016',
+                          query_string={'from_date': '2026-11', 'to_date': '2027-02'}).get_data(as_text=True)
+        assert 'в межах одного року' in html
+        assert 'Грудень' in html and 'Січень' not in html
+        assert 'Всього за період (листопад–грудень)' in html
